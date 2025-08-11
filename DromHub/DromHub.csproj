@@ -12,6 +12,13 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Remove="assets\MessageWindow.xaml" />
+    <Content Remove="Assets\MessageWindow.xaml.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Remove="assets\MessageWindow.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
@@ -39,6 +46,17 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
   </ItemGroup>
+  <ItemGroup>
+    <Page Update="Tab2Page.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Tab4Page.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Tab3Page.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
@@ -55,5 +73,6 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <DefaultLanguage>ru-RU</DefaultLanguage>
   </PropertyGroup>
 </Project>

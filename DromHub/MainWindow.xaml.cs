@@ -1,26 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace DromHub
 {
-    /// <summary>
-    /// An empty window that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class MainWindow : Window
     {
         public MainWindow()
@@ -28,9 +10,36 @@ namespace DromHub
             this.InitializeComponent();
         }
 
-        private void myButton_Click(object sender, RoutedEventArgs e)
+        private void OpenTab(string header, UIElement content)
         {
-            myButton.Content = "Clicked";
+            foreach (var item in MainTabView.TabItems)
+            {
+                if (item is TabViewItem t && t.Header?.ToString() == header)
+                {
+                    MainTabView.SelectedItem = t;
+                    return;
+                }
+            }
+
+            var newTab = new TabViewItem
+            {
+                Header = header,
+                Content = content,
+                IsClosable = true
+            };
+
+            MainTabView.TabItems.Add(newTab);
+            MainTabView.SelectedItem = newTab;
         }
+
+        private void MainTabView_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
+        {
+            sender.TabItems.Remove(args.Tab);
+        }
+
+        private void OpenSearch_Click(object s, RoutedEventArgs e) => OpenTab("Поиск", new Search());
+        private void OpenTab2_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 2", new Tab2Page());
+        private void OpenTab3_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 3", new Tab3Page());
+        private void OpenTab4_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 4", new Tab4Page());
     }
 }
