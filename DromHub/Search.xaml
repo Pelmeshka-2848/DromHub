@@ -5,23 +5,27 @@
 
     <StackPanel Padding="20" Background="LightBlue" Spacing="10">
 
-        <TextBlock Text="Поиск:" FontSize="20"/>
+        <TextBlock Text="Поиск деталей:" FontSize="20"/>
 
         <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBox x:Name="SearchBox"
                      Width="300"
-                     PlaceholderText="Введите текст для поиска..."
+                     PlaceholderText="Введите бренд или номер..."
                      TextChanged="SearchBox_TextChanged"/>
-
-            <Button Content="Показать"
-                    Click="ShowButton_Click"/>
+            <Button Content="Показать" Click="ShowButton_Click"/>
         </StackPanel>
 
-        <TextBlock x:Name="SearchResultTextBlock"
-                   FontSize="18"
-                   Foreground="DarkBlue"
-                   TextWrapping="Wrap"
-                   Margin="0,30,0,0"
-                   HorizontalAlignment="Center"/>
+        <ListView x:Name="ResultsList" Height="300">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="20">
+                        <TextBlock Text="{Binding Brand}" Width="100"/>
+                        <TextBlock Text="{Binding Number}" Width="100"/>
+                        <TextBlock Text="{Binding Price}" Width="100"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
     </StackPanel>
 </Page>

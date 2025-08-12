@@ -8,6 +8,9 @@ namespace DromHub
         public MainWindow()
         {
             this.InitializeComponent();
+            //DatabaseSeeder.Seed();
+            SqlServerDatabaseHelper.InitializeDatabase();
+            SqlServerDatabaseHelper.SeedData();
         }
 
         private void OpenTab(string header, UIElement content)
