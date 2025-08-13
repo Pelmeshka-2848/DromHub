@@ -8,9 +8,13 @@ namespace DromHub
         public MainWindow()
         {
             this.InitializeComponent();
-            //DatabaseSeeder.Seed(); // Если нужно, можете использовать этот метод для начальной загрузки данных
-            PostgresDatabaseHelper.InitializeDatabase(); // Инициализация подключения к PostgreSQL
+            this.Activated += MainWindow_Activated_FirstTime;
             //DataSeeder.SeedAll();
+        }
+        private async void MainWindow_Activated_FirstTime(object sender, WindowActivatedEventArgs e)
+        {
+            this.Activated -= MainWindow_Activated_FirstTime; // отписываемся, чтобы не вызывать повторно
+            await DatabaseHelper.InitializeDatabaseAsync();
         }
 
         private void OpenTab(string header, UIElement content)

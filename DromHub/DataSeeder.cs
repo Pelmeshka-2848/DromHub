@@ -6,7 +6,7 @@ namespace DromHub
 {
     public static class DataSeeder
     {
-        private static readonly string connString = PostgresDatabaseHelper.connectionString;
+        private static readonly string connString = DatabaseHelper.ConnectionString;
 
         public static void SeedAll()
         {

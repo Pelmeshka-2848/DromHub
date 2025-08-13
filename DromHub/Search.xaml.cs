@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Microsoft.UI.Xaml.Controls;
 using DromHub;
 
 namespace DromHub
@@ -19,14 +20,14 @@ namespace DromHub
 
         private async void ShowButton_Click(object sender, RoutedEventArgs e)
         {
-            var results = await SearchHandler.SearchPartsByNumberAsync(SearchBox.Text);
+            var results = await DatabaseHelper.SearchPartsByNumberAsync(SearchBox.Text);
             UpdateResults(results);
         }
 
         private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string searchText = (sender as TextBox)?.Text ?? "";
-            var results = await SearchHandler.SearchPartsByNumberAsync(searchText);
+            var results = await DatabaseHelper.SearchPartsByNumberAsync(searchText);
             UpdateResults(results);
         }
 
