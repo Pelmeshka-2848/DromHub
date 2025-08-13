@@ -1,78 +1,35 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Npgsql;
 using System;
 using System.Collections.Generic;
 
 namespace DromHub
 {
-    public static class SqlServerDatabaseHelper
+    public static class PostgresDatabaseHelper
     {
-        private static readonly string connectionString = "Server=tcp:localhost;Database=DromHubDB;User Id=DromHub;Password=admin1234;TrustServerCertificate=True;\r\n";
+        public static readonly string connectionString = "Host=localhost;Port=5432;Username=postgres;Password=plane2004;Database=DromHubDB;";
+
         public static void InitializeDatabase()
         {
-            using var connection = new SqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             connection.Open();
-
-            var createTableCmd = @"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Parts' AND xtype='U')
-                CREATE TABLE Parts (
-                    Id INT IDENTITY PRIMARY KEY,
-                    Brand NVARCHAR(100) NOT NULL,
-                    Number NVARCHAR(100) NOT NULL UNIQUE,
-                    Price FLOAT NOT NULL
-                );
-            ";
-
-            using var command = new SqlCommand(createTableCmd, connection);
-            command.ExecuteNonQuery();
         }
 
-        // Метод для заполнения таблицы тестовыми данными
-        public static void SeedData()
-        {
-            using var connection = new SqlConnection(connectionString);
-            connection.Open();
-
-            var countCmd = new SqlCommand("SELECT COUNT(*) FROM Parts", connection);
-            int count = (int)countCmd.ExecuteScalar();
-
-            if (count > 0)
-                return; // Данные уже есть
-
-            using var transaction = connection.BeginTransaction();
-
-            var insertCmd = new SqlCommand("INSERT INTO Parts (Brand, Number, Price) VALUES (@brand, @number, @price)", connection, transaction);
-
-            insertCmd.Parameters.Add(new SqlParameter("@brand", System.Data.SqlDbType.NVarChar));
-            insertCmd.Parameters.Add(new SqlParameter("@number", System.Data.SqlDbType.NVarChar));
-            insertCmd.Parameters.Add(new SqlParameter("@price", System.Data.SqlDbType.Float));
-
-            var random = new Random();
-
-            for (int i = 1; i <= 1000; i++)
-            {
-                insertCmd.Parameters["@brand"].Value = $"Brand{i % 10 + 1}";
-                insertCmd.Parameters["@number"].Value = $"NUM{i:00000}";
-                insertCmd.Parameters["@price"].Value = Math.Round(random.NextDouble() * 1000 + 50, 2);
-
-                insertCmd.ExecuteNonQuery();
-            }
-
-            transaction.Commit();
-        }
-
-        // Метод поиска по полю Number
         public static List<Part> SearchPartsByNumber(string searchText)
         {
             var results = new List<Part>();
-
             if (string.IsNullOrWhiteSpace(searchText))
                 return results;
 
-            using var connection = new SqlConnection(connectionString);
+            using var connection = new NpgsqlConnection(connectionString);
             connection.Open();
 
-            var cmd = new SqlCommand("SELECT Brand, Number, Price FROM Parts WHERE Number LIKE @search", connection);
-            cmd.Parameters.AddWithValue("@search", $"%{searchText}%");
+            var cmd = new NpgsqlCommand(
+                @"SELECT b.name AS Brand, p.catalog_number, ls.price_in
+                  FROM parts p
+                  JOIN brands b ON p.brand_id = b.id
+                  LEFT JOIN local_stock ls ON ls.part_id = p.id
+                  WHERE p.catalog_number LIKE @search", connection);
+            cmd.Parameters.AddWithValue("search", $"%{searchText}%");
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -81,10 +38,9 @@ namespace DromHub
                 {
                     Brand = reader.GetString(0),
                     Number = reader.GetString(1),
-                    Price = reader.GetDouble(2)
+                    Price = reader.IsDBNull(2) ? 0 : Convert.ToDouble(reader.GetDecimal(2))
                 });
             }
-
             return results;
         }
     }
