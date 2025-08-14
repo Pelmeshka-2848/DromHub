@@ -126,11 +126,17 @@ namespace DromHub.ViewModels
             }
             else
             {
-                Console.WriteLine(_part.Id);
                 _context.Parts.Update(_part);
             }
-
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Добавить уведомление об ошибке
+                Console.WriteLine(ex);
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

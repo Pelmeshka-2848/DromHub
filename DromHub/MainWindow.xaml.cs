@@ -10,12 +10,13 @@ namespace DromHub
         {
             this.InitializeComponent();
             this.Activated += MainWindow_Activated_FirstTime;
-            //DataSeeder.SeedAll();
         }
+
         private async void MainWindow_Activated_FirstTime(object sender, WindowActivatedEventArgs e)
         {
             this.Activated -= MainWindow_Activated_FirstTime; 
         }
+        
 
         private void OpenTab(string header, UIElement content)
         {
