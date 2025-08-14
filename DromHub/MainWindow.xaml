@@ -5,16 +5,25 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     Title="DromHub">
 
-    <controls:TabView x:Name="MainTabView"
-                      TabCloseRequested="MainTabView_TabCloseRequested">
-        <controls:TabViewItem Header="Главная" IsClosable="False">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                <Button Content="Поиск" Click="OpenSearch_Click"/>
-                <Button Content="Открыть вкладку 2" Click="OpenTab2_Click"/>
-                <Button Content="Открыть вкладку 3" Click="OpenTab3_Click"/>
-                <Button Content="Открыть вкладку 4" Click="OpenTab4_Click"/>
-            </StackPanel>
-        </controls:TabViewItem>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- Основная область для вкладок -->
+            <ColumnDefinition Width="*" />
+            <!-- Правая панель с кнопками фиксированной ширины -->
+            <ColumnDefinition Width="220" />
+        </Grid.ColumnDefinitions>
 
-    </controls:TabView>
+        <!-- Вкладки -->
+        <controls:TabView x:Name="MainTabView"
+                          Grid.Column="0"
+                          TabCloseRequested="MainTabView_TabCloseRequested"/>
+
+        <!-- Правая панель с кнопками -->
+        <StackPanel Grid.Column="1" Background="#EEE" Padding="15" Spacing="10">
+            <Button Content="Поиск" Click="OpenSearch_Click"/>
+            <Button Content="Просмотр" Click="OpenPartView_Click"/>
+            <Button Content="Вкладка 3" Click="OpenTab3_Click"/>
+            <Button Content="Вкладка 4" Click="OpenTab4_Click"/>
+        </StackPanel>
+    </Grid>
 </Window>

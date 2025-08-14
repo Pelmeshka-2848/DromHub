@@ -34,7 +34,10 @@ namespace DromHub.Models
 
         [Column("is_oem")]
         public bool IsOem { get; set; } = false;
-
+        public void UpdateNormalizedName()
+        {
+            NormalizedName = Name?.ToUpperInvariant();
+        }
         // Навигационные свойства
         public virtual ICollection<BrandAlias> Aliases { get; set; }
         public virtual BrandMarkup Markup { get; set; }
