@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using DromHub.Data;
 using DromHub.ViewModels;
 using Microsoft.EntityFrameworkCore;
@@ -29,16 +30,24 @@ namespace DromHub
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
         {
-            m_window = _serviceProvider.GetRequiredService<MainWindow>();
+            try
+            {
+                m_window = _serviceProvider.GetRequiredService<MainWindow>();
 
-            // Инициализация БД с тестовыми данными
-            // using (var scope = _serviceProvider.CreateScope())
-            // {
+                // Инициализация БД с тестовыми данными
+                // using (var scope = _serviceProvider.CreateScope())
+                // {
                 // var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 // await DatabaseInitializer.InitializeAsync(dbContext);
-            // }
+                // }
 
-            m_window.Activate();
+                m_window.Activate();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка инициализации БД: {ex}");
+                // Можно показать MessageBox с ошибкой
+            }
         }
 
         private void ConfigureServices(IServiceCollection services)

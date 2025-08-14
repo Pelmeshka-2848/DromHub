@@ -126,6 +126,7 @@ namespace DromHub.ViewModels
             }
             else
             {
+                Console.WriteLine(_part.Id);
                 _context.Parts.Update(_part);
             }
 
