@@ -1,3 +1,4 @@
+using DromHub.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -13,8 +14,7 @@ namespace DromHub
         }
         private async void MainWindow_Activated_FirstTime(object sender, WindowActivatedEventArgs e)
         {
-            this.Activated -= MainWindow_Activated_FirstTime; // отписываемся, чтобы не вызывать повторно
-            await DatabaseHelper.InitializeDatabaseAsync();
+            this.Activated -= MainWindow_Activated_FirstTime; 
         }
 
         private void OpenTab(string header, UIElement content)
@@ -44,7 +44,7 @@ namespace DromHub
             sender.TabItems.Remove(args.Tab);
         }
 
-        private void OpenSearch_Click(object s, RoutedEventArgs e) => OpenTab("Поиск", new Search());
+        private void OpenSearch_Click(object s, RoutedEventArgs e) => OpenTab("Поиск", new PartView());
         private void OpenTab2_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 2", new Tab2Page());
         private void OpenTab3_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 3", new Tab3Page());
         private void OpenTab4_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 4", new Tab4Page());
