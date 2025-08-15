@@ -84,6 +84,8 @@ namespace DromHub
                 Debug.WriteLine($"Ошибка инициализации: {ex.Message}");
             }
 
+            TrySetMicaBackdrop();
+
             m_window.Activate();
         }
 

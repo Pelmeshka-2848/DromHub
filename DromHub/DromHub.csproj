@@ -17,6 +17,7 @@
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\MainPage.xaml" />
     <None Remove="Views\PartView.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -53,6 +54,11 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\MainPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Tab2Page.xaml">

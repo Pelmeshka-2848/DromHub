@@ -5,25 +5,39 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     Title="DromHub">
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <!-- Основная область для вкладок -->
-            <ColumnDefinition Width="*" />
-            <!-- Правая панель с кнопками фиксированной ширины -->
-            <ColumnDefinition Width="220" />
-        </Grid.ColumnDefinitions>
+    <NavigationView x:Name="nvSample"
+                    IsSettingsVisible="True"
+                    IsBackButtonVisible="Collapsed"
+                    IsBackEnabled="False"
+                    SelectionChanged="NavigationView_SelectionChanged"
+                    AlwaysShowHeader="True"
+                    PaneTitle="Pane Title"
+                    PaneDisplayMode="Left"
+                    ExpandedModeThresholdWidth="500"
+                    SelectionFollowsFocus="Disabled"
+                    IsTabStop="False">
 
-        <!-- Вкладки -->
-        <controls:TabView x:Name="MainTabView"
-                          Grid.Column="0"
-                          TabCloseRequested="MainTabView_TabCloseRequested"/>
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Главная" Tag="MainPage" x:Name="MainPageItem" SelectsOnInvoked="True">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Home"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Запчасть" Tag="PartPage" x:Name="PartPageItem">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Repair"/>
+                </NavigationViewItem.Icon>
+                <NavigationViewItem.MenuItems>
+                    <NavigationViewItem Content="Поиск" Tag="PartSearchView" x:Name="PartSearchViewItem"/>
+                    <NavigationViewItem Content="Добавить" Tag="PartView" x:Name="PartViewItem"/>
+                </NavigationViewItem.MenuItems>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
 
-        <!-- Правая панель с кнопками -->
-        <StackPanel Grid.Column="1" Background="#EEE" Padding="15" Spacing="10">
-            <Button Content="Поиск" Click="OpenSearch_Click"/>
-            <Button Content="Просмотр" Click="OpenPartView_Click"/>
-            <Button Content="Вкладка 3" Click="OpenTab3_Click"/>
-            <Button Content="Вкладка 4" Click="OpenTab4_Click"/>
-        </StackPanel>
-    </Grid>
+        <NavigationView.AutoSuggestBox>
+            <AutoSuggestBox QueryIcon="Find" AutomationProperties.Name="Search" />
+        </NavigationView.AutoSuggestBox>
+
+        <Frame x:Name="contentFrame" />
+    </NavigationView>
 </Window>
