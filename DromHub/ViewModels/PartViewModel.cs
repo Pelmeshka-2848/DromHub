@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
@@ -118,6 +119,9 @@ namespace DromHub.ViewModels
             }
         }
 
+        // ВНИМАНИЕ данный метод срабатывает только 1 раз, в противном случае он изменяет объект, который был только что добавлен. Возможные фиксы:
+        // - Добавление запчастей через диалоговое окно, после нажатия кнопки сохранить оно закрывается. Редактирование сделать в поиске, также через диалоговое окно.
+        // - Заняться изменением данного метода, для приведения его к нормальному виду.
         public async Task SavePartAsync()
         {
             if (_part.Id == Guid.Empty)
@@ -135,7 +139,7 @@ namespace DromHub.ViewModels
             catch (Exception ex)
             {
                 // Добавить уведомление об ошибке
-                Console.WriteLine(ex);
+                Debug.WriteLine(ex.ToString());
             }
         }
 
