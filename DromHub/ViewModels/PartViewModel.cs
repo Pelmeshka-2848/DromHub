@@ -119,26 +119,76 @@ namespace DromHub.ViewModels
             }
         }
 
+        private void ResetPart()
+        {
+            _part = new Part();
+            _selectedBrand = null;
+            OnPropertyChanged(nameof(SelectedBrand));
+            OnPropertyChanged(nameof(CatalogNumber));
+            OnPropertyChanged(nameof(Article));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(CreatedAt));
+            OnPropertyChanged(nameof(UpdatedAt));
+        }
+
         // ВНИМАНИЕ данный метод срабатывает только 1 раз, в противном случае он изменяет объект, который был только что добавлен. Возможные фиксы:
         // - Добавление запчастей через диалоговое окно, после нажатия кнопки сохранить оно закрывается. Редактирование сделать в поиске, также через диалоговое окно.
         // - Заняться изменением данного метода, для приведения его к нормальному виду.
         public async Task SavePartAsync()
         {
-            if (_part.Id == Guid.Empty)
+            // 1) Блокируем любое редактирование в этом методе
+            if (_part.Id != Guid.Empty)
             {
-                await _context.Parts.AddAsync(_part);
+                // Здесь покажите пользователю уведомление/диалог
+                Debug.WriteLine("Редактирование запрещено: используйте форму/диалог редактирования.");
+                return;
             }
-            else
+
+            // 2) Базовая валидация
+            _part.CatalogNumber = _part.CatalogNumber?.Trim();
+            if (_part.BrandId == Guid.Empty || string.IsNullOrWhiteSpace(_part.CatalogNumber))
             {
-                _context.Parts.Update(_part);
+                Debug.WriteLine("Заполните Бренд и Артикул.");
+                return;
             }
+
+            // 3) Предварительная проверка уникальности (дублирует БД, но даёт мгновенную обратную связь)
+            bool exists = await _context.Parts
+                .AsNoTracking()
+                .AnyAsync(p => p.BrandId == _part.BrandId &&
+                               p.CatalogNumber == _part.CatalogNumber);
+            if (exists)
+            {
+                Debug.WriteLine("Такая запчасть уже существует для выбранного бренда.");
+                return;
+            }
+
+            // 4) Вставка через отдельный экземпляр (не трогаем _part, чтобы не менять состояние формы)
+            var entity = new Part
+            {
+                BrandId = _part.BrandId,
+                CatalogNumber = _part.CatalogNumber,
+                Name = _part.Name
+            };
+
             try
             {
+                await _context.Parts.AddAsync(entity);
                 await _context.SaveChangesAsync();
+
+                // На всякий случай снимаем отслеживание вставленной сущности
+                _context.Entry(entity).State = EntityState.Detached;
+
+                // 5) Готовим форму к следующему вводу
+                ResetPart();
+            }
+            catch (DbUpdateException ex)
+            {
+                // Если всё-таки пришёл конфликт уникальности из БД — сообщаем
+                Debug.WriteLine("Ошибка сохранения (возможно, нарушение уникальности): " + ex.Message);
             }
             catch (Exception ex)
             {
-                // Добавить уведомление об ошибке
                 Debug.WriteLine(ex.ToString());
             }
         }
