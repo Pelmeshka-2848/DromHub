@@ -14,6 +14,8 @@ namespace DromHub.ViewModels
 {
     public partial class PartSearchViewModel : ObservableObject
     {
+        public bool IsEmpty => Parts.Count == 0;
+        public ApplicationDbContext Context => _context;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<PartSearchViewModel> _logger;
 
@@ -35,6 +37,7 @@ namespace DromHub.ViewModels
         public IAsyncRelayCommand LoadBrandsCommand { get; }
         public IAsyncRelayCommand SearchPartsCommand { get; }
         public IRelayCommand ClearSearchCommand { get; }
+        public IAsyncRelayCommand<PartViewModel> AddPartCommand { get; }
 
         public PartSearchViewModel(ApplicationDbContext context, ILogger<PartSearchViewModel> logger)
         {
@@ -45,6 +48,7 @@ namespace DromHub.ViewModels
             LoadBrandsCommand = new AsyncRelayCommand(LoadBrandsAsync);
             ClearSearchCommand = new RelayCommand(ClearSearch);
             LoadBrandsCommand.ExecuteAsync(null);
+            AddPartCommand = new AsyncRelayCommand<PartViewModel>(AddPartAsync);
         }
 
         private async Task LoadBrandsAsync()
@@ -81,10 +85,11 @@ namespace DromHub.ViewModels
         {
             try
             {
+                Parts.Clear();
+
                 if (string.IsNullOrWhiteSpace(SearchText))
                 {
-                    // Если строка поиска пустая - очищаем результаты
-                    Parts.Clear();
+                    OnPropertyChanged(nameof(IsEmpty));
                     return;
                 }
 
@@ -94,35 +99,45 @@ namespace DromHub.ViewModels
                     .Include(p => p.Brand)
                     .AsQueryable();
 
-                // Фильтрация по бренду если выбран
                 if (SelectedBrandFilter != null && SelectedBrandFilter.Id != Guid.Empty)
-                {
                     query = query.Where(p => p.BrandId == SelectedBrandFilter.Id);
-                }
 
-                // Применяем поиск по тексту
                 query = query.Where(p =>
                     (p.CatalogNumber != null && p.CatalogNumber.ToLower().Contains(searchText)) ||
-                    (p.Name != null && p.Name.ToLower().Contains(searchText)) ||
-                    (p.Article != null && p.Article.ToLower().Contains(searchText)));
+                    (p.Name != null && p.Name.ToLower().Contains(searchText)));
 
-                var results = await query
-                    .OrderBy(p => p.CatalogNumber)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                Parts.Clear();
+                var results = await query.OrderBy(p => p.CatalogNumber).AsNoTracking().ToListAsync();
 
                 foreach (var part in results)
-                {
                     Parts.Add(part);
-                }
+
+                OnPropertyChanged(nameof(IsEmpty));
             }
-            catch (Exception ex)
+            catch
             {
-                Debug.WriteLine($"Ошибка поиска: {ex.Message}");
                 Parts.Clear();
+                OnPropertyChanged(nameof(IsEmpty));
             }
+        }
+
+
+        private Task AddPartAsync(PartViewModel partVm)
+        {
+            if (partVm == null) return Task.CompletedTask;
+
+            // Создаем объект Part, копируя только доступные свойства
+            var part = new Part
+            {
+                CatalogNumber = partVm.CatalogNumber,
+                Name = partVm.Name,
+                BrandId = partVm.SelectedBrand?.Id ?? Guid.Empty,
+                Brand = partVm.SelectedBrand
+            };
+
+            // Добавляем в коллекцию
+            Parts.Add(part);
+
+            return Task.CompletedTask;
         }
 
         private void ClearSearch()

@@ -31,12 +31,16 @@
                     <ColumnDefinition Width="1*" MinWidth="120"/>
                     <ColumnDefinition Width="2*" MinWidth="200"/>
                     <ColumnDefinition Width="1*" MinWidth="120"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="Артикул" FontWeight="Bold" Grid.Column="0"/>
                 <TextBlock Text="Каталожный №" FontWeight="Bold" Grid.Column="1"/>
                 <TextBlock Text="Название" FontWeight="Bold" Grid.Column="2"/>
                 <TextBlock Text="Бренд" FontWeight="Bold" Grid.Column="3"/>
+                <TextBlock Text="Редактировать" FontWeight="Bold" Grid.Column="4"/>
+                <TextBlock Text="Удалить" FontWeight="Bold" Grid.Column="5"/>
             </Grid>
 
             <!-- Список результатов -->
@@ -55,16 +59,44 @@
                                 <ColumnDefinition Width="1*" MinWidth="120"/>
                                 <ColumnDefinition Width="2*" MinWidth="200"/>
                                 <ColumnDefinition Width="1*" MinWidth="120"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Text="{Binding Article}" Grid.Column="0"/>
                             <TextBlock Text="{Binding CatalogNumber}" Grid.Column="1"/>
                             <TextBlock Text="{Binding Name}" Grid.Column="2" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding Brand.Name}" Grid.Column="3"/>
+
+                            <Button 
+                                Content="Редактировать"
+                                Padding="10,5"
+                                Grid.Column="4"
+                                Click="EditPart_Click"/>
+
+                            <Button 
+                                Content="Удалить"
+                                Padding="10,5"
+                                Grid.Column="5"
+                                Click="DeletePart_Click"/>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
+            <TextBlock Text="Ничего не найдено"
+           Foreground="Gray"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"
+           Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+            <Button 
+                Content="+ Создать запись"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,20"
+                Padding="15,5"
+                Click="NavigateToPartView"
+                Style="{StaticResource AccentButtonStyle}"/>
         </StackPanel>
     </Grid>
 </Page>

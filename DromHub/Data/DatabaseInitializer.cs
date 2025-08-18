@@ -219,7 +219,6 @@ namespace DromHub.Data
 
         private static async Task SeedLocalStock(ApplicationDbContext context)
         {
-            // Only seed if the table is empty
             if (!await context.LocalStocks.AnyAsync())
             {
                 var suppliers = await context.Suppliers.ToListAsync();

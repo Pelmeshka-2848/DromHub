@@ -26,8 +26,10 @@ namespace DromHub.ViewModels
             SavePartCommand = new AsyncRelayCommand(SavePartAsync);
         }
 
+
         public PartViewModel(ApplicationDbContext context, Part part) : this(context)
         {
+            _context = context;
             _part = part ?? new Part();
         }
 
@@ -71,7 +73,9 @@ namespace DromHub.ViewModels
             }
         }
 
-        public string Article => _part.Article;
+        public string Article => _part.Article; 
+
+
 
         public string Name
         {
@@ -136,62 +140,52 @@ namespace DromHub.ViewModels
         // - Заняться изменением данного метода, для приведения его к нормальному виду.
         public async Task SavePartAsync()
         {
-            // 1) Блокируем любое редактирование в этом методе
-            if (_part.Id != Guid.Empty)
-            {
-                // Здесь покажите пользователю уведомление/диалог
-                Debug.WriteLine("Редактирование запрещено: используйте форму/диалог редактирования.");
-                return;
-            }
-
-            // 2) Базовая валидация
             _part.CatalogNumber = _part.CatalogNumber?.Trim();
+
             if (_part.BrandId == Guid.Empty || string.IsNullOrWhiteSpace(_part.CatalogNumber))
             {
-                Debug.WriteLine("Заполните Бренд и Артикул.");
+                Debug.WriteLine("Заполните Бренд и Каталог.");
                 return;
             }
 
-            // 3) Предварительная проверка уникальности (дублирует БД, но даёт мгновенную обратную связь)
-            bool exists = await _context.Parts
-                .AsNoTracking()
-                .AnyAsync(p => p.BrandId == _part.BrandId &&
-                               p.CatalogNumber == _part.CatalogNumber);
-            if (exists)
+            if (_part.Id == Guid.Empty)
             {
-                Debug.WriteLine("Такая запчасть уже существует для выбранного бренда.");
-                return;
+                // Добавление новой детали
+                var entity = new Part
+                {
+                    BrandId = _part.BrandId,
+                    CatalogNumber = _part.CatalogNumber,
+                    Name = _part.Name
+                };
+
+                try
+                {
+                    await _context.Parts.AddAsync(entity);
+                    await _context.SaveChangesAsync();
+                    _context.Entry(entity).State = EntityState.Detached;
+                    ResetPart();
+                }
+                catch (DbUpdateException ex)
+                {
+                    Debug.WriteLine("Ошибка сохранения (возможно, нарушение уникальности): " + ex.Message);
+                }
             }
-
-            // 4) Вставка через отдельный экземпляр (не трогаем _part, чтобы не менять состояние формы)
-            var entity = new Part
+            else
             {
-                BrandId = _part.BrandId,
-                CatalogNumber = _part.CatalogNumber,
-                Name = _part.Name
-            };
+                // Редактирование существующей детали
+                var entity = await _context.Parts.FindAsync(_part.Id);
+                if (entity != null)
+                {
+                    entity.BrandId = _part.BrandId;
+                    entity.CatalogNumber = _part.CatalogNumber;
+                    entity.Name = _part.Name;
 
-            try
-            {
-                await _context.Parts.AddAsync(entity);
-                await _context.SaveChangesAsync();
-
-                // На всякий случай снимаем отслеживание вставленной сущности
-                _context.Entry(entity).State = EntityState.Detached;
-
-                // 5) Готовим форму к следующему вводу
-                ResetPart();
-            }
-            catch (DbUpdateException ex)
-            {
-                // Если всё-таки пришёл конфликт уникальности из БД — сообщаем
-                Debug.WriteLine("Ошибка сохранения (возможно, нарушение уникальности): " + ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
+                    await _context.SaveChangesAsync();
+                    _context.Entry(entity).State = EntityState.Detached;
+                }
             }
         }
+
 
         public event PropertyChangedEventHandler PropertyChanged;
 

@@ -28,7 +28,7 @@ namespace DromHub.Models
 
         [Column("article")]
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public string Article { get; private set; }
+        public string Article { get;  set; }
 
         [Column("name")]
         public string Name { get; set; }
