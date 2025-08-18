@@ -1,5 +1,9 @@
+using System;
+using DromHub.Models;
+using DromHub.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace DromHub
 {
@@ -8,38 +12,39 @@ namespace DromHub
         public MainWindow()
         {
             this.InitializeComponent();
+
+            // Загружаем стартовую страницу
+            contentFrame.Navigate(typeof(MainPage));
         }
 
-        private void OpenTab(string header, UIElement content)
+        private void NavigationView_SelectionChanged(NavigationView sender,
+                                                   NavigationViewSelectionChangedEventArgs args)
         {
-            foreach (var item in MainTabView.TabItems)
+            if (args.SelectedItemContainer != null)
             {
-                if (item is TabViewItem t && t.Header?.ToString() == header)
+                string tag = args.SelectedItemContainer.Tag.ToString();
+                Type pageType = null;
+
+                // Определяем тип страницы по тегу
+                switch (tag)
                 {
-                    MainTabView.SelectedItem = t;
-                    return;
+                    case "MainPage":
+                        pageType = typeof(MainPage);
+                        break;
+                    case "PartSearchView":
+                        pageType = typeof(PartSearchView);
+                        break;
+                    case "PartView":
+                        pageType = typeof(PartView);
+                        break;
+                }
+
+                // Если тип страницы определен и это не текущая страница
+                if (pageType != null && contentFrame.CurrentSourcePageType != pageType)
+                {
+                    contentFrame.Navigate(pageType);
                 }
             }
-
-            var newTab = new TabViewItem
-            {
-                Header = header,
-                Content = content,
-                IsClosable = true
-            };
-
-            MainTabView.TabItems.Add(newTab);
-            MainTabView.SelectedItem = newTab;
         }
-
-        private void MainTabView_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
-        {
-            sender.TabItems.Remove(args.Tab);
-        }
-
-        private void OpenSearch_Click(object s, RoutedEventArgs e) => OpenTab("Поиск", new Search());
-        private void OpenTab2_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 2", new Tab2Page());
-        private void OpenTab3_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 3", new Tab3Page());
-        private void OpenTab4_Click(object s, RoutedEventArgs e) => OpenTab("Вкладка 4", new Tab4Page());
     }
 }

@@ -5,16 +5,39 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     Title="DromHub">
 
-    <controls:TabView x:Name="MainTabView"
-                      TabCloseRequested="MainTabView_TabCloseRequested">
-        <controls:TabViewItem Header="Главная" IsClosable="False">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                <Button Content="Поиск" Click="OpenSearch_Click"/>
-                <Button Content="Открыть вкладку 2" Click="OpenTab2_Click"/>
-                <Button Content="Открыть вкладку 3" Click="OpenTab3_Click"/>
-                <Button Content="Открыть вкладку 4" Click="OpenTab4_Click"/>
-            </StackPanel>
-        </controls:TabViewItem>
+    <NavigationView x:Name="nvSample"
+                    IsSettingsVisible="True"
+                    IsBackButtonVisible="Collapsed"
+                    IsBackEnabled="False"
+                    SelectionChanged="NavigationView_SelectionChanged"
+                    AlwaysShowHeader="True"
+                    PaneTitle="Pane Title"
+                    PaneDisplayMode="Left"
+                    ExpandedModeThresholdWidth="500"
+                    SelectionFollowsFocus="Disabled"
+                    IsTabStop="False">
 
-    </controls:TabView>
+        <NavigationView.MenuItems>
+            <NavigationViewItem Content="Главная" Tag="MainPage" x:Name="MainPageItem" SelectsOnInvoked="True">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Home"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Запчасть" Tag="PartPage" x:Name="PartPageItem">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Repair"/>
+                </NavigationViewItem.Icon>
+                <NavigationViewItem.MenuItems>
+                    <NavigationViewItem Content="Поиск" Tag="PartSearchView" x:Name="PartSearchViewItem"/>
+                    <NavigationViewItem Content="Добавить" Tag="PartView" x:Name="PartViewItem"/>
+                </NavigationViewItem.MenuItems>
+            </NavigationViewItem>
+        </NavigationView.MenuItems>
+
+        <NavigationView.AutoSuggestBox>
+            <AutoSuggestBox QueryIcon="Find" AutomationProperties.Name="Search" />
+        </NavigationView.AutoSuggestBox>
+
+        <Frame x:Name="contentFrame" />
+    </NavigationView>
 </Window>
