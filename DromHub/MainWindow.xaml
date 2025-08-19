@@ -31,6 +31,11 @@
                     <NavigationViewItem Content="Поиск" Tag="PartSearchPage" x:Name="PartSearchPage"/>
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
+            <NavigationViewItem Content="Бренд" Tag="BrandPage" x:Name="BrandPageItem" SelectsOnInvoked="True">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Library"/>
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
         </NavigationView.MenuItems>
 
         <NavigationView.AutoSuggestBox>

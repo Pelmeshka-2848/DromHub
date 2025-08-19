@@ -34,6 +34,9 @@ namespace DromHub
                     case "PartSearchPage":
                         pageType = typeof(PartSearchPage);
                         break;
+                    case "BrandPage":
+                        pageType = typeof(BrandPage);
+                        break;
                 }
 
                 // Если тип страницы определен и это не текущая страница

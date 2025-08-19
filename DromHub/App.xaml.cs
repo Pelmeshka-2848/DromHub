@@ -42,6 +42,7 @@ namespace DromHub
 
             // Регистрация ViewModels
             services.AddTransient<PartViewModel>();
+            services.AddTransient<BrandViewModel>();
 
             // Регистрация MainWindow
             services.AddTransient<MainWindow>();
