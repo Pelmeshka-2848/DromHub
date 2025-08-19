@@ -31,11 +31,8 @@ namespace DromHub
                     case "MainPage":
                         pageType = typeof(MainPage);
                         break;
-                    case "PartSearchView":
-                        pageType = typeof(PartSearchView);
-                        break;
-                    case "PartView":
-                        pageType = typeof(PartView);
+                    case "PartSearchPage":
+                        pageType = typeof(PartSearchPage);
                         break;
                 }
 

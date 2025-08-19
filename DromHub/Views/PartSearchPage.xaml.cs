@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml.Controls;
+﻿using Microsoft.UI.Xaml.Controls;
 using DromHub.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
@@ -7,17 +7,18 @@ using Microsoft.UI.Xaml;
 using System;
 using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DromHub.Views
 {
-    public sealed partial class PartSearchView : Page
+    public sealed partial class PartSearchPage : Page
     {
-        public PartSearchViewModel ViewModel { get; }
+        public PartViewModel ViewModel { get; }
 
-        public PartSearchView()
+        public PartSearchPage()
         {
             this.InitializeComponent();
-            ViewModel = App.ServiceProvider.GetRequiredService<PartSearchViewModel>();
+            ViewModel = App.ServiceProvider.GetRequiredService<PartViewModel>();
             this.DataContext = ViewModel;
         }
 
@@ -29,9 +30,11 @@ namespace DromHub.Views
             }
         }
 
-        private async void NavigateToPartView(object sender, RoutedEventArgs e)
+        private async void AddPart_Click(object sender, RoutedEventArgs e)
         {
-            var partVm = new PartViewModel(ViewModel.Context);
+            // Создаем новую VM для добавления запчасти
+            var partVm = App.ServiceProvider.GetRequiredService<PartViewModel>();
+            partVm.ResetPart();
             await partVm.LoadBrandsCommand.ExecuteAsync(null);
 
             var dialog = new AddPartDialog(partVm)
@@ -42,16 +45,25 @@ namespace DromHub.Views
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
             {
-                await partVm.SavePartCommand.ExecuteAsync(null);
-
-                ViewModel.Parts.Add(new Part
+                try
                 {
-                    Id = partVm.Id,
-                    CatalogNumber = partVm.CatalogNumber,
-                    Name = partVm.Name,
-                    BrandId = partVm.SelectedBrand?.Id ?? Guid.Empty,
-                    Brand = partVm.SelectedBrand
-                });
+                    await partVm.SavePartCommand.ExecuteAsync(null);
+
+                    // Обновляем список только если сохранение прошло успешно
+                    await ViewModel.SearchPartsCommand.ExecuteAsync(null);
+                }
+                catch (Exception ex)
+                {
+                    // Показываем пользователю сообщение об ошибке
+                    var errorDialog = new ContentDialog
+                    {
+                        Title = "Ошибка",
+                        Content = ex.Message,
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await errorDialog.ShowAsync();
+                }
             }
         }
 
@@ -59,14 +71,14 @@ namespace DromHub.Views
         {
             if (sender is Button btn && btn.DataContext is Part part)
             {
-                var partVm = new PartViewModel(ViewModel.Context, part)
+                var logger = App.ServiceProvider.GetRequiredService<ILogger<PartViewModel>>();
+                var partVm = new PartViewModel(ViewModel.Context, logger)
                 {
                     Id = part.Id,
                     CatalogNumber = part.CatalogNumber,
                     Name = part.Name,
                     SelectedBrand = part.Brand
                 };
-
 
                 await partVm.LoadBrandsCommand.ExecuteAsync(null);
 
@@ -90,10 +102,10 @@ namespace DromHub.Views
             {
                 var dialog = new ContentDialog
                 {
-                    Title = "�������� ������",
-                    Content = $"�� ������������� ������ ������� {part.Name}?",
-                    PrimaryButtonText = "��",
-                    CloseButtonText = "���",
+                    Title = "Удаление записи",
+                    Content = $"Вы действительно хотите удалить {part.Name}?",
+                    PrimaryButtonText = "Да",
+                    CloseButtonText = "Нет",
                     XamlRoot = this.XamlRoot
                 };
 
@@ -112,8 +124,5 @@ namespace DromHub.Views
                 }
             }
         }
-
-
-
     }
 }

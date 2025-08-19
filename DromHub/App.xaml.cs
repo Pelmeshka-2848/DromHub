@@ -38,10 +38,9 @@ namespace DromHub
 
             // Регистрация контекста базы данных
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=plane2004"));
+                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=admin"));
 
             // Регистрация ViewModels
-            services.AddScoped<PartSearchViewModel>();
             services.AddTransient<PartViewModel>();
 
             // Регистрация MainWindow
