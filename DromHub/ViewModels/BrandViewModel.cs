@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ namespace DromHub.ViewModels
         private readonly ApplicationDbContext _context;
         private readonly ILogger<BrandViewModel> _logger;
         private string _searchText = string.Empty;
+        private Brand _brand;
         private Brand _selectedBrand;
         private BrandAlias _selectedAlias;
 
@@ -25,6 +27,7 @@ namespace DromHub.ViewModels
         {
             _context = context;
             _logger = logger;
+            _brand = new Brand();
 
             Brands = new ObservableCollection<Brand>();
             Aliases = new ObservableCollection<BrandAlias>();
@@ -33,12 +36,20 @@ namespace DromHub.ViewModels
             LoadBrandsCommand = new AsyncRelayCommand(LoadBrandsAsync);
             SearchBrandsCommand = new AsyncRelayCommand(SearchBrandsAsync);
             LoadAliasesCommand = new AsyncRelayCommand(LoadAliasesAsync);
-            AddBrandCommand = new AsyncRelayCommand(AddBrandAsync);
-            EditBrandCommand = new AsyncRelayCommand(EditBrandAsync);
-            DeleteBrandCommand = new AsyncRelayCommand(DeleteBrandAsync);
-            AddAliasCommand = new AsyncRelayCommand(AddAliasAsync);
-            EditAliasCommand = new AsyncRelayCommand(EditAliasAsync);
-            DeleteAliasCommand = new AsyncRelayCommand(DeleteAliasAsync);
+            SaveBrandCommand = new AsyncRelayCommand(SaveBrandAsync);
+        }
+
+        public Brand Brand
+        {
+            get => _brand;
+            set { if (!ReferenceEquals(_brand, value)) { _brand = value; OnPropertyChanged(); } }
+        }
+
+        public void ResetBrand()
+        {
+            Brand = new Brand();
+            SelectedBrand = null;
+            SelectedAlias = null;
         }
 
         public ObservableCollection<Brand> Brands { get; }
@@ -89,12 +100,7 @@ namespace DromHub.ViewModels
         public IAsyncRelayCommand LoadBrandsCommand { get; }
         public IAsyncRelayCommand SearchBrandsCommand { get; }
         public IAsyncRelayCommand LoadAliasesCommand { get; }
-        public IAsyncRelayCommand AddBrandCommand { get; }
-        public IAsyncRelayCommand EditBrandCommand { get; }
-        public IAsyncRelayCommand DeleteBrandCommand { get; }
-        public IAsyncRelayCommand AddAliasCommand { get; }
-        public IAsyncRelayCommand EditAliasCommand { get; }
-        public IAsyncRelayCommand DeleteAliasCommand { get; }
+        public IAsyncRelayCommand SaveBrandCommand { get; }
 
         private async Task LoadBrandsAsync()
         {
@@ -187,40 +193,82 @@ namespace DromHub.ViewModels
             }
         }
 
-        private async Task AddBrandAsync()
+        private async Task SaveBrandAsync()
         {
-            // Реализация диалога добавления бренда
+            try
+            {
+                var name = Brand?.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    Debug.WriteLine("Введите название бренда.");
+                    return;
+                }
+
+                var normalized = name.ToLowerInvariant();
+
+                if (Brand.Id == Guid.Empty)
+                {
+                    var duplicate = await _context.Brands
+                        .AnyAsync(b => b.NormalizedName == normalized
+                                    || EF.Functions.ILike(b.Name, name));
+
+                    if (duplicate)
+                    {
+                        Debug.WriteLine("Бренд с таким именем уже существует.");
+                        return;
+                    }
+
+                    await using var tx = await _context.Database.BeginTransactionAsync();
+
+                    var brand = new Brand { Name = name };
+                    await _context.Brands.AddAsync(brand);
+                    await _context.SaveChangesAsync();
+
+                    var alias = new BrandAlias
+                    {
+                        BrandId = brand.Id,
+                        Alias = name,
+                        IsPrimary = true,
+                        Note = "создано автоматически"
+                    };
+                    await _context.BrandAliases.AddAsync(alias);
+                    await _context.SaveChangesAsync();
+
+                    await tx.CommitAsync();
+
+                    ResetBrand();
+                    Debug.WriteLine("Бренд успешно добавлен (алиас создан автоматически).");
+                }
+                else
+                {
+                    var entity = await _context.Brands.FindAsync(Brand.Id);
+                    if (entity == null)
+                    {
+                        Debug.WriteLine("Бренд не найден.");
+                        return;
+                    }
+
+                    var duplicate = await _context.Brands
+                        .AnyAsync(b => b.Id != Brand.Id &&
+                                      (b.NormalizedName == normalized || EF.Functions.ILike(b.Name, name)));
+                    if (duplicate)
+                    {
+                        Debug.WriteLine("Бренд с таким именем уже существует.");
+                        return;
+                    }
+
+                    entity.Name = name;
+                    await _context.SaveChangesAsync();
+                    Debug.WriteLine("Бренд обновлён.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при сохранении бренда: {ex.Message}");
+            }
         }
 
-        private async Task EditBrandAsync()
-        {
-            if (SelectedBrand == null) return;
-            // Реализация диалога редактирования бренда
-        }
 
-        private async Task DeleteBrandAsync()
-        {
-            if (SelectedBrand == null) return;
-            // Реализация подтверждения и удаления бренда
-        }
-
-        private async Task AddAliasAsync()
-        {
-            if (SelectedBrand == null) return;
-            // Реализация диалога добавления синонима
-        }
-
-        private async Task EditAliasAsync()
-        {
-            if (SelectedAlias == null) return;
-            // Реализация диалога редактирования синонима
-        }
-
-        private async Task DeleteAliasAsync()
-        {
-            if (SelectedAlias == null) return;
-            // Реализация подтверждения и удаления синонима
-        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 

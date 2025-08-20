@@ -124,7 +124,7 @@
 
             <Button
                 Content="Добавить бренд"
-                Command="{Binding AddBrandCommand}"
+                Click="AddBrand_Click"
                 MinWidth="120"
                 Padding="12,6"/>
 
