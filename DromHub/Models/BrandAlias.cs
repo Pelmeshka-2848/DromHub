@@ -27,6 +27,10 @@ namespace DromHub.Models
         [Column("brand_id")]
         public Guid BrandId { get; set; }
 
+        [Required]
+        [Column("is_primary")]
+        public bool IsPrimary { get; set; } = false;
+
         [ForeignKey("BrandId")]
         public virtual Brand Brand { get; set; }
     }

@@ -1,0 +1,13 @@
+<ContentDialog
+    x:Class="DromHub.Views.AddBrandDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Добавить новый бренд"
+    PrimaryButtonText="Сохранить"
+    CloseButtonText="Отмена"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="12" Width="400">
+        <TextBox Header="Бренд" Text="{Binding Brand.Name, Mode=TwoWay}"/>
+    </StackPanel>
+</ContentDialog>

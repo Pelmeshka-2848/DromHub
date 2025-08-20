@@ -19,6 +19,7 @@ namespace DromHub
     {
         private static IServiceProvider _serviceProvider;
         public static ApplicationDbContext DbContext { get; private set; }
+        public Window MainWindow { get; private set; }
         private Window m_window;
         private WindowsSystemDispatcherQueueHelper m_wsdqHelper;
         private MicaController m_micaController;
@@ -37,11 +38,11 @@ namespace DromHub
 
             // Регистрация контекста базы данных
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=admin"));
+                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=plane2004"));
 
             // Регистрация ViewModels
-            services.AddScoped<PartSearchViewModel>();
             services.AddTransient<PartViewModel>();
+            services.AddTransient<BrandViewModel>();
 
             // Регистрация MainWindow
             services.AddTransient<MainWindow>();
@@ -49,18 +50,18 @@ namespace DromHub
             // Добавьте это в конфигурацию сервисов
             services.AddLogging(); // Добавляет систему логгирования
 
-
             _serviceProvider = services.BuildServiceProvider();
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
         {
             m_window = new MainWindow();
-
+            m_window.Activate();
             try
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
+
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
                     // Инициализация БД

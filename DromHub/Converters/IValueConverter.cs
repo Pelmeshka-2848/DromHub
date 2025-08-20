@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace DromHub
+namespace DromHub.Converters
 {
     public class DoubleToStringConverter : IValueConverter
     {

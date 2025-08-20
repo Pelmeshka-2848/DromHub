@@ -28,9 +28,13 @@
                     <SymbolIcon Symbol="Repair"/>
                 </NavigationViewItem.Icon>
                 <NavigationViewItem.MenuItems>
-                    <NavigationViewItem Content="Поиск" Tag="PartSearchView" x:Name="PartSearchViewItem"/>
-                    <NavigationViewItem Content="Добавить" Tag="PartView" x:Name="PartViewItem"/>
+                    <NavigationViewItem Content="Поиск" Tag="PartSearchPage" x:Name="PartSearchPage"/>
                 </NavigationViewItem.MenuItems>
+            </NavigationViewItem>
+            <NavigationViewItem Content="Бренд" Tag="BrandPage" x:Name="BrandPageItem" SelectsOnInvoked="True">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Library"/>
+                </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 

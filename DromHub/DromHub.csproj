@@ -17,8 +17,8 @@
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\BrandPage.xaml" />
     <None Remove="Views\MainPage.xaml" />
-    <None Remove="Views\PartView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Page Remove="assets\MessageWindow.xaml" />
@@ -56,6 +56,29 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
   <ItemGroup>
+    <Page Update="Dialog\DeleteBrandDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialog\EditBrandDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialog\AddBrandDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Views\BrandPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Dialog\DeletePartDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialog\EditPartDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialog\AddPartDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="Views\MainPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
