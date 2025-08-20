@@ -56,6 +56,12 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
   <ItemGroup>
+    <Page Update="Dialog\DeleteBrandDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialog\EditBrandDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <Page Update="Dialog\AddBrandDialog.xaml">
       <SubType>Designer</SubType>
     </Page>

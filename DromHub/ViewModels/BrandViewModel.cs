@@ -6,11 +6,16 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using DromHub.Data;
 using DromHub.Models;
+using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace DromHub.ViewModels
 {
@@ -23,11 +28,14 @@ namespace DromHub.ViewModels
         private Brand _selectedBrand;
         private BrandAlias _selectedAlias;
 
+        public XamlRoot XamlRoot { get; set; }
+
         public BrandViewModel(ApplicationDbContext context, ILogger<BrandViewModel> logger)
         {
             _context = context;
             _logger = logger;
             _brand = new Brand();
+            XamlRoot = null;
 
             Brands = new ObservableCollection<Brand>();
             Aliases = new ObservableCollection<BrandAlias>();
@@ -37,6 +45,18 @@ namespace DromHub.ViewModels
             SearchBrandsCommand = new AsyncRelayCommand(SearchBrandsAsync);
             LoadAliasesCommand = new AsyncRelayCommand(LoadAliasesAsync);
             SaveBrandCommand = new AsyncRelayCommand(SaveBrandAsync);
+            AddAliasCommand = new AsyncRelayCommand(AddAlias);
+            EditAliasCommand = new AsyncRelayCommand<XamlRoot>(EditAliasAsync);
+            DeleteAliasCommand = new AsyncRelayCommand<XamlRoot>(DeleteAliasAsync);
+        }
+        private XamlRoot GetXamlRoot()
+        {
+            // Попробуем получить XamlRoot через Application.Current
+            if (Application.Current is App app && app.MainWindow?.Content is FrameworkElement rootElement)
+            {
+                return rootElement.XamlRoot;
+            }
+            return null;
         }
 
         public Brand Brand
@@ -80,6 +100,7 @@ namespace DromHub.ViewModels
                     OnPropertyChanged();
                     Aliases.Clear();
                     _ = LoadAliasesCommand.ExecuteAsync(null);
+                    AddAliasCommand.NotifyCanExecuteChanged();
                 }
             }
         }
@@ -101,7 +122,9 @@ namespace DromHub.ViewModels
         public IAsyncRelayCommand SearchBrandsCommand { get; }
         public IAsyncRelayCommand LoadAliasesCommand { get; }
         public IAsyncRelayCommand SaveBrandCommand { get; }
-
+        public IAsyncRelayCommand AddAliasCommand { get; }
+        public IAsyncRelayCommand<XamlRoot> EditAliasCommand { get; }
+        public IAsyncRelayCommand<XamlRoot> DeleteAliasCommand { get; }
         private async Task LoadBrandsAsync()
         {
             try
@@ -178,7 +201,7 @@ namespace DromHub.ViewModels
                 var aliases = await _context.BrandAliases
                     .Where(a => a.BrandId == SelectedBrand.Id)
                     .OrderBy(a => a.Alias)
-                    .AsNoTracking()
+                    .AsNoTracking() // ← ЭТО РЕШАЕТ ПРОБЛЕМУ!
                     .ToListAsync();
 
                 Aliases.Clear();
@@ -268,7 +291,260 @@ namespace DromHub.ViewModels
             }
         }
 
+        private bool CanAddAlias()
+        {
+            return SelectedBrand != null;
+        }
 
+        private async Task AddAlias()
+        {
+            if (SelectedBrand == null) return;
+
+            try
+            {
+                var baseAlias = "Новый синоним";
+                var aliasName = baseAlias;
+                int counter = 1;
+
+                while (await _context.BrandAliases
+                    .AnyAsync(a => a.Alias.ToLower() == aliasName.ToLower()))
+                {
+                    aliasName = $"{baseAlias} {counter++}";
+                }
+
+                var alias = new BrandAlias
+                {
+                    Id = Guid.NewGuid(),
+                    BrandId = SelectedBrand.Id,
+                    Alias = aliasName,
+                    Note = ""
+                };
+
+                await _context.BrandAliases.AddAsync(alias);
+                await _context.SaveChangesAsync();
+
+                Aliases.Add(alias);
+                SelectedAlias = alias;
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Ошибка EF при добавлении синонима");
+                Debug.WriteLine("Ошибка: " + ex.InnerException?.Message);
+            }
+        }
+
+        private async Task EditAliasAsync(XamlRoot xamlRoot)
+        {
+            if (SelectedAlias == null || xamlRoot == null) return;
+
+            try
+            {
+                var dialog = new EditBrandDialog(SelectedAlias.Alias)
+                {
+                    XamlRoot = xamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.BrandName))
+                {
+                    // Создаем новый scope и контекст для избежания конфликтов отслеживания
+                    using var scope = App.ServiceProvider.CreateScope();
+                    using var newContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                    if (SelectedAlias.IsPrimary)
+                    {
+                        // Для основного алиаса обновляем и бренд и алиас
+                        var brand = await newContext.Brands.FindAsync(SelectedBrand.Id);
+                        if (brand != null)
+                        {
+                            brand.Name = dialog.BrandName;
+                        }
+
+                        var alias = await newContext.BrandAliases.FindAsync(SelectedAlias.Id);
+                        if (alias != null)
+                        {
+                            alias.Alias = dialog.BrandName;
+                        }
+                    }
+                    else
+                    {
+                        // Для обычного алиаса обновляем только алиас
+                        var alias = await newContext.BrandAliases.FindAsync(SelectedAlias.Id);
+                        if (alias != null)
+                        {
+                            alias.Alias = dialog.BrandName;
+                        }
+                    }
+
+                    await newContext.SaveChangesAsync();
+
+                    // Обновляем локальные данные
+                    SelectedAlias.Alias = dialog.BrandName;
+                    if (SelectedAlias.IsPrimary && SelectedBrand != null)
+                    {
+                        SelectedBrand.Name = dialog.BrandName;
+                    }
+
+                    // Перезагружаем данные
+                    await LoadAliasesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error editing alias: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteAliasAsync(XamlRoot xamlRoot)
+        {
+            if (SelectedAlias == null || xamlRoot == null) return;
+
+            try
+            {
+                var dialog = new DeleteBrandDialog(SelectedAlias.Alias)
+                {
+                    XamlRoot = xamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    // Нельзя удалить основной алиас
+                    if (SelectedAlias.IsPrimary)
+                    {
+                        Debug.WriteLine("Cannot delete primary alias");
+                        return;
+                    }
+
+                    // Создаем новый scope и контекст
+                    using var scope = App.ServiceProvider.CreateScope();
+                    using var newContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+                    var aliasToDelete = await newContext.BrandAliases.FindAsync(SelectedAlias.Id);
+                    if (aliasToDelete != null)
+                    {
+                        newContext.BrandAliases.Remove(aliasToDelete);
+                        await newContext.SaveChangesAsync();
+
+                        // Удаляем из локальной коллекции
+                        Aliases.Remove(SelectedAlias);
+                        SelectedAlias = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error deleting alias: {ex.Message}");
+            }
+        }
+
+        public async Task EditBrand(Brand brand)
+        {
+            if (brand == null || XamlRoot == null) return;
+
+            var dialog = new EditBrandDialog(brand.Name)
+            {
+                XamlRoot = XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                brand.Name = dialog.BrandName;
+                _context.Brands.Update(brand);
+                await _context.SaveChangesAsync();
+                await LoadBrandsAsync();
+            }
+        }
+
+        public async Task DeleteBrand(Brand brand)
+        {
+            if (brand == null || XamlRoot == null) return;
+
+            var dialog = new DeleteBrandDialog(brand.Name)
+            {
+                XamlRoot = XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                _context.Brands.Remove(brand);
+                await _context.SaveChangesAsync();
+                await LoadBrandsAsync();
+            }
+        }
+
+        private async Task UpdateBrandName(string newName)
+        {
+            // Обновляем название бренда и основной алиас
+            if (SelectedBrand == null) return;
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Обновляем бренд
+                SelectedBrand.Name = newName;
+                _context.Brands.Update(SelectedBrand);
+
+                // Обновляем основной алиас
+                var primaryAlias = await _context.BrandAliases
+                    .FirstOrDefaultAsync(a => a.BrandId == SelectedBrand.Id && a.IsPrimary);
+
+                if (primaryAlias != null)
+                {
+                    primaryAlias.Alias = newName;
+                    _context.BrandAliases.Update(primaryAlias);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Обновляем локальные данные
+                SelectedAlias.Alias = newName;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        private async Task UpdateAliasOnly(string newAlias)
+        {
+            // Обновляем только неосновной алиас
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Отсоединяем сущность чтобы избежать конфликта отслеживания
+                _context.Entry(SelectedAlias).State = EntityState.Detached;
+
+                var aliasToUpdate = await _context.BrandAliases
+                    .FindAsync(SelectedAlias.Id);
+
+                if (aliasToUpdate != null && !aliasToUpdate.IsPrimary)
+                {
+                    aliasToUpdate.Alias = newAlias;
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // Обновляем локальные данные
+                    SelectedAlias.Alias = newAlias;
+                }
+                else
+                {
+                    await transaction.RollbackAsync();
+                    Debug.WriteLine("Cannot update primary alias through this method");
+                }
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 

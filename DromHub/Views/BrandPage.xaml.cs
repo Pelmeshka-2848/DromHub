@@ -16,8 +16,16 @@ namespace DromHub.Views
         public BrandPage()
         {
             this.InitializeComponent();
+
             ViewModel = App.ServiceProvider.GetRequiredService<BrandViewModel>();
+            ViewModel.XamlRoot = this.XamlRoot;
+
             this.DataContext = ViewModel;
+
+            // Можно загрузить сразу
+            _ = ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+
+            // Или через событие Loaded (если хотите)
             Loaded += async (_, __) => await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
         }
 
@@ -31,11 +39,9 @@ namespace DromHub.Views
 
         private async void AddBrand_Click(object sender, RoutedEventArgs e)
         {
-            var brandVM = App.ServiceProvider.GetRequiredService<BrandViewModel>();
-            brandVM.ResetBrand();
-            // await brandVM.LoadBrandsCommand.ExecuteAsync(null);
+            ViewModel.ResetBrand();
 
-            var dialog = new AddBrandDialog(brandVM)
+            var dialog = new AddBrandDialog(ViewModel)
             {
                 XamlRoot = this.XamlRoot
             };
@@ -46,14 +52,11 @@ namespace DromHub.Views
             {
                 try
                 {
-                    await brandVM.SaveBrandCommand.ExecuteAsync(null);
-
-                    // Обновляем список только если сохранение прошло успешно
+                    await ViewModel.SaveBrandCommand.ExecuteAsync(null);
                     await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
                 }
                 catch (Exception ex)
                 {
-                    // Показываем пользователю сообщение об ошибке
                     var errorDialog = new ContentDialog
                     {
                         Title = "Ошибка",
@@ -66,4 +69,5 @@ namespace DromHub.Views
             }
         }
     }
+
 }

@@ -1,0 +1,23 @@
+<ContentDialog
+    x:Class="DromHub.Views.EditBrandDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Редактирование бренда"
+    PrimaryButtonText="Сохранить"
+    CloseButtonText="Отмена"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="10">
+        <TextBox 
+            x:Name="BrandNameTextBox"
+            Header="Название бренда"
+            PlaceholderText="Введите название бренда"
+            Text="{x:Bind BrandName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+        <TextBlock 
+            x:Name="ErrorMessageText"
+            Foreground="Red"
+            Visibility="Collapsed"
+            TextWrapping="Wrap"/>
+    </StackPanel>
+</ContentDialog>
