@@ -125,21 +125,21 @@
     Content="Редактировать"
     Command="{Binding EditAliasCommand}"
     CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-    IsEnabled="{Binding SelectedAlias, Converter={StaticResource NullToBooleanConverter}}"
+    IsEnabled="{Binding CanEditOrDeleteAlias}"
     MinWidth="100"/>
 
                     <Button 
     Content="Удалить"
     Command="{Binding DeleteAliasCommand}"
     CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-    IsEnabled="{Binding SelectedAlias, Converter={StaticResource NullToBooleanConverter}}"
+    IsEnabled="{Binding CanEditOrDeleteAlias}"
     MinWidth="100"/>
                 </StackPanel>
             </StackPanel>
         </Grid>
 
         <!-- Кнопки действий -->
-        <StackPanel Grid.Row="2"
+        <StackPanel Grid.Row="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="12"
@@ -150,8 +150,15 @@
                     MinWidth="120"
                     Padding="12,6"/>
 
+            <Button Content="Удалить бренд"
+                    Command="{Binding DeleteBrandCommand}"
+                    CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                    MinWidth="120"
+                    Padding="12,6"
+                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+
             <Button Content="Добавить синоним"
-                    Command="{Binding AddAliasCommand}"
+                    Click="AddAlias_Click"
                     MinWidth="120"
                     Padding="12,6"
                     IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>

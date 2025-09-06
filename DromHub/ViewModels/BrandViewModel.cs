@@ -46,8 +46,9 @@ namespace DromHub.ViewModels
             LoadAliasesCommand = new AsyncRelayCommand(LoadAliasesAsync);
             SaveBrandCommand = new AsyncRelayCommand(SaveBrandAsync);
             AddAliasCommand = new AsyncRelayCommand(AddAlias);
-            EditAliasCommand = new AsyncRelayCommand<XamlRoot>(EditAliasAsync);
-            DeleteAliasCommand = new AsyncRelayCommand<XamlRoot>(DeleteAliasAsync);
+            EditAliasCommand = new AsyncRelayCommand<XamlRoot>(EditAliasAsync, _ => CanEditOrDeleteAlias);
+            DeleteAliasCommand = new AsyncRelayCommand<XamlRoot>(DeleteAliasAsync, _ => CanEditOrDeleteAlias);
+            DeleteBrandCommand = new AsyncRelayCommand<XamlRoot>(DeleteBrandAsync, _ => SelectedBrand != null);
         }
         private XamlRoot GetXamlRoot()
         {
@@ -97,10 +98,13 @@ namespace DromHub.ViewModels
                 if (_selectedBrand != value)
                 {
                     _selectedBrand = value;
+                    Debug.WriteLine($"SelectedBrand: {_selectedBrand?.Name}");
                     OnPropertyChanged();
                     Aliases.Clear();
                     _ = LoadAliasesCommand.ExecuteAsync(null);
                     AddAliasCommand.NotifyCanExecuteChanged();
+
+                    DeleteBrandCommand.NotifyCanExecuteChanged(); // обновляем доступность кнопки
                 }
             }
         }
@@ -114,9 +118,17 @@ namespace DromHub.ViewModels
                 {
                     _selectedAlias = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CanEditOrDeleteAlias)); // <- уведомляем UI
+
+                    // обновим доступность команд
+                    EditAliasCommand.NotifyCanExecuteChanged();
+                    DeleteAliasCommand.NotifyCanExecuteChanged();
                 }
             }
         }
+
+        // Разрешать редактирование/удаление, только если выбран НЕ основной алиас
+        public bool CanEditOrDeleteAlias => SelectedAlias != null && !SelectedAlias.IsPrimary;
 
         public IAsyncRelayCommand LoadBrandsCommand { get; }
         public IAsyncRelayCommand SearchBrandsCommand { get; }
@@ -125,6 +137,98 @@ namespace DromHub.ViewModels
         public IAsyncRelayCommand AddAliasCommand { get; }
         public IAsyncRelayCommand<XamlRoot> EditAliasCommand { get; }
         public IAsyncRelayCommand<XamlRoot> DeleteAliasCommand { get; }
+        // команда
+        public IAsyncRelayCommand<XamlRoot> DeleteBrandCommand { get; }
+
+        private bool CanDeleteBrand()
+        {
+            return SelectedBrand != null;
+        }
+
+        private async Task DeleteBrandAsync(XamlRoot xamlRoot)
+        {
+            if (SelectedBrand == null) return;
+
+            // 0) Есть ли связанные запчасти?
+            var partsCount = await _context.Parts
+                .Where(p => p.BrandId == SelectedBrand.Id)
+                .CountAsync();
+
+            if (partsCount > 0)
+            {
+                // Поясняем пользователю, почему нельзя
+                var blocked = new ContentDialog
+                {
+                    Title = "Удаление невозможно",
+                    Content = $"Нельзя удалить бренд «{SelectedBrand.Name}», " +
+                              $"так как с ним связаны {partsCount} запчаст(ь/и). " +
+                              $"Сначала перенесите или удалите эти записи.",
+                    CloseButtonText = "OK",
+                    XamlRoot = xamlRoot
+                };
+                await blocked.ShowAsync();
+                return;
+            }
+
+            // 1) Подтверждение
+            var confirm = new ContentDialog
+            {
+                Title = "Удалить бренд?",
+                Content = $"Бренд «{SelectedBrand.Name}» и его синонимы будут удалены. Продолжить?",
+                PrimaryButtonText = "Удалить",
+                CloseButtonText = "Отмена",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = xamlRoot
+            };
+
+            var result = await confirm.ShowAsync();
+            if (result != ContentDialogResult.Primary) return;
+
+            try
+            {
+                // 2) Грузим синонимы (алиасы) и удаляем бренд (алиасы уйдут каскадом)
+                var brand = await _context.Brands
+                    .Include(b => b.Aliases)
+                    .FirstOrDefaultAsync(b => b.Id == SelectedBrand.Id);
+
+                if (brand == null) return;
+
+                _context.Brands.Remove(brand);
+                await _context.SaveChangesAsync();
+
+                // 3) Обновляем UI
+                Brands.Remove(SelectedBrand);
+                Aliases.Clear();
+                SelectedBrand = null;
+                UpdateGroupedBrands();
+            }
+            catch (DbUpdateException ex)
+            {
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                _logger.LogError(ex, "Ошибка при удалении бренда");
+                var errDlg = new ContentDialog
+                {
+                    Title = "Ошибка",
+                    Content = msg,
+                    CloseButtonText = "OK",
+                    XamlRoot = xamlRoot
+                };
+                await errDlg.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении бренда");
+                var errDlg = new ContentDialog
+                {
+                    Title = "Ошибка",
+                    Content = ex.Message,
+                    CloseButtonText = "OK",
+                    XamlRoot = xamlRoot
+                };
+                await errDlg.ShowAsync();
+            }
+        }
+
         private async Task LoadBrandsAsync()
         {
             try
@@ -200,8 +304,9 @@ namespace DromHub.ViewModels
             {
                 var aliases = await _context.BrandAliases
                     .Where(a => a.BrandId == SelectedBrand.Id)
-                    .OrderBy(a => a.Alias)
-                    .AsNoTracking() // ← ЭТО РЕШАЕТ ПРОБЛЕМУ!
+                    .OrderByDescending(a => a.IsPrimary)   // сначала primary = true
+                    .ThenBy(a => a.Alias)                  // потом по алфавиту
+                    .AsNoTracking()
                     .ToListAsync();
 
                 Aliases.Clear();
@@ -289,6 +394,39 @@ namespace DromHub.ViewModels
             {
                 Debug.WriteLine($"Ошибка при сохранении бренда: {ex.Message}");
             }
+        }
+
+        public async Task SaveAliasAsync(string aliasName)
+        {
+            if (SelectedBrand == null) throw new InvalidOperationException("Бренд не выбран.");
+
+            var name = (aliasName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidOperationException("Введите синоним.");
+
+            // Проверка дубликата для выбранного бренда (регистронезависимо)
+            var exists = await _context.BrandAliases
+                .AnyAsync(a => a.BrandId == SelectedBrand.Id &&
+                               EF.Functions.ILike(a.Alias, name));
+            if (exists)
+                throw new InvalidOperationException("Такой синоним уже существует у выбранного бренда.");
+
+            var alias = new BrandAlias
+            {
+                BrandId = SelectedBrand.Id,
+                Alias = name,
+                IsPrimary = false,
+                Note = "" // или "добавлено вручную"
+            };
+
+            await _context.BrandAliases.AddAsync(alias);
+            await _context.SaveChangesAsync();
+
+            // Обновим список (первичный всегда сверху, как вы просили)
+            await LoadAliasesAsync();
+
+            // Выделим только что добавленный синоним
+            SelectedAlias = Aliases.FirstOrDefault(a => a.Id == alias.Id);
         }
 
         private bool CanAddAlias()

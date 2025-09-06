@@ -1,4 +1,4 @@
-using System;
+Ôªøusing System;
 using System.Threading.Tasks;
 using DromHub.Models;
 using DromHub.ViewModels;
@@ -22,10 +22,10 @@ namespace DromHub.Views
 
             this.DataContext = ViewModel;
 
-            // ÃÓÊÌÓ Á‡„ÛÁËÚ¸ Ò‡ÁÛ
+            // √å√Æ√¶√≠√Æ √ß√†√£√∞√≥√ß√®√≤√º √±√∞√†√ß√≥
             _ = ViewModel.LoadBrandsCommand.ExecuteAsync(null);
 
-            // »ÎË ˜ÂÂÁ ÒÓ·˚ÚËÂ Loaded (ÂÒÎË ıÓÚËÚÂ)
+            // √à√´√® √∑√•√∞√•√ß √±√Æ√°√ª√≤√®√• Loaded (√•√±√´√® √µ√Æ√≤√®√≤√•)
             Loaded += async (_, __) => await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
         }
 
@@ -59,7 +59,38 @@ namespace DromHub.Views
                 {
                     var errorDialog = new ContentDialog
                     {
-                        Title = "Œ¯Ë·Í‡",
+                        Title = "√é√∏√®√°√™√†",
+                        Content = ex.Message,
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await errorDialog.ShowAsync();
+                }
+            }
+        }
+
+        private async void AddAlias_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedBrand == null) return;
+
+            var dialog = new AddAliasDialog
+            {
+                XamlRoot = this.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                try
+                {
+                    await ViewModel.SaveAliasAsync(dialog.AliasName);
+                    await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
+                }
+                catch (Exception ex)
+                {
+                    var errorDialog = new ContentDialog
+                    {
+                        Title = "–û—à–∏–±–∫–∞",
                         Content = ex.Message,
                         CloseButtonText = "OK",
                         XamlRoot = this.XamlRoot
