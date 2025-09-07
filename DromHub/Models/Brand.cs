@@ -42,5 +42,7 @@ namespace DromHub.Models
         public virtual ICollection<BrandAlias> Aliases { get; set; }
         public virtual BrandMarkup Markup { get; set; }
         public virtual ICollection<Part> Parts { get; set; }
+
+        [NotMapped] public int PartsCount { get; set; }
     }
 }

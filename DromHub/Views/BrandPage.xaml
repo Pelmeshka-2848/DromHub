@@ -10,27 +10,16 @@
     mc:Ignorable="d">
 
     <Page.Resources>
-        <!-- Конвертер для кнопки добавления синонима -->
+        <!-- Конвертеры -->
         <converters:NullToBooleanConverter x:Key="NullToBooleanConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
 
-        <!-- Стиль для ListView -->
-        <Style TargetType="ListView">
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,8"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Foreground" Value="Black"/>
-        </Style>
-
-        <!-- Стиль для элементов ListView -->
-        <Style TargetType="ListViewItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Foreground" Value="Black"/>
-        </Style>
-
-        <CollectionViewSource x:Key="BrandCvs" Source="{Binding GroupedBrands}" IsSourceGrouped="True" ItemsPath="Items"/>
+        <!-- Источник сгруппированных брендов -->
+        <CollectionViewSource x:Key="BrandCvs"
+                              Source="{Binding GroupedBrands}"
+                              IsSourceGrouped="True"
+                              ItemsPath="Items"/>
     </Page.Resources>
 
     <Grid Padding="12">
@@ -40,20 +29,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Поисковая строка -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
-            <TextBox 
-                PlaceholderText="Поиск брендов..."
-                Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                Width="300"
-                KeyDown="SearchBox_KeyDown"/>
-
-            <Button 
-                Content="Найти"
-                Command="{Binding SearchBrandsCommand}"
-                MinWidth="100"/>
-        </StackPanel>
-
         <!-- Основной контент -->
         <Grid Grid.Row="1" Margin="0,8">
             <Grid.ColumnDefinitions>
@@ -62,89 +37,131 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Список брендов с группировкой -->
-            <ListView Grid.Column="0"
-                      ItemsSource="{Binding Source={StaticResource BrandCvs}}"
-                      SelectionMode="Single"
-                      SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
-                      VerticalAlignment="Stretch">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="*, Auto" Padding="8" VerticalAlignment="Center">
-                            <StackPanel Orientation="Vertical">
-                                <TextBlock Text="{Binding Name}"
-                                           FontSize="14" 
-                                           VerticalAlignment="Center"
-                                           Foreground="Black"/>
-                            </StackPanel>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
+            <!-- ===== Левая колонка: Бренды (растяжение + граница) ===== -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <!-- ListView тянется -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- (зарезервировано, если понадобятся локальные кнопки) -->
+                </Grid.RowDefinitions>
 
-                <ListView.GroupStyle>
-                    <GroupStyle>
-                        <GroupStyle.HeaderTemplate>
+                <Border Grid.Row="0"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        CornerRadius="8">
+                    <ListView
+                        ItemsSource="{Binding Source={StaticResource BrandCvs}}"
+                        SelectionMode="Single"
+                        SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+
+                        <ListView.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Key}"
-                                           FontWeight="Bold" 
-                                           FontSize="16"
-                                           Margin="8,8,8,4"
-                                           Foreground="Black"/>
+                                <!-- Название + (кол-во деталей) -->
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text="(" Opacity="0.6"/>
+                                    <TextBlock Text="{Binding PartsCount, TargetNullValue=0}" Opacity="0.6"/>
+                                    <TextBlock Text=")" Opacity="0.6"/>
+                                </StackPanel>
                             </DataTemplate>
-                        </GroupStyle.HeaderTemplate>
-                    </GroupStyle>
-                </ListView.GroupStyle>
-            </ListView>
+                        </ListView.ItemTemplate>
+
+                        <ListView.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Key}"
+                                                   FontWeight="Bold"
+                                                   FontSize="16"
+                                                   Margin="8,8,8,4"/>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListView.GroupStyle>
+                    </ListView>
+                </Border>
+            </Grid>
 
             <!-- Вертикальный разделитель -->
-            <Rectangle Grid.Column="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Width="1"/>
+            <Rectangle Grid.Column="1"
+                       Width="1"/>
 
-            <!-- Правая панель с синонимами -->
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="Синонимы:" FontWeight="Bold" Margin="0,0,0,8" Foreground="Black"/>
+            <!-- ===== Правая колонка: Синонимы (заголовок + растягивающийся ListView + кнопки) ===== -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- заголовок -->
+                    <RowDefinition Height="*"/>
+                    <!-- ListView тянется -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- кнопки -->
+                </Grid.RowDefinitions>
 
-                <!-- Список синонимов -->
-                <ListView 
-                    ItemsSource="{Binding Aliases}" 
-                    SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
-                    Height="200"
-                    x:Name="AliasesList">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Alias}" Width="200" Foreground="Black"/>
-                                <TextBlock Text="{Binding Note}" Width="150" Foreground="Black"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
+                <TextBlock Grid.Row="0"
+                           Text="Синонимы:"
+                           FontWeight="Bold"
+                           Margin="0,0,0,8"/>
+
+                <Border Grid.Row="1"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        CornerRadius="8">
+                    <ListView
+                        ItemsSource="{Binding Aliases}"
+                        SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
+                        x:Name="AliasesList"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Alias}"
+                                               Margin="0,0,12,0"
+                                               FontWeight="{Binding IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
+                                    <TextBlock Text="{Binding Note}" Opacity="0.6"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
 
                 <!-- Кнопки управления синонимами -->
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <Button 
-    Content="Редактировать"
-    Command="{Binding EditAliasCommand}"
-    CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-    IsEnabled="{Binding CanEditOrDeleteAlias}"
-    MinWidth="100"/>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button
+                        Content="Редактировать"
+                        Command="{Binding EditAliasCommand}"
+                        CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                        IsEnabled="{Binding CanEditOrDeleteAlias}"
+                        MinWidth="100"/>
 
-                    <Button 
-    Content="Удалить"
-    Command="{Binding DeleteAliasCommand}"
-    CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-    IsEnabled="{Binding CanEditOrDeleteAlias}"
-    MinWidth="100"/>
+                    <Button
+                        Content="Удалить"
+                        Command="{Binding DeleteAliasCommand}"
+                        CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                        IsEnabled="{Binding CanEditOrDeleteAlias}"
+                        MinWidth="100"/>
                 </StackPanel>
-            </StackPanel>
+            </Grid>
         </Grid>
 
-        <!-- Кнопки действий -->
-        <StackPanel Grid.Row="3"
+        <!-- Кнопки действий страницы -->
+        <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="12"
                     Margin="0,12,0,0">
-
             <Button Content="Добавить бренд"
                     Click="AddBrand_Click"
                     MinWidth="120"

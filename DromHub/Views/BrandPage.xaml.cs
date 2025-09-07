@@ -1,11 +1,10 @@
-﻿using System;
-using System.Threading.Tasks;
-using DromHub.Models;
-using DromHub.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+using DromHub.ViewModels;
+using DromHub.Models;
+using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Tasks;
+using System;
 
 namespace DromHub.Views
 {
@@ -15,90 +14,69 @@ namespace DromHub.Views
 
         public BrandPage()
         {
-            this.InitializeComponent();
-
+            InitializeComponent();
             ViewModel = App.ServiceProvider.GetRequiredService<BrandViewModel>();
-            ViewModel.XamlRoot = this.XamlRoot;
-
-            this.DataContext = ViewModel;
-
-            // Ìîæíî çàãðóçèòü ñðàçó
-            _ = ViewModel.LoadBrandsCommand.ExecuteAsync(null);
-
-            // Èëè ÷åðåç ñîáûòèå Loaded (åñëè õîòèòå)
+            DataContext = ViewModel;
             Loaded += async (_, __) => await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
         }
 
-        private void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
-        {
-            if (e.Key == Windows.System.VirtualKey.Enter)
-            {
-                _ = ViewModel.SearchBrandsCommand.ExecuteAsync(null);
-            }
-        }
-
+        // Бренды
         private async void AddBrand_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.ResetBrand();
-
-            var dialog = new AddBrandDialog(ViewModel)
+            var dialog = new AddBrandDialog(ViewModel) { XamlRoot = this.XamlRoot };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
-                XamlRoot = this.XamlRoot
-            };
-
-            var result = await dialog.ShowAsync();
-
-            if (result == ContentDialogResult.Primary)
-            {
-                try
-                {
-                    await ViewModel.SaveBrandCommand.ExecuteAsync(null);
-                    await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
-                }
-                catch (Exception ex)
-                {
-                    var errorDialog = new ContentDialog
-                    {
-                        Title = "Îøèáêà",
-                        Content = ex.Message,
-                        CloseButtonText = "OK",
-                        XamlRoot = this.XamlRoot
-                    };
-                    await errorDialog.ShowAsync();
-                }
+                await ViewModel.SaveBrandCommand.ExecuteAsync(null);
+                await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
             }
         }
 
+        private async void EditBrand_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedBrand is Brand b)
+            {
+                ViewModel.XamlRoot = this.XamlRoot;
+                await ViewModel.EditBrand(b);                  // уже реализовано в VM
+                await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+            }
+        }
+
+        private async void DeleteBrand_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedBrand is Brand)
+            {
+                // в VM DeleteBrandCommand уже показывает подтверждение
+                await ViewModel.DeleteBrandCommand.ExecuteAsync(this.XamlRoot);
+                await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+            }
+        }
+
+        // Синонимы
         private async void AddAlias_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedBrand == null) return;
 
-            var dialog = new AddAliasDialog
+            var dialog = new AddAliasDialog { XamlRoot = this.XamlRoot };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
-                XamlRoot = this.XamlRoot
-            };
-
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                try
-                {
-                    await ViewModel.SaveAliasAsync(dialog.AliasName);
-                    await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
-                }
-                catch (Exception ex)
-                {
-                    var errorDialog = new ContentDialog
-                    {
-                        Title = "Ошибка",
-                        Content = ex.Message,
-                        CloseButtonText = "OK",
-                        XamlRoot = this.XamlRoot
-                    };
-                    await errorDialog.ShowAsync();
-                }
+                await ViewModel.SaveAliasAsync(dialog.AliasName);
+                await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
             }
         }
-    }
 
+        private async void EditAlias_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedAlias == null) return;
+            await ViewModel.EditAliasCommand.ExecuteAsync(this.XamlRoot);
+            await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
+        }
+
+        private async void DeleteAlias_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.SelectedAlias == null) return;
+            await ViewModel.DeleteAliasCommand.ExecuteAsync(this.XamlRoot);
+            await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
+        }
+    }
 }

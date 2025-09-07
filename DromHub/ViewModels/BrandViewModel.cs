@@ -234,6 +234,12 @@ namespace DromHub.ViewModels
             try
             {
                 var brands = await _context.Brands
+                    .Select(b => new Brand
+                    {
+                        Id = b.Id,
+                        Name = b.Name,
+                        PartsCount = _context.Parts.Count(p => p.BrandId == b.Id)
+                    })
                     .OrderBy(b => b.Name)
                     .AsNoTracking()
                     .ToListAsync();
