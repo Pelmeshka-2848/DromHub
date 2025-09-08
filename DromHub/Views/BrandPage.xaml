@@ -37,19 +37,25 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ===== Левая колонка: Бренды (растяжение + граница) ===== -->
+            <!-- ===== Левая колонка: Бренды ===== -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <!-- ListView тянется -->
                     <RowDefinition Height="Auto"/>
-                    <!-- (зарезервировано, если понадобятся локальные кнопки) -->
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
-                        BorderThickness="1"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        CornerRadius="8">
+                <!-- Заголовок для Брендов -->
+                <TextBlock Grid.Row="0" 
+                           Text="Бренды" 
+                           Style="{StaticResource TitleTextBlockStyle}" 
+                           FontSize="20"
+                           FontWeight="Bold" 
+                           Margin="10,0,0,8"
+                           MinHeight="30"/>
+
+                <!-- Список Брендов -->
+                <Border Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" CornerRadius="8">
                     <ListView
                         ItemsSource="{Binding Source={StaticResource BrandCvs}}"
                         SelectionMode="Single"
@@ -63,9 +69,8 @@
 
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <!-- Название + (кол-во деталей) -->
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text="{Binding Name}" />
                                     <TextBlock Text="(" Opacity="0.6"/>
                                     <TextBlock Text="{Binding PartsCount, TargetNullValue=0}" Opacity="0.6"/>
                                     <TextBlock Text=")" Opacity="0.6"/>
@@ -77,46 +82,60 @@
                             <GroupStyle>
                                 <GroupStyle.HeaderTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Key}"
-                                                   FontWeight="Bold"
-                                                   FontSize="16"
-                                                   Margin="8,8,8,4"/>
+                                        <TextBlock Text="{Binding Key}" FontWeight="Bold" FontSize="16" Margin="8,8,8,4"/>
                                     </DataTemplate>
                                 </GroupStyle.HeaderTemplate>
                             </GroupStyle>
                         </ListView.GroupStyle>
                     </ListView>
                 </Border>
+
+                <!-- Кнопки управления синонимами -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button Content="Добавить бренд"
+                            Click="AddBrand_Click"
+                            MinWidth="120"
+                            Padding="12,6"/>
+
+                    <Button Content="Редактировать бренд"
+                            Click="EditBrand_Click"
+                            MinWidth="120"
+                            Padding="12,6"
+                            IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+
+                    <Button Content="Удалить бренд"
+                            Command="{Binding DeleteBrandCommand}"
+                            CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                            MinWidth="120"
+                            Padding="12,6"
+                            IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+                </StackPanel>
             </Grid>
 
             <!-- Вертикальный разделитель -->
-            <Rectangle Grid.Column="1"
-                       Width="1"/>
+            <Rectangle Grid.Column="1" Width="1"/>
 
-            <!-- ===== Правая колонка: Синонимы (заголовок + растягивающийся ListView + кнопки) ===== -->
+            <!-- ===== Правая колонка: Синонимы ===== -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- заголовок -->
                     <RowDefinition Height="*"/>
-                    <!-- ListView тянется -->
                     <RowDefinition Height="Auto"/>
-                    <!-- кнопки -->
                 </Grid.RowDefinitions>
 
+                <!-- Заголовок для Синонимов -->
                 <TextBlock Grid.Row="0"
                            Text="Синонимы:"
-                           FontWeight="Bold"
-                           Margin="0,0,0,8"/>
+                           FontWeight="Bold" 
+                           Margin="10,0,0,8"
+                           MinHeight="30"
+                           VerticalAlignment="Bottom"/>
 
-                <Border Grid.Row="1"
-                        BorderThickness="1"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        CornerRadius="8">
+                <!-- Список Синонимов -->
+                <Border Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" CornerRadius="8">
                     <ListView
                         ItemsSource="{Binding Aliases}"
                         SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
-                        x:Name="AliasesList"
                         ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -127,9 +146,7 @@
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Alias}"
-                                               Margin="0,0,12,0"
-                                               FontWeight="{Binding IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
+                                    <TextBlock Text="{Binding Alias}" Margin="0,0,12,0" FontWeight="{Binding IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
                                     <TextBlock Text="{Binding Note}" Opacity="0.6"/>
                                 </StackPanel>
                             </DataTemplate>
@@ -139,46 +156,25 @@
 
                 <!-- Кнопки управления синонимами -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <Button
-                        Content="Редактировать"
-                        Command="{Binding EditAliasCommand}"
-                        CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-                        IsEnabled="{Binding CanEditOrDeleteAlias}"
-                        MinWidth="100"/>
+                    <Button Content="Добавить синоним"
+                            Click="AddAlias_Click"
+                            MinWidth="120"
+                            Padding="12,6"
+                            IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
 
-                    <Button
-                        Content="Удалить"
-                        Command="{Binding DeleteAliasCommand}"
-                        CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-                        IsEnabled="{Binding CanEditOrDeleteAlias}"
-                        MinWidth="100"/>
+                    <Button Content="Редактировать синоним"
+                            Command="{Binding EditAliasCommand}"
+                            CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                            IsEnabled="{Binding CanEditOrDeleteAlias}"
+                            MinWidth="100"/>
+
+                    <Button Content="Удалить синоним"
+                            Command="{Binding DeleteAliasCommand}"
+                            CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
+                            IsEnabled="{Binding CanEditOrDeleteAlias}"
+                            MinWidth="100"/>
                 </StackPanel>
             </Grid>
         </Grid>
-
-        <!-- Кнопки действий страницы -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="12"
-                    Margin="0,12,0,0">
-            <Button Content="Добавить бренд"
-                    Click="AddBrand_Click"
-                    MinWidth="120"
-                    Padding="12,6"/>
-
-            <Button Content="Удалить бренд"
-                    Command="{Binding DeleteBrandCommand}"
-                    CommandParameter="{Binding ElementName=PageRoot, Path=XamlRoot}"
-                    MinWidth="120"
-                    Padding="12,6"
-                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-
-            <Button Content="Добавить синоним"
-                    Click="AddAlias_Click"
-                    MinWidth="120"
-                    Padding="12,6"
-                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-        </StackPanel>
     </Grid>
 </Page>
