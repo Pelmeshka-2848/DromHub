@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DromHub.Models
 {
@@ -34,16 +31,22 @@ namespace DromHub.Models
 
         [Column("is_oem")]
         public bool IsOem { get; set; } = false;
-        public void UpdateNormalizedName()
-        {
-            NormalizedName = Name?.ToUpperInvariant();
-        }
-        // Навигационные свойства
+
+        public void UpdateNormalizedName() => NormalizedName = Name?.ToUpperInvariant();
+
+        // Навигация
         public virtual ICollection<BrandAlias> Aliases { get; set; }
         public virtual BrandMarkup Markup { get; set; }
         public virtual ICollection<Part> Parts { get; set; }
 
+        // Виртуальные поля для UI
         [NotMapped] public int PartsCount { get; set; }
+
+        // Текущее значение процента в справочнике (если запись существует)
         [NotMapped] public decimal? MarkupPercent { get; set; }
+
+        // Признак применения наценки:
+        // null — записи нет; false — запись есть, но не применяется; true — запись есть и применяется
+        [NotMapped] public bool? MarkupEnabled { get; set; }
     }
 }

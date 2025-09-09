@@ -27,8 +27,9 @@ namespace DromHub.ViewModels
         private Brand _selectedBrand;
         private BrandAlias _selectedAlias;
 
-        // Наценка (для правой панели)
-        private double? _brandMarkupPercent;
+        // Правая панель: редактирование наценки
+        private double? _brandMarkupPercent;   // редактор значения в UI
+        private bool _applyBrandMarkup;        // ToggleSwitch: применять/не применять
 
         public XamlRoot XamlRoot { get; set; }
 
@@ -52,12 +53,12 @@ namespace DromHub.ViewModels
 
             DeleteBrandCommand = new AsyncRelayCommand<XamlRoot>(DeleteBrandAsync, _ => SelectedBrand != null);
 
-            // Команды работы с наценкой
+            // Наценка
             SaveBrandMarkupCommand = new AsyncRelayCommand(SaveBrandMarkupAsync, () => SelectedBrand != null);
             ClearBrandMarkupCommand = new AsyncRelayCommand(ClearBrandMarkupAsync, () => SelectedBrand != null);
         }
 
-        #region Коллекции и свойства VM
+        #region Коллекции/свойства
 
         public ObservableCollection<Brand> Brands { get; }
         public ObservableCollection<BrandAlias> Aliases { get; }
@@ -80,12 +81,10 @@ namespace DromHub.ViewModels
                     Debug.WriteLine($"SelectedBrand: {_selectedBrand?.Name}");
                     OnPropertyChanged();
 
-                    // подгружаем алиасы и наценку
                     Aliases.Clear();
                     _ = LoadAliasesCommand.ExecuteAsync(null);
                     _ = LoadBrandMarkupAsync();
 
-                    // обновляем доступность команд
                     AddAliasCommand.NotifyCanExecuteChanged();
                     DeleteBrandCommand.NotifyCanExecuteChanged();
                     SaveBrandMarkupCommand.NotifyCanExecuteChanged();
@@ -118,7 +117,7 @@ namespace DromHub.ViewModels
             set { if (_searchText != value) { _searchText = value; OnPropertyChanged(); } }
         }
 
-        // Наценка (для правой панели)
+        // UI-редактор значения %
         public double? BrandMarkupPercent
         {
             get => _brandMarkupPercent;
@@ -128,12 +127,23 @@ namespace DromHub.ViewModels
                 {
                     _brandMarkupPercent = value;
                     OnPropertyChanged();
-                    OnPropertyChanged(nameof(HasBrandMarkup));
                 }
             }
         }
 
-        public bool HasBrandMarkup => BrandMarkupPercent.HasValue;
+        // Переключатель "Применять наценку"
+        public bool ApplyBrandMarkup
+        {
+            get => _applyBrandMarkup;
+            set
+            {
+                if (_applyBrandMarkup != value)
+                {
+                    _applyBrandMarkup = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         #endregion
 
@@ -155,7 +165,7 @@ namespace DromHub.ViewModels
 
         #endregion
 
-        #region Публичные утилиты
+        #region Утилиты
 
         public void ResetBrand()
         {
@@ -163,11 +173,12 @@ namespace DromHub.ViewModels
             SelectedBrand = null;
             SelectedAlias = null;
             BrandMarkupPercent = null;
+            ApplyBrandMarkup = false;
         }
 
         #endregion
 
-        #region Загрузка данных (бренды, алиасы, наценка)
+        #region Загрузка (бренды/алиасы/наценка)
 
         private async Task LoadBrandsAsync()
         {
@@ -180,9 +191,13 @@ namespace DromHub.ViewModels
                         Name = b.Name,
                         PartsCount = _context.Parts.Count(p => p.BrandId == b.Id),
                         MarkupPercent = _context.BrandMarkups
-                                               .Where(m => m.BrandId == b.Id)
-                                               .Select(m => (decimal?)m.MarkupPct)
-                                               .FirstOrDefault()
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (decimal?)m.MarkupPct)
+                            .FirstOrDefault(),
+                        MarkupEnabled = _context.BrandMarkups
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (bool?)m.IsEnabled)
+                            .FirstOrDefault()
                     })
                     .OrderBy(b => b.Name)
                     .AsNoTracking()
@@ -190,7 +205,6 @@ namespace DromHub.ViewModels
 
                 Brands.Clear();
                 foreach (var brand in brands) Brands.Add(brand);
-
                 UpdateGroupedBrands();
             }
             catch (Exception ex)
@@ -220,9 +234,13 @@ namespace DromHub.ViewModels
                         Name = b.Name,
                         PartsCount = _context.Parts.Count(p => p.BrandId == b.Id),
                         MarkupPercent = _context.BrandMarkups
-                                               .Where(m => m.BrandId == b.Id)
-                                               .Select(m => (decimal?)m.MarkupPct)
-                                               .FirstOrDefault()
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (decimal?)m.MarkupPct)
+                            .FirstOrDefault(),
+                        MarkupEnabled = _context.BrandMarkups
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (bool?)m.IsEnabled)
+                            .FirstOrDefault()
                     })
                     .OrderBy(b => b.Name)
                     .AsNoTracking()
@@ -230,7 +248,6 @@ namespace DromHub.ViewModels
 
                 Brands.Clear();
                 foreach (var b in brands) Brands.Add(b);
-
                 UpdateGroupedBrands();
             }
             catch (Exception ex)
@@ -273,16 +290,26 @@ namespace DromHub.ViewModels
             if (SelectedBrand == null)
             {
                 BrandMarkupPercent = null;
+                ApplyBrandMarkup = false;
                 return;
             }
 
             var m = await _context.BrandMarkups
-                                  .AsNoTracking()
-                                  .Where(x => x.BrandId == SelectedBrand.Id)
-                                  .Select(x => (double?)x.MarkupPct)
-                                  .FirstOrDefaultAsync();
+                .AsNoTracking()
+                .Where(x => x.BrandId == SelectedBrand.Id)
+                .Select(x => new { x.MarkupPct, x.IsEnabled })
+                .FirstOrDefaultAsync();
 
-            BrandMarkupPercent = m; // null если нет наценки
+            if (m == null)
+            {
+                BrandMarkupPercent = null;
+                ApplyBrandMarkup = false;
+            }
+            else
+            {
+                BrandMarkupPercent = (double)m.MarkupPct;
+                ApplyBrandMarkup = m.IsEnabled;
+            }
         }
 
         #endregion
@@ -306,7 +333,6 @@ namespace DromHub.ViewModels
                 {
                     var duplicate = await _context.Brands
                         .AnyAsync(b => b.NormalizedName == normalized || EF.Functions.ILike(b.Name, name));
-
                     if (duplicate)
                     {
                         Debug.WriteLine("Бренд с таким именем уже существует.");
@@ -319,7 +345,6 @@ namespace DromHub.ViewModels
                     await _context.Brands.AddAsync(brand);
                     await _context.SaveChangesAsync();
 
-                    // Создаём основной алиас
                     var alias = new BrandAlias
                     {
                         BrandId = brand.Id,
@@ -338,11 +363,7 @@ namespace DromHub.ViewModels
                 else
                 {
                     var entity = await _context.Brands.FindAsync(Brand.Id);
-                    if (entity == null)
-                    {
-                        Debug.WriteLine("Бренд не найден.");
-                        return;
-                    }
+                    if (entity == null) return;
 
                     var duplicate = await _context.Brands
                         .AnyAsync(b => b.Id != Brand.Id &&
@@ -368,20 +389,15 @@ namespace DromHub.ViewModels
         {
             if (SelectedBrand == null) return;
 
-            // Проверим связность
-            var partsCount = await _context.Parts
-                .Where(p => p.BrandId == SelectedBrand.Id)
-                .CountAsync();
-
+            var partsCount = await _context.Parts.Where(p => p.BrandId == SelectedBrand.Id).CountAsync();
             if (partsCount > 0)
             {
                 await ShowDialogAsync("Удаление невозможно",
-                    $"Нельзя удалить бренд «{SelectedBrand.Name}», т.к. с ним связаны {partsCount} запчаст(ь/и). " +
-                    $"Сначала перенесите или удалите эти записи.", xamlRoot);
+                    $"Нельзя удалить бренд «{SelectedBrand.Name}», т.к. с ним связаны {partsCount} запчаст(ь/и).",
+                    xamlRoot);
                 return;
             }
 
-            // Подтверждение
             var confirm = new ContentDialog
             {
                 Title = "Удалить бренд?",
@@ -391,15 +407,13 @@ namespace DromHub.ViewModels
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = xamlRoot
             };
-            var result = await confirm.ShowAsync();
-            if (result != ContentDialogResult.Primary) return;
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary) return;
 
             try
             {
                 var brand = await _context.Brands
                     .Include(b => b.Aliases)
                     .FirstOrDefaultAsync(b => b.Id == SelectedBrand.Id);
-
                 if (brand == null) return;
 
                 _context.Brands.Remove(brand);
@@ -422,30 +436,18 @@ namespace DromHub.ViewModels
 
         #endregion
 
-        #region Наценка (сохранить / сбросить)
+        #region Наценка
 
         private async Task SaveBrandMarkupAsync()
         {
             if (SelectedBrand == null) return;
 
-            // Если поле очищено — это «сброс»
-            if (BrandMarkupPercent is null)
-            {
-                await ClearBrandMarkupAsync();
-                return;
-            }
-
-            var pct = (decimal)BrandMarkupPercent.Value;
-
-            // Простейшая валидация (подстройте)
-            if (pct < -100m || pct > 1000m)
-            {
-                await ShowInfoAsync("Некорректное значение", "Укажите наценку в пределах от -100% до 1000%.");
-                return;
-            }
-
+            // Если запись отсутствует — создадим. Если есть — обновим.
             var existing = await _context.BrandMarkups
-                                         .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+                .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+
+            // Если наценка должна применяться, убеждаемся что значение есть
+            var pctToSave = (decimal)(BrandMarkupPercent ?? 0d);
 
             if (existing == null)
             {
@@ -453,22 +455,30 @@ namespace DromHub.ViewModels
                 {
                     Id = Guid.NewGuid(),
                     BrandId = SelectedBrand.Id,
-                    MarkupPct = pct
+                    MarkupPct = pctToSave,
+                    IsEnabled = ApplyBrandMarkup
                 };
                 await _context.BrandMarkups.AddAsync(m);
             }
             else
             {
-                existing.MarkupPct = pct;
+                existing.MarkupPct = pctToSave;
+                existing.IsEnabled = ApplyBrandMarkup;
             }
 
             await _context.SaveChangesAsync();
 
-            // Отобразим процент у бренда в левом списке
-            SelectedBrand.MarkupPercent = pct;
-            UpdateGroupedBrands();
+            // Обновим карточку и левый список
+            await LoadBrandMarkupAsync();
+            var left = Brands.FirstOrDefault(b => b.Id == SelectedBrand.Id);
+            if (left != null)
+            {
+                left.MarkupPercent = (decimal?)pctToSave;
+                left.MarkupEnabled = ApplyBrandMarkup;
+                UpdateGroupedBrands(); // обновим отрисовку списка
+            }
 
-            await ShowInfoAsync("Готово", "Наценка сохранена.");
+            await ShowInfoAsync("Готово", ApplyBrandMarkup ? "Наценка сохранена." : "Наценка отключена.");
         }
 
         private async Task ClearBrandMarkupAsync()
@@ -476,7 +486,8 @@ namespace DromHub.ViewModels
             if (SelectedBrand == null) return;
 
             var existing = await _context.BrandMarkups
-                                         .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+                .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+
             if (existing != null)
             {
                 _context.BrandMarkups.Remove(existing);
@@ -484,15 +495,22 @@ namespace DromHub.ViewModels
             }
 
             BrandMarkupPercent = null;
-            SelectedBrand.MarkupPercent = null;
-            UpdateGroupedBrands();
+            ApplyBrandMarkup = false;
 
-            await ShowInfoAsync("Готово", "Наценка по бренду не применяется.");
+            var left = Brands.FirstOrDefault(b => b.Id == SelectedBrand.Id);
+            if (left != null)
+            {
+                left.MarkupPercent = null;
+                left.MarkupEnabled = null; // нет записи
+                UpdateGroupedBrands();
+            }
+
+            await ShowInfoAsync("Готово", "Запись наценки удалена (не задана).");
         }
 
         #endregion
 
-        #region Алиасы (добавить / редактировать / удалить)
+        #region Алиасы
 
         private bool CanAddAlias() => SelectedBrand != null;
 
@@ -570,7 +588,6 @@ namespace DromHub.ViewModels
 
                 if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.BrandName))
                 {
-                    // новый scope, чтобы избежать конфликтов отслеживания
                     using var scope = App.ServiceProvider.CreateScope();
                     using var newContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
@@ -642,7 +659,7 @@ namespace DromHub.ViewModels
 
         #endregion
 
-        #region Прочее (редактирование бренда в диалоге)
+        #region Диалоги/утилиты
 
         public async Task EditBrand(Brand brand)
         {

@@ -14,10 +14,11 @@
         <converters:NullToBooleanConverter x:Key="NullToBooleanConverter"/>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
-        <!-- для вывода 15% или "—" -->
-        <converters:MarkupToTextConverter x:Key="MarkupToTextConverter"/>
-        <!-- для "Бренд не выбран" -->
-        <converters:BrandToNameConverter  x:Key="BrandToNameConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:NullToInvertedVisibilityConverter x:Key="NullToInvertedVisibilityConverter"/>
+
+        <!-- Бейдж наценки: принимает Brand и возвращает '15%' / 'выкл' / '—' -->
+        <converters:BrandMarkupBadgeConverter x:Key="BrandMarkupBadgeConverter"/>
 
         <!-- Источник сгруппированных брендов -->
         <CollectionViewSource x:Key="BrandCvs"
@@ -29,50 +30,41 @@
     <Grid Padding="12" RowSpacing="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- заголовок + описание -->
             <RowDefinition Height="*"/>
-            <!-- двухколоночный контент -->
         </Grid.RowDefinitions>
 
-        <!-- ===== Заголовок и описание ===== -->
+        <!-- Заголовок + описание -->
         <StackPanel Grid.Row="0" Spacing="4">
             <TextBlock Text="Бренды" Style="{ThemeResource TitleTextBlockStyle}"/>
             <TextBlock Text="Просмотр и редактирование брендов, управление наценкой по бренду и работа с синонимами."
                        Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.9"/>
         </StackPanel>
 
-        <!-- ===== ДВЕ КОЛОНКИ ===== -->
+        <!-- Две колонки -->
         <Grid Grid.Row="1" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="1"/>
-                <!-- разделитель -->
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- === Левая колонка: БРЕНДЫ === -->
+            <!-- Левая колонка: бренды -->
             <Grid Grid.Column="0" RowSpacing="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- подзаголовок -->
                     <RowDefinition Height="*"/>
-                    <!-- список -->
                     <RowDefinition Height="Auto"/>
-                    <!-- кнопки -->
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0"
-                           Text="Список брендов"
+                <TextBlock Grid.Row="0" Text="Список брендов"
                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
 
-                <Border Grid.Row="1" CornerRadius="8"
-                        BorderThickness="1"
+                <Border Grid.Row="1" CornerRadius="8" BorderThickness="1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                    <ListView
-                        ItemsSource="{Binding Source={StaticResource BrandCvs}}"
-                        SelectionMode="Single"
-                        SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView ItemsSource="{Binding Source={StaticResource BrandCvs}}"
+                              SelectionMode="Single"
+                              SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <ItemsStackPanel/>
@@ -81,7 +73,7 @@
 
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <!-- Имя + (кол-во) слева; наценка справа -->
+                                <!-- Имя + (кол-во) слева; бейдж-наценка справа -->
                                 <Grid ColumnDefinitions="*,Auto" Padding="8,4">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <TextBlock Text="{Binding Name}"/>
@@ -90,9 +82,11 @@
                                         <TextBlock Text=")" Opacity="0.6"/>
                                     </StackPanel>
 
+                                    <!-- ВАЖНО: без Path — в конвертер уходит весь Brand -->
                                     <TextBlock Grid.Column="1"
-                                               Text="{Binding MarkupPercent, Converter={StaticResource MarkupToTextConverter}}"
-                                               HorizontalAlignment="Right" Opacity="0.8"/>
+                                               Text="{Binding Converter={StaticResource BrandMarkupBadgeConverter}}"
+                                               HorizontalAlignment="Right"
+                                               Opacity="0.8"/>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -102,9 +96,7 @@
                                 <GroupStyle.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Key}"
-                                                   FontWeight="Bold"
-                                                   FontSize="16"
-                                                   Margin="8,8,8,4"/>
+                                                   FontWeight="Bold" FontSize="16" Margin="8,8,8,4"/>
                                     </DataTemplate>
                                 </GroupStyle.HeaderTemplate>
                             </GroupStyle>
@@ -113,113 +105,99 @@
                 </Border>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                    <Button Content="Добавить бренд"
-                            Click="AddBrand_Click"
-                            MinWidth="120" Padding="12,6"/>
-
-                    <Button Content="Редактировать бренд"
-                            Click="EditBrand_Click"
+                    <Button Content="Добавить бренд" Click="AddBrand_Click" MinWidth="120" Padding="12,6"/>
+                    <Button Content="Редактировать бренд" Click="EditBrand_Click"
                             MinWidth="140" Padding="12,6"
                             IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-
-                    <Button Content="Удалить бренд"
-                            Click="DeleteBrand_Click"
+                    <Button Content="Удалить бренд" Click="DeleteBrand_Click"
                             MinWidth="120" Padding="12,6"
                             IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
                 </StackPanel>
             </Grid>
 
-            <!-- Разделитель -->
-            <Rectangle Grid.Column="1"
-                       Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Rectangle Grid.Column="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
 
-            <!-- === Правая колонка: НАЦЕНКА + СИНОНИМЫ === -->
+            <!-- Правая колонка: наценка + синонимы -->
             <Grid Grid.Column="2" RowSpacing="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- заголовок наценки -->
                     <RowDefinition Height="Auto"/>
-                    <!-- карточка наценки -->
                     <RowDefinition Height="Auto"/>
-                    <!-- заголовок синонимов -->
                     <RowDefinition Height="*"/>
-                    <!-- список синонимов (растягивается) -->
                     <RowDefinition Height="Auto"/>
-                    <!-- кнопки синонимов -->
                 </Grid.RowDefinitions>
 
-                <!-- Наценка: заголовок -->
-                <TextBlock Grid.Row="0"
-                           Text="Наценка по бренду"
+                <TextBlock Grid.Row="0" Text="Наценка по бренду"
                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
 
-                <!-- Наценка: карточка -->
                 <Border Grid.Row="1" CornerRadius="8" Padding="12"
-                        BorderThickness="1"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                    <StackPanel Spacing="8">
-                        <!-- Имя бренда либо плейсхолдер -->
-                        <TextBlock Text="{Binding SelectedBrand, Converter={StaticResource BrandToNameConverter}}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                        BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="{Binding SelectedBrand.Name}"
+                                   Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                   Visibility="{Binding SelectedBrand, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        <TextBlock Text="Бренд не выбран" Opacity="0.7"
+                                   Visibility="{Binding SelectedBrand, Converter={StaticResource NullToInvertedVisibilityConverter}}"/>
 
-                        <!-- Нет наценки -->
-                        <TextBlock Text="Наценка по бренду не применяется"
-                                   Opacity="0.7"
-                                   Visibility="{Binding HasBrandMarkup, Converter={StaticResource InverseBooleanConverter}}"/>
+                        <ToggleSwitch Header="Применять наценку"
+                                      IsOn="{Binding ApplyBrandMarkup, Mode=TwoWay}"
+                                      IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
 
-                        <!-- Редактор наценки (когда бренд выбран) -->
-                        <StackPanel Spacing="8"
-                                    Visibility="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Текущая наценка:"/>
-                                <TextBlock Text="{Binding BrandMarkupPercent, Converter={StaticResource MarkupToTextConverter}}"/>
+                        <TextBlock Text="Наценка по бренду не применяется" Opacity="0.7"
+                                   Visibility="{Binding ApplyBrandMarkup, Converter={StaticResource InverseBooleanConverter}}"/>
+
+                        <ContentControl IsEnabled="{Binding ApplyBrandMarkup}">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Content="0%"  Tag="0"  Click="PresetMarkup_Click"/>
+                                    <Button Content="10%" Tag="10" Click="PresetMarkup_Click"/>
+                                    <Button Content="15%" Tag="15" Click="PresetMarkup_Click"/>
+                                    <Button Content="20%" Tag="20" Click="PresetMarkup_Click"/>
+                                    <Button Content="30%" Tag="30" Click="PresetMarkup_Click"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <controls:NumberBox Header="Значение, %"
+                                                        Value="{Binding BrandMarkupPercent, Mode=TwoWay}"
+                                                        Minimum="-100" Maximum="1000"
+                                                        SmallChange="1" LargeChange="10"
+                                                        SpinButtonPlacementMode="Compact"
+                                                        Width="140"/>
+                                    <TextBlock Text="%" VerticalAlignment="Bottom" Opacity="0.7"/>
+                                </StackPanel>
                             </StackPanel>
+                        </ContentControl>
 
-                            <controls:NumberBox
-                                Header="Изменить наценку, %"
-                                Value="{Binding BrandMarkupPercent, Mode=TwoWay}"
-                                Minimum="-100" Maximum="1000"
-                                SmallChange="1" LargeChange="10"
-                                SpinButtonPlacementMode="Compact"/>
-
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="Сохранить"
-                                        Command="{Binding SaveBrandMarkupCommand}"
-                                        MinWidth="120" Padding="10,6"
-                                        IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-                                <Button Content="Сбросить"
-                                        Command="{Binding ClearBrandMarkupCommand}"
-                                        MinWidth="120" Padding="10,6"
-                                        IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-                            </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Сохранить"
+                                    Command="{Binding SaveBrandMarkupCommand}"
+                                    MinWidth="120" Padding="10,6"
+                                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+                            <Button Content="Сбросить"
+                                    Command="{Binding ClearBrandMarkupCommand}"
+                                    MinWidth="120" Padding="10,6"
+                                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Синонимы: заголовок -->
-                <TextBlock Grid.Row="2"
-                           Text="Синонимы"
+                <TextBlock Grid.Row="2" Text="Синонимы"
                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
 
-                <!-- Синонимы: список -->
-                <Border Grid.Row="3" CornerRadius="8"
-                        BorderThickness="1"
+                <Border Grid.Row="3" CornerRadius="8" BorderThickness="1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                    <ListView
-                        ItemsSource="{Binding Aliases}"
-                        SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView ItemsSource="{Binding Aliases}"
+                              SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <ItemsStackPanel/>
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
-
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Alias}"
-                                               Margin="0,0,12,0"
+                                    <TextBlock Text="{Binding Alias}" Margin="0,0,12,0"
                                                FontWeight="{Binding IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
                                     <TextBlock Text="{Binding Note}" Opacity="0.6"/>
                                 </StackPanel>
@@ -228,20 +206,14 @@
                     </ListView>
                 </Border>
 
-                <!-- Синонимы: кнопки -->
                 <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
-                    <Button Content="Добавить синоним"
-                            Click="AddAlias_Click"
+                    <Button Content="Добавить синоним" Click="AddAlias_Click"
                             MinWidth="140" Padding="12,6"
                             IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
-
-                    <Button Content="Редактировать"
-                            Click="EditAlias_Click"
+                    <Button Content="Редактировать" Click="EditAlias_Click"
                             MinWidth="120" Padding="12,6"
                             IsEnabled="{Binding CanEditOrDeleteAlias}"/>
-
-                    <Button Content="Удалить"
-                            Click="DeleteAlias_Click"
+                    <Button Content="Удалить" Click="DeleteAlias_Click"
                             MinWidth="120" Padding="12,6"
                             IsEnabled="{Binding CanEditOrDeleteAlias}"/>
                 </StackPanel>

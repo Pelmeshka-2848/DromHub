@@ -13,13 +13,13 @@ namespace DromHub.Views
 
         public BrandPage()
         {
-            this.InitializeComponent(); // <- важно: именно this.InitializeComponent()
+            this.InitializeComponent();   // важно: this.
             ViewModel = App.ServiceProvider.GetRequiredService<BrandViewModel>();
             DataContext = ViewModel;
 
             Loaded += async (_, __) =>
             {
-                ViewModel.XamlRoot = this.XamlRoot; // для диалогов
+                ViewModel.XamlRoot = this.XamlRoot;
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
             };
         }
@@ -82,6 +82,16 @@ namespace DromHub.Views
             if (ViewModel.SelectedAlias == null) return;
             await ViewModel.DeleteAliasCommand.ExecuteAsync(this.XamlRoot);
             await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
+        }
+
+        // ===== НАЦЕНКА (пресеты) =====
+        private void PresetMarkup_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button b && double.TryParse(b.Tag?.ToString(), out var preset))
+            {
+                ViewModel.BrandMarkupPercent = preset;
+                // Переключатель применения не трогаем
+            }
         }
     }
 }

@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DromHub.Models
 {
@@ -23,8 +19,13 @@ namespace DromHub.Models
         [Column("markup_pct", TypeName = "numeric(6,2)")]
         public decimal MarkupPct { get; set; }
 
+        // Флаг применения наценки
+        [Required]
+        [Column("is_enabled")]
+        public bool IsEnabled { get; set; } = true;
+
         [Column("note")]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         [Column("created_at")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -34,7 +35,7 @@ namespace DromHub.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        [ForeignKey("BrandId")]
-        public virtual Brand Brand { get; set; }
+        [ForeignKey(nameof(BrandId))]
+        public virtual Brand Brand { get; set; } = default!;
     }
 }
