@@ -44,5 +44,6 @@ namespace DromHub.Models
         public virtual ICollection<Part> Parts { get; set; }
 
         [NotMapped] public int PartsCount { get; set; }
+        [NotMapped] public decimal? MarkupPercent { get; set; }
     }
 }

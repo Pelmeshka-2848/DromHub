@@ -1,9 +1,8 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+﻿using DromHub.Models;
 using DromHub.ViewModels;
-using DromHub.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System;
 
 namespace DromHub.Views
@@ -14,18 +13,24 @@ namespace DromHub.Views
 
         public BrandPage()
         {
-            InitializeComponent();
+            this.InitializeComponent(); // <- важно: именно this.InitializeComponent()
             ViewModel = App.ServiceProvider.GetRequiredService<BrandViewModel>();
             DataContext = ViewModel;
-            Loaded += async (_, __) => await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+
+            Loaded += async (_, __) =>
+            {
+                ViewModel.XamlRoot = this.XamlRoot; // для диалогов
+                await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+            };
         }
 
-        // Бренды
+        // ===== БРЕНДЫ =====
         private async void AddBrand_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.ResetBrand();
             var dialog = new AddBrandDialog(ViewModel) { XamlRoot = this.XamlRoot };
-            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
             {
                 await ViewModel.SaveBrandCommand.ExecuteAsync(null);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
@@ -37,28 +42,28 @@ namespace DromHub.Views
             if (ViewModel.SelectedBrand is Brand b)
             {
                 ViewModel.XamlRoot = this.XamlRoot;
-                await ViewModel.EditBrand(b);                  // уже реализовано в VM
+                await ViewModel.EditBrand(b);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
             }
         }
 
         private async void DeleteBrand_Click(object sender, RoutedEventArgs e)
         {
-            if (ViewModel.SelectedBrand is Brand)
+            if (ViewModel.SelectedBrand != null)
             {
-                // в VM DeleteBrandCommand уже показывает подтверждение
                 await ViewModel.DeleteBrandCommand.ExecuteAsync(this.XamlRoot);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
             }
         }
 
-        // Синонимы
+        // ===== СИНОНИМЫ =====
         private async void AddAlias_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedBrand == null) return;
 
             var dialog = new AddAliasDialog { XamlRoot = this.XamlRoot };
-            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
             {
                 await ViewModel.SaveAliasAsync(dialog.AliasName);
                 await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
