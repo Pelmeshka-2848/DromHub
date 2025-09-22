@@ -12,9 +12,8 @@ namespace DromHub.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Required]
+        [Required, MaxLength(255)]
         [Column("name")]
-        [MaxLength(255)]
         public string Name { get; set; }
 
         [Column("normalized_name")]
@@ -39,15 +38,14 @@ namespace DromHub.Models
         public virtual BrandMarkup Markup { get; set; }
         public virtual ICollection<Part> Parts { get; set; }
 
-        // Виртуальные поля для UI
+        // Поля для UI
         [NotMapped] public int PartsCount { get; set; }
-        [NotMapped] public int AliasesCount { get; set; }
-
-        // Текущее значение процента в справочнике (если запись существует)
         [NotMapped] public decimal? MarkupPercent { get; set; }
-
-        // Признак применения наценки:
-        // null — записи нет; false — запись есть, но не применяется; true — запись есть и применяется
+        // null — нет записи; false — запись есть, но выключена; true — включена
         [NotMapped] public bool? MarkupEnabled { get; set; }
+
+        // Для фильтров/диагностики
+        [NotMapped] public int AliasesCount { get; set; }                // все алиасы
+        [NotMapped] public int NonPrimaryAliasesCount { get; set; }      // без основного
     }
 }

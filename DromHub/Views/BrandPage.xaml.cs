@@ -3,15 +3,20 @@ using DromHub.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using System;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
 
 namespace DromHub.Views
 {
     public sealed partial class BrandPage : Page
     {
         public BrandViewModel ViewModel { get; }
+
+        private DispatcherTimer _undoTimer;
 
         public BrandPage()
         {
@@ -23,22 +28,16 @@ namespace DromHub.Views
             {
                 ViewModel.XamlRoot = this.XamlRoot;
 
-                // реагируем на перестройку групп
                 if (ViewModel.GroupedBrands is INotifyCollectionChanged oc)
-                    oc.CollectionChanged += GroupedBrands_CollectionChanged;
+                    oc.CollectionChanged += (_, ____) => DispatcherQueue.TryEnqueue(BuildIndexBar);
 
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
-                BuildIndexBar(); // первичная постройка
-            };
-
-            Unloaded += (_, __) =>
-            {
-                if (ViewModel?.GroupedBrands is INotifyCollectionChanged oc)
-                    oc.CollectionChanged -= GroupedBrands_CollectionChanged;
+                BuildIndexBar();
             };
         }
 
-        // ===== БРЕНДЫ =====
+        #region Левый столбец: бренды
+
         private async void AddBrand_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.ResetBrand();
@@ -48,6 +47,7 @@ namespace DromHub.Views
             {
                 await ViewModel.SaveBrandCommand.ExecuteAsync(null);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+                BuildIndexBar();
             }
         }
 
@@ -55,9 +55,9 @@ namespace DromHub.Views
         {
             if (ViewModel.SelectedBrand is Brand b)
             {
-                ViewModel.XamlRoot = this.XamlRoot;
                 await ViewModel.EditBrand(b);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+                BuildIndexBar();
             }
         }
 
@@ -67,17 +67,11 @@ namespace DromHub.Views
             {
                 await ViewModel.DeleteBrandCommand.ExecuteAsync(this.XamlRoot);
                 await ViewModel.LoadBrandsCommand.ExecuteAsync(null);
+                BuildIndexBar();
             }
         }
 
-        private void GroupedBrands_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            BuildIndexBar();
-        }
-
-        /// <summary>
-        /// Строим индекс-полосу из фактических групп (равномерное растяжение).
-        /// </summary>
+        // Индекс-полоса справа от списка
         private void BuildIndexBar()
         {
             if (IndexHost == null) return;
@@ -107,29 +101,59 @@ namespace DromHub.Views
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
-                btn.Click += JumpIndex_Click;
+                btn.Click += (s, e) =>
+                {
+                    var l = (string)((Button)s).Tag;
+                    var group = ViewModel.GroupedBrands.FirstOrDefault(g => string.Equals(g.Key, l, StringComparison.OrdinalIgnoreCase));
+                    var first = group?.FirstOrDefault();
+                    if (first != null)
+                        BrandsList.ScrollIntoView(first, ScrollIntoViewAlignment.Leading);
+                };
 
                 Grid.SetRow(btn, i);
                 IndexHost.Children.Add(btn);
             }
         }
 
-        private void JumpIndex_Click(object sender, RoutedEventArgs e)
+        // контекстные действия
+        private void CreatePart_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button b && b.Tag is string letter && !string.IsNullOrWhiteSpace(letter))
+            _ = new ContentDialog
             {
-                var group = ViewModel.GroupedBrands?
-                    .FirstOrDefault(g => string.Equals(g.Key, letter, StringComparison.OrdinalIgnoreCase));
-
-                var first = group?.FirstOrDefault();
-                if (first != null)
-                {
-                    BrandsList.ScrollIntoView(first, ScrollIntoViewAlignment.Leading);
-                }
-            }
+                Title = "Создать запчасть",
+                Content = "Откройте мастер создания запчасти для выбранного бренда.",
+                CloseButtonText = "Ок",
+                XamlRoot = this.XamlRoot
+            }.ShowAsync();
         }
 
-        // ===== СИНОНИМЫ =====
+        private void MergeBrands_Click(object sender, RoutedEventArgs e)
+        {
+            _ = new ContentDialog
+            {
+                Title = "Слияние брендов",
+                Content = "Запустите мастер объединения брендов (перенос деталей и алиасов).",
+                CloseButtonText = "Ок",
+                XamlRoot = this.XamlRoot
+            }.ShowAsync();
+        }
+
+        #endregion
+
+        #region Правая колонка: наценка
+
+        // пресеты значения %
+        private void PresetMarkup_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button b && double.TryParse(b.Tag?.ToString(), out var preset))
+                ViewModel.BrandMarkupPercent = preset;
+        }
+
+
+        #endregion
+
+        #region Синонимы + Undo
+
         private async void AddAlias_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedBrand == null) return;
@@ -153,18 +177,43 @@ namespace DromHub.Views
         private async void DeleteAlias_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedAlias == null) return;
+
+            var toRestore = ViewModel.SelectedAlias; // для проверки успеха
             await ViewModel.DeleteAliasCommand.ExecuteAsync(this.XamlRoot);
             await ViewModel.LoadAliasesCommand.ExecuteAsync(null);
-        }
 
-        // ===== НАЦЕНКА (пресеты) =====
-        private void PresetMarkup_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button b && double.TryParse(b.Tag?.ToString(), out var preset))
+            // если синоним реально удалился — показываем undo
+            if (ViewModel.Aliases.FirstOrDefault(a => a.Id == toRestore.Id) == null &&
+                ViewModel.LastDeletedAlias != null)
             {
-                ViewModel.BrandMarkupPercent = preset;
-                // Переключатель применения не трогаем
+                ShowUndoBar();
             }
         }
+
+        private void ShowUndoBar()
+        {
+            UndoBar.IsOpen = true;
+
+            _undoTimer?.Stop();
+            _undoTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _undoTimer.Tick += (_, __) =>
+            {
+                _undoTimer.Stop();
+                UndoBar.IsOpen = false;
+                // если пользователь не нажал "Отменить", просто скрываем
+            };
+            _undoTimer.Start();
+        }
+
+        private async void UndoDeleteAlias_Click(object sender, RoutedEventArgs e)
+        {
+            _undoTimer?.Stop();
+            UndoBar.IsOpen = false;
+
+            var alias = ViewModel.LastDeletedAlias;
+            await ViewModel.UndoDeleteAliasCommand.ExecuteAsync(alias);
+        }
+
+        #endregion
     }
 }

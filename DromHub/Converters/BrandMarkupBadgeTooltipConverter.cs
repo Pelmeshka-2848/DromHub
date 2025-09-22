@@ -8,22 +8,18 @@ using System.Threading.Tasks;
 
 namespace DromHub.Converters
 {
-    // Для ToolTip: "Вкл 20%" / "Выкл" / "Не задана"
+    // Тултип: "30%" или "0% (не применяется)"
     public sealed class BrandMarkupBadgeTooltipConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            var b = value as Brand;
-            if (b == null) return "Не задана";
-
-            if (b.MarkupEnabled == null) return "Не задана";
-            if (b.MarkupEnabled == false) return "Выкл";
-
-            var pct = b.MarkupPercent ?? 0m;
-            return $"Вкл {pct:0.#}%";
+            if (value is Brand b)
+            {
+                var pct = b.MarkupPercent ?? 0m;
+                return pct == 0m ? "0% (не применяется)" : $"{pct:0.#}%";
+            }
+            return "0% (не применяется)";
         }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-            => throw new NotSupportedException();
+        public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
     }
 }

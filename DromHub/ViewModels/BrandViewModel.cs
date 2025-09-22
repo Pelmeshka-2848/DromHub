@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -23,27 +22,28 @@ namespace DromHub.ViewModels
         private readonly ApplicationDbContext _context;
         private readonly ILogger<BrandViewModel> _logger;
 
-        // полный («сырой») набор из БД — после фильтров/сортировки перекладываем в Brands
-        private List<Brand> _allBrands = new();
-
         private string _searchText = string.Empty;
         private Brand _brand = new();
         private Brand _selectedBrand;
         private BrandAlias _selectedAlias;
 
-        // Правая панель (редактор наценки)
-        private double? _brandMarkupPercent;   // значение %, которое редактируем
-        private bool _applyBrandMarkup;        // применять наценку для выбранного бренда
+        // Наценка (2 состояния)
+        private double? _brandMarkupPercent;
 
-        // Быстрые фильтры / сортировка / мультивыбор
-        private bool _filterOemOnly, _filterMarkupEnabled, _filterMarkupDisabled, _filterNoAliases;
-        private int _sortIndex;           // 0: имя, 1: кол-во деталей, 2: % наценки, 3: дата обновления
-        private bool _sortDescending;
-        private bool _multiSelectEnabled;
+        // Быстрые фильтры
+        private bool _filterIsOem;
+        private bool _filterWithMarkup;
+        private bool _filterMarkupOff;
+        private bool _filterNoAliases;
 
-        // Превью пересчёта
-        private double _basePrice;
-        private string _previewPriceText = string.Empty;
+        // Диагностика выбранного бренда
+        private bool _diagNoPrimaryAlias;
+        private bool _diagZeroParts;
+        private bool _diagDuplicateName;
+        private string _diagnosticsText;
+
+        // Для Undo
+        public BrandAlias LastDeletedAlias { get; private set; }
 
         public XamlRoot XamlRoot { get; set; }
 
@@ -56,15 +56,15 @@ namespace DromHub.ViewModels
             Aliases = new ObservableCollection<BrandAlias>();
             GroupedBrands = new ObservableCollection<AlphaKeyGroup<Brand>>();
 
-            // команды
-            LoadBrandsCommand = new AsyncRelayCommand(LoadBrandsAsync);
-            SearchBrandsCommand = new AsyncRelayCommand(SearchBrandsAsync);
+            LoadBrandsCommand = new AsyncRelayCommand(RefreshBrandsAsync);
+            SearchBrandsCommand = new AsyncRelayCommand(RefreshBrandsAsync);
             LoadAliasesCommand = new AsyncRelayCommand(LoadAliasesAsync);
             SaveBrandCommand = new AsyncRelayCommand(SaveBrandAsync);
 
             AddAliasCommand = new AsyncRelayCommand(AddAlias);
             EditAliasCommand = new AsyncRelayCommand<XamlRoot>(EditAliasAsync, _ => CanEditOrDeleteAlias);
             DeleteAliasCommand = new AsyncRelayCommand<XamlRoot>(DeleteAliasAsync, _ => CanEditOrDeleteAlias);
+            UndoDeleteAliasCommand = new AsyncRelayCommand<BrandAlias>(UndoDeleteAliasAsync);
 
             DeleteBrandCommand = new AsyncRelayCommand<XamlRoot>(DeleteBrandAsync, _ => SelectedBrand != null);
 
@@ -72,7 +72,7 @@ namespace DromHub.ViewModels
             ClearBrandMarkupCommand = new AsyncRelayCommand(ClearBrandMarkupAsync, () => SelectedBrand != null);
         }
 
-        #region Коллекции / публичные свойства
+        #region Коллекции/свойства
 
         public ObservableCollection<Brand> Brands { get; }
         public ObservableCollection<BrandAlias> Aliases { get; }
@@ -81,14 +81,7 @@ namespace DromHub.ViewModels
         public Brand Brand
         {
             get => _brand;
-            set
-            {
-                if (!ReferenceEquals(_brand, value))
-                {
-                    _brand = value;
-                    OnPropertyChanged();
-                }
-            }
+            set { if (!ReferenceEquals(_brand, value)) { _brand = value; OnPropertyChanged(); } }
         }
 
         public Brand SelectedBrand
@@ -99,19 +92,13 @@ namespace DromHub.ViewModels
                 if (_selectedBrand != value)
                 {
                     _selectedBrand = value;
-                    Debug.WriteLine($"SelectedBrand: {_selectedBrand?.Name}");
                     OnPropertyChanged();
 
                     Aliases.Clear();
                     _ = LoadAliasesCommand.ExecuteAsync(null);
                     _ = LoadBrandMarkupAsync();
-                    UpdatePreview();
-                    // обновляем диагностику
-                    OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
-                    OnPropertyChanged(nameof(ShowDiagZeroParts));
-                    OnPropertyChanged(nameof(ShowDiagDuplicateName));
+                    _ = UpdateDiagnosticsAsync();
 
-                    // обновляем доступности команд
                     AddAliasCommand.NotifyCanExecuteChanged();
                     DeleteBrandCommand.NotifyCanExecuteChanged();
                     SaveBrandMarkupCommand.NotifyCanExecuteChanged();
@@ -136,7 +123,6 @@ namespace DromHub.ViewModels
             }
         }
 
-        // Разрешать редактирование/удаление алиаса только если выбран и он не основной
         public bool CanEditOrDeleteAlias => SelectedAlias != null && !SelectedAlias.IsPrimary;
 
         public string SearchText
@@ -145,106 +131,47 @@ namespace DromHub.ViewModels
             set { if (_searchText != value) { _searchText = value; OnPropertyChanged(); } }
         }
 
-        // UI: число %
+        // Редактор значения %
         public double? BrandMarkupPercent
         {
             get => _brandMarkupPercent;
-            set
-            {
-                if (_brandMarkupPercent != value)
-                {
-                    _brandMarkupPercent = value;
-                    OnPropertyChanged();
-                    UpdatePreview();
-                }
-            }
+            set { if (_brandMarkupPercent != value) { _brandMarkupPercent = value; OnPropertyChanged(); } }
         }
 
-        // UI: применяем/не применяем наценку
-        public bool ApplyBrandMarkup
+        // Быстрые фильтры
+        public bool FilterIsOem
         {
-            get => _applyBrandMarkup;
-            set
-            {
-                if (_applyBrandMarkup == value) return;
-
-                // если выключаем — спросим подтверждение
-                if (_applyBrandMarkup && !value && SelectedBrand != null)
-                {
-                    _ = ConfirmDisableMarkupAsync();
-                    return; // дождёмся асинхронного подтверждения
-                }
-
-                _applyBrandMarkup = value;
-                OnPropertyChanged();
-                UpdatePreview();
-            }
+            get => _filterIsOem;
+            set { if (_filterIsOem != value) { _filterIsOem = value; OnPropertyChanged(); _ = RefreshBrandsAsync(); } }
         }
-
-        // Фильтры
-        public bool FilterOemOnly
+        public bool FilterWithMarkup
         {
-            get => _filterOemOnly;
-            set { if (_filterOemOnly != value) { _filterOemOnly = value; OnPropertyChanged(); ApplyFilters(); } }
+            get => _filterWithMarkup;
+            set { if (_filterWithMarkup != value) { _filterWithMarkup = value; OnPropertyChanged(); _ = RefreshBrandsAsync(); } }
         }
-        public bool FilterMarkupEnabled
+        public bool FilterMarkupOff
         {
-            get => _filterMarkupEnabled;
-            set { if (_filterMarkupEnabled != value) { _filterMarkupEnabled = value; OnPropertyChanged(); ApplyFilters(); } }
-        }
-        public bool FilterMarkupDisabled
-        {
-            get => _filterMarkupDisabled;
-            set { if (_filterMarkupDisabled != value) { _filterMarkupDisabled = value; OnPropertyChanged(); ApplyFilters(); } }
+            get => _filterMarkupOff;
+            set { if (_filterMarkupOff != value) { _filterMarkupOff = value; OnPropertyChanged(); _ = RefreshBrandsAsync(); } }
         }
         public bool FilterNoAliases
         {
             get => _filterNoAliases;
-            set { if (_filterNoAliases != value) { _filterNoAliases = value; OnPropertyChanged(); ApplyFilters(); } }
+            set { if (_filterNoAliases != value) { _filterNoAliases = value; OnPropertyChanged(); _ = RefreshBrandsAsync(); } }
         }
 
-        // Сортировка
-        public int SortIndex
-        {
-            get => _sortIndex;
-            set { if (_sortIndex != value) { _sortIndex = value; OnPropertyChanged(); ApplyFilters(); } }
-        }
-        public bool SortDescending
-        {
-            get => _sortDescending;
-            set { if (_sortDescending != value) { _sortDescending = value; OnPropertyChanged(); OnPropertyChanged(nameof(SortDirText)); ApplyFilters(); } }
-        }
-        public string SortDirText => SortDescending ? "↓ убыв." : "↑ возр.";
+        // Диагностика
+        public bool DiagNoPrimaryAlias { get => _diagNoPrimaryAlias; private set { _diagNoPrimaryAlias = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDiagnostics)); } }
+        public bool DiagZeroParts { get => _diagZeroParts; private set { _diagZeroParts = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDiagnostics)); } }
+        public bool DiagDuplicateName { get => _diagDuplicateName; private set { _diagDuplicateName = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDiagnostics)); } }
 
-        // Мультивыбор
-        public bool MultiSelectEnabled
-        {
-            get => _multiSelectEnabled;
-            set { if (_multiSelectEnabled != value) { _multiSelectEnabled = value; OnPropertyChanged(); } }
-        }
+        public bool HasDiagnostics => DiagNoPrimaryAlias || DiagZeroParts || DiagDuplicateName;
 
-        // Превью цены
-        public double BasePrice
+        public string DiagnosticsText
         {
-            get => _basePrice;
-            set { if (Math.Abs(_basePrice - value) > double.Epsilon) { _basePrice = value; OnPropertyChanged(); UpdatePreview(); } }
+            get => _diagnosticsText;
+            private set { if (_diagnosticsText != value) { _diagnosticsText = value; OnPropertyChanged(); } }
         }
-        public string PreviewPriceText
-        {
-            get => _previewPriceText;
-            private set { if (_previewPriceText != value) { _previewPriceText = value; OnPropertyChanged(); } }
-        }
-
-        // Диагностика — возвращаем non-null => видно, null => скрыто (исп. NullToVisibilityConverter)
-        public string ShowDiagNoPrimaryAlias =>
-            SelectedBrand == null ? null :
-            (Aliases.Any(a => a.IsPrimary) ? null : "NO_PRIMARY");
-        public string ShowDiagZeroParts =>
-            SelectedBrand == null ? null :
-            (SelectedBrand.PartsCount == 0 ? "ZERO_PARTS" : null);
-        public string ShowDiagDuplicateName =>
-            SelectedBrand == null ? null :
-            (Brands.Count(b => string.Equals(b.Name, SelectedBrand.Name, StringComparison.OrdinalIgnoreCase)) > 1 ? "DUP" : null);
 
         #endregion
 
@@ -258,6 +185,7 @@ namespace DromHub.ViewModels
         public IAsyncRelayCommand AddAliasCommand { get; }
         public IAsyncRelayCommand<XamlRoot> EditAliasCommand { get; }
         public IAsyncRelayCommand<XamlRoot> DeleteAliasCommand { get; }
+        public IAsyncRelayCommand<BrandAlias> UndoDeleteAliasCommand { get; }
 
         public IAsyncRelayCommand<XamlRoot> DeleteBrandCommand { get; }
 
@@ -273,151 +201,68 @@ namespace DromHub.ViewModels
             Brand = new Brand();
             SelectedBrand = null;
             SelectedAlias = null;
-            BrandMarkupPercent = null;
-            ApplyBrandMarkup = false;
-            BasePrice = 0;
-            PreviewPriceText = string.Empty;
-        }
-
-        private void UpdatePreview()
-        {
-            if (SelectedBrand == null)
-            {
-                PreviewPriceText = string.Empty;
-                return;
-            }
-
-            var pct = (ApplyBrandMarkup && BrandMarkupPercent.HasValue) ? BrandMarkupPercent.Value : 0.0;
-            if (BasePrice <= 0)
-            {
-                PreviewPriceText = string.Empty;
-                return;
-            }
-
-            var after = BasePrice * (1.0 + pct / 100.0);
-            PreviewPriceText = $"→ {after:0.##}";
-        }
-
-        private async Task ConfirmDisableMarkupAsync()
-        {
-            var xr = GetXamlRoot();
-            if (xr != null)
-            {
-                var dlg = new ContentDialog
-                {
-                    Title = "Выключить наценку?",
-                    Content = "Цены по бренду перестанут пересчитываться с наценкой.",
-                    PrimaryButtonText = "Выключить",
-                    CloseButtonText = "Отмена",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = xr
-                };
-                var res = await dlg.ShowAsync();
-                if (res != ContentDialogResult.Primary)
-                {
-                    // откат
-                    OnPropertyChanged(nameof(ApplyBrandMarkup));
-                    return;
-                }
-            }
-            _applyBrandMarkup = false;
-            OnPropertyChanged(nameof(ApplyBrandMarkup));
-            UpdatePreview();
+            BrandMarkupPercent = 0;
+            DiagnosticsText = string.Empty;
+            DiagNoPrimaryAlias = DiagZeroParts = DiagDuplicateName = false;
         }
 
         #endregion
 
-        #region Загрузка данных
+        #region Загрузка/фильтрация
 
-        private async Task LoadBrandsAsync()
-        {
-            try
-            {
-                var list = await _context.Brands
-                    .Select(b => new Brand
-                    {
-                        Id = b.Id,
-                        Name = b.Name,
-                        IsOem = b.IsOem,
-                        PartsCount = _context.Parts.Count(p => p.BrandId == b.Id),
-                        AliasesCount = _context.BrandAliases.Count(a => a.BrandId == b.Id),
-                        MarkupPercent = _context.BrandMarkups.Where(m => m.BrandId == b.Id).Select(m => (decimal?)m.MarkupPct).FirstOrDefault(),
-                        MarkupEnabled = _context.BrandMarkups.Where(m => m.BrandId == b.Id).Select(m => (bool?)m.IsEnabled).FirstOrDefault(),
-                        UpdatedAt = b.UpdatedAt
-                    })
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                _allBrands = list;
-                ApplyFilters();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading brands");
-            }
-        }
-
-        private async Task SearchBrandsAsync()
+        private async Task RefreshBrandsAsync()
         {
             try
             {
                 var text = (SearchText ?? string.Empty).Trim();
+
                 var q = _context.Brands.AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(text))
-                {
-                    q = q.Where(b =>
-                        EF.Functions.ILike(b.Name, $"%{text}%") ||
-                        b.Aliases.Any(a => EF.Functions.ILike(a.Alias, $"%{text}%")));
-                }
+                    q = q.Where(b => EF.Functions.ILike(b.Name, $"%{text}%") ||
+                                     b.Aliases.Any(a => EF.Functions.ILike(a.Alias, $"%{text}%")));
 
-                _allBrands = await q
+                // Проекция с полями для фильтров
+                var list = await q
                     .Select(b => new Brand
                     {
                         Id = b.Id,
                         Name = b.Name,
                         IsOem = b.IsOem,
                         PartsCount = _context.Parts.Count(p => p.BrandId == b.Id),
+                        MarkupPercent = _context.BrandMarkups
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (decimal?)m.MarkupPct)
+                            .FirstOrDefault(),
+                        MarkupEnabled = _context.BrandMarkups
+                            .Where(m => m.BrandId == b.Id)
+                            .Select(m => (bool?)m.IsEnabled)
+                            .FirstOrDefault(),
                         AliasesCount = _context.BrandAliases.Count(a => a.BrandId == b.Id),
-                        MarkupPercent = _context.BrandMarkups.Where(m => m.BrandId == b.Id).Select(m => (decimal?)m.MarkupPct).FirstOrDefault(),
-                        MarkupEnabled = _context.BrandMarkups.Where(m => m.BrandId == b.Id).Select(m => (bool?)m.IsEnabled).FirstOrDefault(),
-                        UpdatedAt = b.UpdatedAt
+                        NonPrimaryAliasesCount = _context.BrandAliases.Count(a => a.BrandId == b.Id && !a.IsPrimary)
                     })
+                    .OrderBy(b => b.Name)
                     .AsNoTracking()
                     .ToListAsync();
 
-                ApplyFilters();
+                // Фильтры
+                if (FilterIsOem) list = list.Where(b => b.IsOem).ToList();
+                if (FilterWithMarkup) list = list.Where(b => b.MarkupEnabled == true).ToList();
+                if (FilterMarkupOff) list = list.Where(b => b.MarkupEnabled == false).ToList();
+                if (FilterNoAliases) list = list.Where(b => b.NonPrimaryAliasesCount == 0).ToList();
+
+                Brands.Clear();
+                foreach (var b in list) Brands.Add(b);
+                UpdateGroupedBrands();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching brands");
+                _logger.LogError(ex, "Error refreshing brands");
             }
         }
 
-        private void ApplyFilters()
+        private void UpdateGroupedBrands()
         {
-            IEnumerable<Brand> q = _allBrands;
-
-            if (FilterOemOnly)        q = q.Where(b => b.IsOem);
-            if (FilterMarkupEnabled)  q = q.Where(b => b.MarkupEnabled == true);
-            if (FilterMarkupDisabled) q = q.Where(b => b.MarkupEnabled == false);
-            if (FilterNoAliases)      q = q.Where(b => b.AliasesCount == 0);
-
-            // сортировка
-            q = SortIndex switch
-            {
-                1 => (SortDescending ? q.OrderByDescending(b => b.PartsCount) : q.OrderBy(b => b.PartsCount)),
-                2 => (SortDescending ? q.OrderByDescending(b => b.MarkupPercent ?? decimal.MinValue)
-                                     : q.OrderBy(b => b.MarkupPercent ?? decimal.MinValue)),
-                3 => (SortDescending ? q.OrderByDescending(b => b.UpdatedAt) : q.OrderBy(b => b.UpdatedAt)),
-                _ => (SortDescending ? q.OrderByDescending(b => b.Name) : q.OrderBy(b => b.Name))
-            };
-
-            // переложим в публичную коллекцию
-            Brands.Clear();
-            foreach (var b in q) Brands.Add(b);
-
-            // и пересоздадим группы для левого списка/индекса
             GroupedBrands.Clear();
             var grouped = AlphaKeyGroup<Brand>.CreateGroups(Brands, b => b.Name, true);
             foreach (var g in grouped) GroupedBrands.Add(g);
@@ -437,10 +282,7 @@ namespace DromHub.ViewModels
                     .ToListAsync();
 
                 Aliases.Clear();
-                foreach (var alias in aliases) Aliases.Add(alias);
-
-                // обновим диагностику «нет основного алиаса»
-                OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
+                foreach (var a in aliases) Aliases.Add(a);
             }
             catch (Exception ex)
             {
@@ -450,32 +292,52 @@ namespace DromHub.ViewModels
 
         private async Task LoadBrandMarkupAsync()
         {
+            if (SelectedBrand == null) { BrandMarkupPercent = 0; return; }
+
+            var m = await _context.BrandMarkups
+                        .AsNoTracking()
+                        .Where(x => x.BrandId == SelectedBrand.Id)
+                        .Select(x => (double?)x.MarkupPct)
+                        .FirstOrDefaultAsync();
+
+            BrandMarkupPercent = m ?? 0d;
+        }
+
+        private async Task UpdateDiagnosticsAsync()
+        {
             if (SelectedBrand == null)
             {
-                BrandMarkupPercent = null;
-                ApplyBrandMarkup = false;
+                DiagNoPrimaryAlias = DiagZeroParts = DiagDuplicateName = false;
+                DiagnosticsText = string.Empty;
                 return;
             }
 
-            var m = await _context.BrandMarkups
-                .AsNoTracking()
-                .Where(x => x.BrandId == SelectedBrand.Id)
-                .Select(x => new { x.MarkupPct, x.IsEnabled })
-                .FirstOrDefaultAsync();
+            var brandId = SelectedBrand.Id;
+            var name = SelectedBrand.Name?.Trim() ?? string.Empty;
+            var normalized = name.ToLower();
 
-            if (m == null)
-            {
-                BrandMarkupPercent = null;
-                ApplyBrandMarkup = false;
-            }
-            else
-            {
-                BrandMarkupPercent = (double)m.MarkupPct;
-                _applyBrandMarkup = m.IsEnabled; // внутреннее поле напрямую, чтобы не запускать подтверждение
-                OnPropertyChanged(nameof(ApplyBrandMarkup));
-            }
+            var hasPrimary = await _context.BrandAliases
+                .AnyAsync(a => a.BrandId == brandId && a.IsPrimary);
 
-            UpdatePreview();
+            var parts = await _context.Parts
+                .CountAsync(p => p.BrandId == brandId);
+
+            var duplicate = await _context.Brands
+                .AnyAsync(b => b.Id != brandId &&
+                               (b.NormalizedName == normalized || EF.Functions.ILike(b.Name, name)));
+
+            DiagNoPrimaryAlias = !hasPrimary;
+            DiagZeroParts = parts == 0;
+            DiagDuplicateName = duplicate;
+
+            var items = new[]
+            {
+                DiagNoPrimaryAlias ? "нет основного алиаса" : null,
+                DiagZeroParts      ? "0 деталей"            : null,
+                DiagDuplicateName  ? "дубликаты имён"       : null
+            }.Where(s => s != null);
+
+            DiagnosticsText = string.Join(" • ", items);
         }
 
         #endregion
@@ -511,7 +373,7 @@ namespace DromHub.ViewModels
                     await _context.Brands.AddAsync(brand);
                     await _context.SaveChangesAsync();
 
-                    // создаём основной алиас
+                    // основной алиас
                     var alias = new BrandAlias
                     {
                         BrandId = brand.Id,
@@ -525,7 +387,6 @@ namespace DromHub.ViewModels
                     await tx.CommitAsync();
 
                     ResetBrand();
-                    await LoadBrandsAsync();
                 }
                 else
                 {
@@ -543,8 +404,9 @@ namespace DromHub.ViewModels
 
                     entity.Name = name;
                     await _context.SaveChangesAsync();
-                    await LoadBrandsAsync();
                 }
+
+                await RefreshBrandsAsync();
             }
             catch (Exception ex)
             {
@@ -556,7 +418,7 @@ namespace DromHub.ViewModels
         {
             if (SelectedBrand == null) return;
 
-            var partsCount = await _context.Parts.CountAsync(p => p.BrandId == SelectedBrand.Id);
+            var partsCount = await _context.Parts.Where(p => p.BrandId == SelectedBrand.Id).CountAsync();
             if (partsCount > 0)
             {
                 await ShowDialogAsync("Удаление невозможно",
@@ -581,7 +443,6 @@ namespace DromHub.ViewModels
                 var brand = await _context.Brands
                     .Include(b => b.Aliases)
                     .FirstOrDefaultAsync(b => b.Id == SelectedBrand.Id);
-
                 if (brand == null) return;
 
                 _context.Brands.Remove(brand);
@@ -590,11 +451,7 @@ namespace DromHub.ViewModels
                 Brands.Remove(SelectedBrand);
                 Aliases.Clear();
                 SelectedBrand = null;
-                ApplyFilters();
-            }
-            catch (DbUpdateException ex)
-            {
-                await ShowDialogAsync("Ошибка", ex.InnerException?.Message ?? ex.Message, xamlRoot);
+                UpdateGroupedBrands();
             }
             catch (Exception ex)
             {
@@ -604,112 +461,93 @@ namespace DromHub.ViewModels
 
         #endregion
 
-        #region Наценка (сохранить / сбросить / массовое применение)
+        #region Наценка
 
         private async Task SaveBrandMarkupAsync()
         {
             if (SelectedBrand == null) return;
 
-            var existing = await _context.BrandMarkups
-                .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+            var newPct = (decimal)(BrandMarkupPercent ?? 0d);
+            var existing = await _context.BrandMarkups.FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
+            var wasPct = existing?.MarkupPct ?? 0m;
 
-            var pctToSave = (decimal)(BrandMarkupPercent ?? 0d);
+            // подтверждение при выключении (было >0, сохраняем 0)
+            if (wasPct > 0m && newPct == 0m)
+            {
+                var xr = GetXamlRoot();
+                var dlg = new ContentDialog
+                {
+                    Title = "Отключить наценку?",
+                    Content = "При 0% наценка перестанет применяться ко всем деталям этого бренда.",
+                    PrimaryButtonText = "Отключить",
+                    CloseButtonText = "Отмена",
+                    XamlRoot = xr
+                };
+                var res = await dlg.ShowAsync();
+                if (res != ContentDialogResult.Primary) return;
+            }
 
             if (existing == null)
             {
-                var m = new BrandMarkup
+                if (newPct != 0m)
                 {
-                    Id = Guid.NewGuid(),
-                    BrandId = SelectedBrand.Id,
-                    MarkupPct = pctToSave,
-                    IsEnabled = ApplyBrandMarkup
-                };
-                await _context.BrandMarkups.AddAsync(m);
+                    await _context.BrandMarkups.AddAsync(new BrandMarkup
+                    {
+                        Id = Guid.NewGuid(),
+                        BrandId = SelectedBrand.Id,
+                        MarkupPct = newPct
+                    });
+                }
             }
             else
             {
-                existing.MarkupPct = pctToSave;
-                existing.IsEnabled = ApplyBrandMarkup;
+                if (newPct == 0m)
+                    _context.BrandMarkups.Remove(existing); // чистим запись
+                else
+                    existing.MarkupPct = newPct;
             }
 
             await _context.SaveChangesAsync();
 
-            // обновим карточку и левый список
+            // Обновим UI и левый список
             await LoadBrandMarkupAsync();
             var left = Brands.FirstOrDefault(b => b.Id == SelectedBrand.Id);
             if (left != null)
             {
-                left.MarkupPercent = pctToSave;
-                left.MarkupEnabled = ApplyBrandMarkup;
+                left.MarkupPercent = newPct;
+                UpdateGroupedBrands();
             }
-            ApplyFilters(); // чтобы обновить группировку/сортировку
 
-            await ShowInfoAsync("Готово", ApplyBrandMarkup ? "Наценка сохранена." : "Наценка отключена.");
+            await ShowInfoAsync("Готово", $"Наценка сохранена: {newPct:0.#}%");
         }
+
 
         private async Task ClearBrandMarkupAsync()
         {
             if (SelectedBrand == null) return;
 
-            var existing = await _context.BrandMarkups
-                .FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
-
+            var existing = await _context.BrandMarkups.FirstOrDefaultAsync(x => x.BrandId == SelectedBrand.Id);
             if (existing != null)
             {
                 _context.BrandMarkups.Remove(existing);
                 await _context.SaveChangesAsync();
             }
 
-            BrandMarkupPercent = null;
-            _applyBrandMarkup = false;
-            OnPropertyChanged(nameof(ApplyBrandMarkup));
-            UpdatePreview();
+            BrandMarkupPercent = 0;
 
             var left = Brands.FirstOrDefault(b => b.Id == SelectedBrand.Id);
             if (left != null)
             {
-                left.MarkupPercent = null;
-                left.MarkupEnabled = null;
-            }
-            ApplyFilters();
-
-            await ShowInfoAsync("Готово", "Запись наценки удалена (не задана).");
-        }
-
-        // публичный метод — вызывается из кода страницы (массовые действия)
-        public async Task ApplyMarkupToBrandsAsync(IList<Brand> brands, decimal pct, bool enable)
-        {
-            if (brands == null || brands.Count == 0) return;
-
-            foreach (var b in brands)
-            {
-                var m = await _context.BrandMarkups.FirstOrDefaultAsync(x => x.BrandId == b.Id);
-                if (m == null)
-                {
-                    m = new BrandMarkup { Id = Guid.NewGuid(), BrandId = b.Id, MarkupPct = pct, IsEnabled = enable };
-                    await _context.BrandMarkups.AddAsync(m);
-                }
-                else
-                {
-                    m.MarkupPct = pct;
-                    m.IsEnabled = enable;
-                }
-
-                // сразу обновим в UI
-                b.MarkupPercent = pct;
-                b.MarkupEnabled = enable;
+                left.MarkupPercent = 0;
+                UpdateGroupedBrands();
             }
 
-            await _context.SaveChangesAsync();
-            ApplyFilters();
-            await ShowInfoAsync("Готово", $"Наценка {(enable ? "включена" : "выключена")} ({pct:0.##}%) для {brands.Count} брендов.");
+            await ShowInfoAsync("Готово", "Наценка сброшена до 0%.");
         }
 
         #endregion
 
-        #region Алиасы
-
-        private bool CanAddAlias() => SelectedBrand != null;
+        #region Алиасы (+ Undo)
 
         private async Task AddAlias()
         {
@@ -737,8 +575,6 @@ namespace DromHub.ViewModels
 
                 Aliases.Add(alias);
                 SelectedAlias = alias;
-
-                OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
             }
             catch (DbUpdateException ex)
             {
@@ -755,10 +591,8 @@ namespace DromHub.ViewModels
                 throw new InvalidOperationException("Введите синоним.");
 
             var exists = await _context.BrandAliases
-                .AnyAsync(a => a.BrandId == SelectedBrand.Id &&
-                               EF.Functions.ILike(a.Alias, name));
-            if (exists)
-                throw new InvalidOperationException("Такой синоним уже существует у выбранного бренда.");
+                .AnyAsync(a => a.BrandId == SelectedBrand.Id && EF.Functions.ILike(a.Alias, name));
+            if (exists) throw new InvalidOperationException("Такой синоним уже существует.");
 
             var alias = new BrandAlias
             {
@@ -773,7 +607,6 @@ namespace DromHub.ViewModels
 
             await LoadAliasesAsync();
             SelectedAlias = Aliases.FirstOrDefault(a => a.Id == alias.Id);
-            OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
         }
 
         private async Task EditAliasAsync(XamlRoot xamlRoot)
@@ -811,7 +644,6 @@ namespace DromHub.ViewModels
                         SelectedBrand.Name = dialog.BrandName;
 
                     await LoadAliasesAsync();
-                    OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
                 }
             }
             catch (Exception ex)
@@ -828,34 +660,65 @@ namespace DromHub.ViewModels
             {
                 var dialog = new DeleteBrandDialog(SelectedAlias.Alias) { XamlRoot = xamlRoot };
                 var result = await dialog.ShowAsync();
+                if (result != ContentDialogResult.Primary) return;
 
-                if (result == ContentDialogResult.Primary)
+                if (SelectedAlias.IsPrimary)
                 {
-                    if (SelectedAlias.IsPrimary)
-                    {
-                        await ShowInfoAsync("Нельзя удалить", "Нельзя удалить основной синоним.");
-                        return;
-                    }
+                    await ShowInfoAsync("Нельзя удалить", "Нельзя удалить основной алиас.");
+                    return;
+                }
 
-                    using var scope = App.ServiceProvider.CreateScope();
-                    using var newContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                // копия для Undo
+                LastDeletedAlias = new BrandAlias
+                {
+                    Id = SelectedAlias.Id,
+                    BrandId = SelectedBrand.Id,
+                    Alias = SelectedAlias.Alias,
+                    IsPrimary = SelectedAlias.IsPrimary,
+                    Note = SelectedAlias.Note
+                };
 
-                    var aliasToDelete = await newContext.BrandAliases.FindAsync(SelectedAlias.Id);
-                    if (aliasToDelete != null)
-                    {
-                        newContext.BrandAliases.Remove(aliasToDelete);
-                        await newContext.SaveChangesAsync();
+                using var scope = App.ServiceProvider.CreateScope();
+                using var newContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                        Aliases.Remove(SelectedAlias);
-                        SelectedAlias = null;
-                        OnPropertyChanged(nameof(ShowDiagNoPrimaryAlias));
-                    }
+                var aliasToDelete = await newContext.BrandAliases.FindAsync(SelectedAlias.Id);
+                if (aliasToDelete != null)
+                {
+                    newContext.BrandAliases.Remove(aliasToDelete);
+                    await newContext.SaveChangesAsync();
+
+                    Aliases.Remove(SelectedAlias);
+                    SelectedAlias = null;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting alias");
             }
+        }
+
+        public async Task UndoDeleteAliasAsync(BrandAlias alias)
+        {
+            if (alias == null || SelectedBrand == null) return;
+
+            var exists = await _context.BrandAliases.AnyAsync(a => a.Id == alias.Id);
+            if (!exists)
+            {
+                // тот же Guid можно вернуть
+                await _context.BrandAliases.AddAsync(new BrandAlias
+                {
+                    Id = alias.Id,
+                    BrandId = alias.BrandId,
+                    Alias = alias.Alias,
+                    IsPrimary = alias.IsPrimary,
+                    Note = alias.Note
+                });
+                await _context.SaveChangesAsync();
+            }
+
+            await LoadAliasesAsync();
+            SelectedAlias = Aliases.FirstOrDefault(a => a.Id == alias.Id);
+            LastDeletedAlias = null;
         }
 
         #endregion
@@ -867,13 +730,12 @@ namespace DromHub.ViewModels
             if (brand == null || XamlRoot == null) return;
 
             var dialog = new EditBrandDialog(brand.Name) { XamlRoot = XamlRoot };
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
                 brand.Name = dialog.BrandName;
                 _context.Brands.Update(brand);
                 await _context.SaveChangesAsync();
-                await LoadBrandsAsync();
+                await RefreshBrandsAsync();
             }
         }
 
@@ -882,12 +744,11 @@ namespace DromHub.ViewModels
             if (brand == null || XamlRoot == null) return;
 
             var dialog = new DeleteBrandDialog(brand.Name) { XamlRoot = XamlRoot };
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
             {
                 _context.Brands.Remove(brand);
                 await _context.SaveChangesAsync();
-                await LoadBrandsAsync();
+                await RefreshBrandsAsync();
             }
         }
 
