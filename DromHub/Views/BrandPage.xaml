@@ -16,11 +16,9 @@
         <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <converters:NullToInvertedVisibilityConverter x:Key="NullToInvertedVisibilityConverter"/>
-
-        <!-- Бейдж наценки: принимает Brand и возвращает '15%' / 'выкл' / '—' -->
         <converters:BrandMarkupBadgeConverter x:Key="BrandMarkupBadgeConverter"/>
 
-        <!-- Источник сгруппированных брендов -->
+        <!-- Сгруппированные бренды -->
         <CollectionViewSource x:Key="BrandCvs"
                               Source="{Binding GroupedBrands}"
                               IsSourceGrouped="True"
@@ -48,7 +46,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Левая колонка: бренды -->
+            <!-- ===================== Левая колонка: БРЕНДЫ ===================== -->
             <Grid Grid.Column="0" RowSpacing="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -56,54 +54,83 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Список брендов"
+                <TextBlock Grid.Row="0"
+                           Text="Список брендов"
                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
 
+                <!-- Список + динамическая A–Z индекс-полоса -->
                 <Border Grid.Row="1" CornerRadius="8" BorderThickness="1"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                    <ListView ItemsSource="{Binding Source={StaticResource BrandCvs}}"
-                              SelectionMode="Single"
-                              SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <ListView.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <ItemsStackPanel/>
-                            </ItemsPanelTemplate>
-                        </ListView.ItemsPanel>
+                    <Grid x:Name="ListWithIndexGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition x:Name="ListCol" Width="*"/>
+                            <ColumnDefinition x:Name="IndexSepCol" Width="1"/>
+                            <ColumnDefinition x:Name="IndexCol" Width="36"/>
+                        </Grid.ColumnDefinitions>
 
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <!-- Имя + (кол-во) слева; бейдж-наценка справа -->
-                                <Grid ColumnDefinitions="*,Auto" Padding="8,4">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="{Binding Name}"/>
-                                        <TextBlock Text="(" Opacity="0.6"/>
-                                        <TextBlock Text="{Binding PartsCount}" Opacity="0.6"/>
-                                        <TextBlock Text=")" Opacity="0.6"/>
-                                    </StackPanel>
+                        <!-- сам список -->
+                        <ListView x:Name="BrandsList"
+                                  Grid.Column="0"
+                                  ItemsSource="{Binding Source={StaticResource BrandCvs}}"
+                                  SelectionMode="Single"
+                                  SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <!-- липкие заголовки групп -->
+                                    <ItemsStackPanel AreStickyGroupHeadersEnabled="True"/>
+                                </ItemsPanelTemplate>
+                            </ListView.ItemsPanel>
 
-                                    <!-- ВАЖНО: без Path — в конвертер уходит весь Brand -->
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Converter={StaticResource BrandMarkupBadgeConverter}}"
-                                               HorizontalAlignment="Right"
-                                               Opacity="0.8"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- Имя + (кол-во) слева; бейдж-наценка справа -->
+                                    <Grid ColumnDefinitions="*,Auto" Padding="8,4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="(" Opacity="0.6"/>
+                                            <TextBlock Text="{Binding PartsCount}" Opacity="0.6"/>
+                                            <TextBlock Text=")" Opacity="0.6"/>
+                                        </StackPanel>
+                                        <!-- без Path — в конвертер уходит весь Brand -->
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Converter={StaticResource BrandMarkupBadgeConverter}}"
+                                                   HorizontalAlignment="Right"
+                                                   Opacity="0.8"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
 
-                        <ListView.GroupStyle>
-                            <GroupStyle>
-                                <GroupStyle.HeaderTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Key}"
-                                                   FontWeight="Bold" FontSize="16" Margin="8,8,8,4"/>
-                                    </DataTemplate>
-                                </GroupStyle.HeaderTemplate>
-                            </GroupStyle>
-                        </ListView.GroupStyle>
-                    </ListView>
+                            <ListView.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Key}"
+                                                       FontWeight="Bold" FontSize="16" Margin="8,8,8,4"/>
+                                        </DataTemplate>
+                                    </GroupStyle.HeaderTemplate>
+                                </GroupStyle>
+                            </ListView.GroupStyle>
+                        </ListView>
+
+                        <!-- разделитель -->
+                        <Rectangle Grid.Column="1"
+                                   Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
+
+                        <!-- ДИНАМИЧЕСКИЙ контейнер для букв (создаём из code-behind) -->
+                        <Grid x:Name="IndexHost"
+                              Grid.Column="2"
+                              Margin="0"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"/>
+                        <!-- В нём во время выполнения создаются RowDefinitions Height="*"
+                             по числу групп и такие же по размеру кнопки с буквами -->
+
+                    
+                    </Grid>
                 </Border>
 
+                <!-- Кнопки под списком -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
                     <Button Content="Добавить бренд" Click="AddBrand_Click" MinWidth="120" Padding="12,6"/>
                     <Button Content="Редактировать бренд" Click="EditBrand_Click"
@@ -115,9 +142,10 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Вертикальный разделитель между колонками -->
             <Rectangle Grid.Column="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
 
-            <!-- Правая колонка: наценка + синонимы -->
+            <!-- ===================== Правая колонка как раньше (наценка + синонимы) ===================== -->
             <Grid Grid.Column="2" RowSpacing="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

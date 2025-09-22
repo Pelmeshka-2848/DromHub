@@ -7,27 +7,21 @@ namespace DromHub.Converters
 {
     public sealed class BrandMarkupBadgeConverter : IValueConverter
     {
-        // value ожидается = Brand
+        // Для отображения в правой части строки бренда: "15%" / "выкл" / "—"
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is Brand b)
-            {
-                // Нет записи о наценке
-                if (b.MarkupEnabled == null)
-                    return "—";
+            var b = value as Brand;
+            if (b == null) return "—";
 
-                // Есть запись, но выключено применение
-                if (b.MarkupEnabled == false)
-                    return "выкл";
+            // Нет записи о наценке
+            if (b.MarkupEnabled == null) return "—";
 
-                // Включено — показываем процент
-                if (b.MarkupPercent.HasValue)
-                    return $"{b.MarkupPercent.Value:0.#}%";
+            // Запись есть, но выключена
+            if (b.MarkupEnabled == false) return "выкл";
 
-                return "0%";
-            }
-
-            return "—";
+            // Включена — показываем процент (если null, считаем 0)
+            var pct = b.MarkupPercent ?? 0m;
+            return $"{pct:0.#}%";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language) =>

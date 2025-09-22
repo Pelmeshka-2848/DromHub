@@ -41,6 +41,7 @@ namespace DromHub.Models
 
         // Виртуальные поля для UI
         [NotMapped] public int PartsCount { get; set; }
+        [NotMapped] public int AliasesCount { get; set; }
 
         // Текущее значение процента в справочнике (если запись существует)
         [NotMapped] public decimal? MarkupPercent { get; set; }
