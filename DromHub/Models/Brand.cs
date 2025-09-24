@@ -45,5 +45,9 @@ namespace DromHub.Models
         // Для фильтров/диагностики
         [NotMapped] public int AliasesCount { get; set; }                // все алиасы
         [NotMapped] public int NonPrimaryAliasesCount { get; set; }      // без основного
+
+        // (опционально, если захочешь чипы)
+        [NotMapped] public string CountryCode { get; set; }
+        [NotMapped] public string QualityTier { get; set; }
     }
 }

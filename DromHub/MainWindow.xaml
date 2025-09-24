@@ -9,32 +9,43 @@
                     IsSettingsVisible="True"
                     IsBackButtonVisible="Collapsed"
                     IsBackEnabled="False"
-                    SelectionChanged="NavigationView_SelectionChanged"
                     AlwaysShowHeader="True"
-                    PaneTitle="Pane Title"
+                    PaneTitle="DromHub"
                     PaneDisplayMode="Left"
                     ExpandedModeThresholdWidth="500"
                     SelectionFollowsFocus="Disabled"
-                    IsTabStop="False">
+                    IsTabStop="False"
+                    SelectionChanged="NavigationView_SelectionChanged"
+                    ItemInvoked="NavigationView_ItemInvoked">
 
         <NavigationView.MenuItems>
+            <!-- Главная -->
             <NavigationViewItem Content="Главная" Tag="MainPage" x:Name="MainPageItem" SelectsOnInvoked="True">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Home"/>
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
+
+            <!-- Запчасти -->
             <NavigationViewItem Content="Запчасть" Tag="PartPage" x:Name="PartPageItem">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Repair"/>
                 </NavigationViewItem.Icon>
                 <NavigationViewItem.MenuItems>
-                    <NavigationViewItem Content="Поиск" Tag="PartSearchPage" x:Name="PartSearchPage"/>
+                    <NavigationViewItem Content="Поиск" Tag="PartSearchPage" x:Name="PartSearchPageItem" SelectsOnInvoked="True"/>
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
-            <NavigationViewItem Content="Бренд" Tag="BrandPage" x:Name="BrandPageItem" SelectsOnInvoked="True">
+
+            <!-- Бренды (новая многостраничная структура) -->
+            <NavigationViewItem Content="Бренды" Tag="BrandsRoot" x:Name="BrandsRootItem">
                 <NavigationViewItem.Icon>
                     <SymbolIcon Symbol="Library"/>
                 </NavigationViewItem.Icon>
+                <NavigationViewItem.MenuItems>
+                    <NavigationViewItem Content="Обзор" Tag="BrandsOverviewPage" x:Name="BrandsOverviewPageItem" SelectsOnInvoked="True"/>
+                    <NavigationViewItem Content="Список" Tag="BrandsListPage" x:Name="BrandsListPageItem" SelectsOnInvoked="True"/>
+                    <NavigationViewItem Content="Слияние" Tag="BrandMergePage" x:Name="BrandMergePageItem" SelectsOnInvoked="True"/>
+                </NavigationViewItem.MenuItems>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 

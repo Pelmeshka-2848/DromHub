@@ -1,9 +1,7 @@
-using System;
-using DromHub.Models;
-using DromHub.Views;
+﻿using DromHub.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
+using System;
 
 namespace DromHub
 {
@@ -11,38 +9,68 @@ namespace DromHub
     {
         public MainWindow()
         {
-            this.InitializeComponent();
+            InitializeComponent();
 
-            // ��������� ��������� ��������
+            // Стартовая страница
             contentFrame.Navigate(typeof(MainPage));
+            nvSample.SelectedItem = MainPageItem;
         }
 
-        private void NavigationView_SelectionChanged(NavigationView sender,
-                                                   NavigationViewSelectionChangedEventArgs args)
+        private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
         {
-            if (args.SelectedItemContainer != null)
+            if (args.IsSettingsSelected)
             {
-                string tag = args.SelectedItemContainer.Tag.ToString();
-                Type pageType = null;
+                // Если будет страница настроек:
+                // contentFrame.Navigate(typeof(SettingsPage));
+                return;
+            }
 
-                // ���������� ��� �������� �� ����
-                switch (tag)
-                {
-                    case "MainPage":
-                        pageType = typeof(MainPage);
-                        break;
-                    case "PartSearchPage":
-                        pageType = typeof(PartSearchPage);
-                        break;
-                    case "BrandPage":
-                        pageType = typeof(BrandPage);
-                        break;
-                }
+            if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
+            {
+                NavigateByTag(tag);
+            }
+        }
 
-                // ���� ��� �������� ��������� � ��� �� ������� ��������
-                if (pageType != null && contentFrame.CurrentSourcePageType != pageType)
+        private void NavigationView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+        {
+            if (args.IsSettingsInvoked) return;
+
+            // Обработка кликов по дочерним пунктам (надёжно для MenuItems)
+            if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string tag)
+            {
+                NavigateByTag(tag);
+            }
+            else if (args.InvokedItem is string header) // fallback по заголовку
+            {
+                // Не обязательно, но оставлю на случай, если Tag забудут
+            }
+        }
+
+        private void NavigateByTag(string tag, object parameter = null)
+        {
+            Type pageType = tag switch
+            {
+                // Главная
+                "MainPage" => typeof(MainPage),
+
+                // Запчасти
+                "PartPage" => typeof(PartSearchPage),      // родитель ведёт на поиск
+                "PartSearchPage" => typeof(PartSearchPage),
+
+                // Бренды
+                "BrandsOverviewPage" => typeof(BrandsOverviewPage),
+                "BrandsListPage" => typeof(BrandsListPage),
+                "BrandMergePage" => typeof(BrandMergePage),
+
+                // по умолчанию ничего не делаем
+                _ => null
+            };
+
+            if (pageType != null)
+            {
+                if (contentFrame.CurrentSourcePageType != pageType || parameter != null)
                 {
-                    contentFrame.Navigate(pageType);
+                    contentFrame.Navigate(pageType, parameter);
                 }
             }
         }

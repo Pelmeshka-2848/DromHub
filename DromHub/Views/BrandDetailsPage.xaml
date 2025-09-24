@@ -1,0 +1,228 @@
+<Page
+    x:Class="DromHub.Views.BrandDetailsPage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:converters="using:DromHub.Converters"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <converters:BrandMarkupBadgeConverter x:Key="MarkupPctToBadgeConverter"/>
+        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupPctToTooltipConverter"/>
+        <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
+    </Page.Resources>
+
+    <Grid Padding="12" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- "Шапка героя": название + actions (справа) -->
+        <Grid Grid.Row="0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Vertical" Spacing="2">
+                <TextBlock Text="{Binding BrandName}" Style="{ThemeResource TitleTextBlockStyle}"/>
+                <TextBlock Text="Настройка наценки, работа с синонимами и диагностика"
+                           Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.9"/>
+            </StackPanel>
+
+            <CommandBar Grid.Column="1"
+                        Background="Transparent"
+                        DefaultLabelPosition="Right"
+                        IsOpen="False">
+                <AppBarButton Icon="Back" Label="Предыдущий"
+                              Click="PrevBrand_Click"
+                              IsEnabled="{Binding HasPrev}">
+                    <ToolTipService.ToolTip>
+                        <TextBlock Text="{Binding PrevBrandName}"/>
+                    </ToolTipService.ToolTip>
+                </AppBarButton>
+
+                <AppBarButton Icon="Forward" Label="Следующий"
+                              Click="NextBrand_Click"
+                              IsEnabled="{Binding HasNext}">
+                    <ToolTipService.ToolTip>
+                        <TextBlock Text="{Binding NextBrandName}"/>
+                    </ToolTipService.ToolTip>
+                </AppBarButton>
+
+                <AppBarSeparator/>
+
+                <AppBarButton Icon="OpenFile" Label="Открыть бренд" Click="OpenBrandInList_Click"/>
+                <AppBarButton Icon="Add" Label="Создать запчасть" Click="CreatePart_Click"/>
+                <AppBarButton Icon="Shuffle" Label="Объединить…" Click="OpenMergeWizard_Click"/>
+                <AppBarButton Icon="Edit" Label="Свойства…" Click="OpenEditBrandProps_Click"/>
+            </CommandBar>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2.2*"/>
+                <ColumnDefinition Width="2.8*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Левая колонка -->
+            <StackPanel Grid.Column="0" Spacing="12">
+
+                <!-- Карточка наценки -->
+                <Border CornerRadius="12" Padding="14"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Наценка" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+
+                        <!-- Пресеты -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="0%"  Tag="0"  Click="PresetMarkup_Click"/>
+                            <Button Content="10%" Tag="10" Click="PresetMarkup_Click"/>
+                            <Button Content="15%" Tag="15" Click="PresetMarkup_Click"/>
+                            <Button Content="20%" Tag="20" Click="PresetMarkup_Click"/>
+                            <Button Content="30%" Tag="30" Click="PresetMarkup_Click"/>
+                        </StackPanel>
+
+                        <!-- NumberBox + Slider + бейдж -->
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <controls:NumberBox Grid.Column="0"
+                                                Header="Значение, %"
+                                                Value="{Binding MarkupEditor, Mode=TwoWay}"
+                                                Minimum="0" Maximum="1000"
+                                                SmallChange="1" LargeChange="10"
+                                                SpinButtonPlacementMode="Compact"/>
+
+                            <Slider Grid.Column="1"
+                                    Minimum="0" Maximum="100"
+                                    StepFrequency="5"
+                                    Value="{Binding MarkupEditor, Mode=TwoWay}"/>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Bottom">
+                                <TextBlock Opacity="0.8" VerticalAlignment="Center">
+                                    <Run Text="{Binding MarkupEditor}"/><Run Text="%"/>
+                                </TextBlock>
+                                <TextBlock VerticalAlignment="Center" Opacity="0.6"
+                                           Text="{Binding MarkupEditor, Converter={StaticResource MarkupPctToBadgeConverter}}">
+                                    <ToolTipService.ToolTip>
+                                        <TextBlock Text="{Binding MarkupEditor, Converter={StaticResource MarkupPctToTooltipConverter}}"/>
+                                    </ToolTipService.ToolTip>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Подтверждение при 0% -->
+                        <controls:InfoBar
+                            IsOpen="{Binding ShowDisableConfirm}"
+                            Severity="Warning"
+                            Title="Установлено 0%"
+                            Message="0% = наценка не применяется. Подтвердите сохранение.">
+                            <controls:InfoBar.ActionButton>
+                                <Button Content="Сохранить 0%" Click="ConfirmDisable_Click"/>
+                            </controls:InfoBar.ActionButton>
+                        </controls:InfoBar>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Сохранить" Command="{Binding SaveMarkupCommand}" MinWidth="120"/>
+                            <Button Content="Сбросить в 0%" Command="{Binding ResetMarkupCommand}" MinWidth="120"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Свойства бренда (идея/заготовка) -->
+                <Border CornerRadius="12" Padding="14"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Свойства бренда (идея)" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <ComboBox Width="200" Header="Страна" IsEnabled="False" PlaceholderText="В разработке"/>
+                            <ToggleSwitch Header="OEM" IsEnabled="False"/>
+                        </StackPanel>
+                        <TextBox Header="Официальный сайт" IsEnabled="False" PlaceholderText="https://…"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Правая колонка: TabView (Синонимы / Запчасти / Диагностика) -->
+            <controls:TabView Grid.Column="1">
+                <controls:TabViewItem Header="Синонимы">
+                    <Grid Padding="8" RowSpacing="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <ListView ItemsSource="{Binding Aliases}"
+                                  SelectedItem="{Binding SelectedAlias, Mode=TwoWay}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Alias}" Margin="0,0,12,0"
+                                                   FontWeight="{Binding IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
+                                        <TextBlock Text="{Binding Note}" Opacity="0.6"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="Добавить" Click="AddAlias_Click"/>
+                            <Button Content="Редактировать" Click="EditAlias_Click"
+                                    IsEnabled="{Binding CanEditAlias}"/>
+                            <Button Content="Удалить" Click="DeleteAlias_Click"
+                                    IsEnabled="{Binding CanDeleteAlias}"/>
+                        </StackPanel>
+
+                        <controls:InfoBar Margin="0,8,0,0"
+                                          IsOpen="{Binding UndoIsOpen}"
+                                          Severity="Informational"
+                                          Title="Синоним удалён"
+                                          Message="{Binding UndoMessage}">
+                            <controls:InfoBar.ActionButton>
+                                <Button Content="Отменить" Command="{Binding UndoDeleteAliasCommand}"/>
+                            </controls:InfoBar.ActionButton>
+                        </controls:InfoBar>
+                    </Grid>
+                </controls:TabViewItem>
+
+                <controls:TabViewItem Header="Запчасти">
+                    <Grid Padding="8" RowSpacing="8">
+                        <ListView ItemsSource="{Binding Parts}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="160,*,Auto" Padding="6,4">
+                                        <TextBlock Text="{Binding PartNumber}" Opacity="0.9"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="12,0,0,0"/>
+                                        <TextBlock Grid.Column="2" Opacity="0.8"
+                                                   Text="{Binding Price}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </controls:TabViewItem>
+
+                <controls:TabViewItem Header="Диагностика">
+                    <StackPanel Padding="8" Spacing="8">
+                        <InfoBar Title="Нет основного алиаса" Severity="Warning" IsOpen="{Binding DiagNoPrimaryAlias}" />
+                        <InfoBar Title="0 деталей" Severity="Warning" IsOpen="{Binding DiagNoParts}" />
+                        <InfoBar Title="Возможные дубликаты" Severity="Informational"
+                                 IsOpen="{Binding DiagDuplicateNames}"
+                                 Message="Есть бренды с похожими именами."/>
+                    </StackPanel>
+                </controls:TabViewItem>
+            </controls:TabView>
+        </Grid>
+    </Grid>
+</Page>

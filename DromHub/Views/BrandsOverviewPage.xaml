@@ -1,0 +1,40 @@
+<Page
+    x:Class="DromHub.Views.BrandsOverviewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    mc:Ignorable="d">
+
+    <Grid Padding="12" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Бренды — обзор" Style="{ThemeResource TitleTextBlockStyle}"/>
+
+        <!-- KPI -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+            <InfoBar Title="Всего брендов" IsOpen="True" Severity="Informational"
+                     Message="{Binding TotalBrandsText}" />
+            <InfoBar Title="С наценкой" IsOpen="True" Severity="Success"
+                     Message="{Binding WithMarkupText}" />
+            <InfoBar Title="Без алиасов" IsOpen="True" Severity="Warning"
+                     Message="{Binding NoAliasesText}" />
+            <InfoBar Title="0 деталей" IsOpen="True" Severity="Warning"
+                     Message="{Binding NoPartsText}" />
+        </StackPanel>
+
+        <!-- Быстрые действия -->
+        <StackPanel Grid.Row="2" Spacing="8">
+            <TextBlock Text="Быстрые действия" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Открыть список брендов" Click="OpenBrands_Click"/>
+                <Button Content="Мастер слияния…" Click="OpenMergeWizard_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Page>

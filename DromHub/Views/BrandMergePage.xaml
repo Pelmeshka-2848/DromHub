@@ -1,0 +1,184 @@
+<Page
+    x:Class="DromHub.Views.BrandMergePage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:models="using:DromHub.Models"
+    mc:Ignorable="d">
+
+    <Grid Padding="12" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Слияние брендов" Style="{ThemeResource TitleTextBlockStyle}"/>
+            <TextBlock Text="Выберите один или несколько брендов-источников и целевой бренд. Все детали и синонимы будут перенесены в целевой бренд."
+                       Opacity="0.85"/>
+        </StackPanel>
+
+        <!-- Контент: 2 колонки -->
+        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Источники -->
+            <Grid Grid.Column="0" RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Бренды-источники" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="280"
+                             PlaceholderText="Поиск источников…"
+                             Text="{Binding SearchSources, Mode=TwoWay}"
+                             KeyDown="OnSearchSourcesKeyDown"/>
+                    <Button Content="Найти" Click="ApplySourcesFilter_Click"/>
+                </StackPanel>
+
+                <Border Grid.Row="2"
+                        CornerRadius="8" BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <ListView x:Name="SourcesList"
+                              ItemsSource="{Binding FilteredSources}"
+                              SelectionMode="Single"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnSourceItemClick"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Brand">
+                                <Grid ColumnDefinitions="*,Auto" Padding="8,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind Name}" />
+                                        <TextBlock Text="(" Opacity="0.6"/>
+                                        <TextBlock Text="{x:Bind PartsCount}" Opacity="0.6"/>
+                                        <TextBlock Text=")" Opacity="0.6"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Добавить"
+                                            Tag="{x:Bind Id}"
+                                            Click="AddSource_Click"
+                                            HorizontalAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+
+                <!-- Выбранные источники (чипсы) -->
+                <StackPanel Grid.Row="3" Spacing="6">
+                    <TextBlock Text="Выбраны:" FontWeight="SemiBold"/>
+                    <ItemsControl ItemsSource="{Binding SelectedSources}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:Brand">
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="12"
+                                        Margin="0,0,8,8"
+                                        Padding="8,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind Name}"/>
+                                        <TextBlock Text="(" Opacity="0.6"/>
+                                        <TextBlock Text="{x:Bind PartsCount}" Opacity="0.6"/>
+                                        <TextBlock Text=")" Opacity="0.6"/>
+                                        <Button Content="✕" Tag="{x:Bind Id}" Click="RemoveSource_Click"
+                                                Width="28" Height="28" Padding="0"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapGrid MaximumRowsOrColumns="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
+
+            <!-- разделитель -->
+            <Rectangle Grid.Column="1"
+                       Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
+
+            <!-- Целевой бренд -->
+            <Grid Grid.Column="2" RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Целевой бренд" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="280"
+                             PlaceholderText="Поиск целевого…"
+                             Text="{Binding SearchTarget, Mode=TwoWay}"
+                             KeyDown="OnSearchTargetKeyDown"/>
+                    <Button Content="Найти" Click="ApplyTargetFilter_Click"/>
+                </StackPanel>
+
+                <Border Grid.Row="2"
+                        CornerRadius="8" BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                    <ListView x:Name="TargetList"
+                              ItemsSource="{Binding FilteredTargets}"
+                              SelectionMode="Single"
+                              IsItemClickEnabled="True"
+                              ItemClick="OnTargetItemClick"
+                              SelectedItem="{Binding SelectedTarget, Mode=TwoWay}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Brand">
+                                <Grid ColumnDefinitions="*,Auto" Padding="8,4">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{x:Bind Name}"/>
+                                        <TextBlock Text="(" Opacity="0.6"/>
+                                        <TextBlock Text="{x:Bind PartsCount}" Opacity="0.6"/>
+                                        <TextBlock Text=")" Opacity="0.6"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Выбрать"
+                                            Tag="{x:Bind Id}"
+                                            Click="SetTarget_Click"
+                                            HorizontalAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+
+                <!-- Сводка -->
+                <Border Grid.Row="3" Padding="10" CornerRadius="8"
+                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Сводка" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding SummaryText}" Opacity="0.9"/>
+                        <TextBlock Text="{Binding AliasesConflictsText}" Opacity="0.9"/>
+                        <TextBlock Text="{Binding MarkupSummaryText}" Opacity="0.9"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Подвал: действия -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Content="Отмена" Click="Cancel_Click"/>
+            <Button Content="Объединить"
+                    Command="{Binding MergeCommand}"
+                    IsEnabled="{Binding CanMerge}"/>
+        </StackPanel>
+    </Grid>
+</Page>

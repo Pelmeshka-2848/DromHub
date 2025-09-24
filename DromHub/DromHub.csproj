@@ -17,7 +17,11 @@
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\BrandDetailsPage.xaml" />
+    <None Remove="Views\BrandMergePage.xaml" />
     <None Remove="Views\BrandPage.xaml" />
+    <None Remove="Views\BrandsListPage.xaml" />
+    <None Remove="Views\BrandsOverviewPage.xaml" />
     <None Remove="Views\MainPage.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -54,6 +58,26 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandMergePage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandsListPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandsOverviewPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Dialog\AddAliasDialog.xaml">
