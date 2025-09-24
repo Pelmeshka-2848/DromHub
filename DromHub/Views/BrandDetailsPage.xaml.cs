@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
+using System.ComponentModel;
 
 namespace DromHub.Views
 {
@@ -16,6 +17,14 @@ namespace DromHub.Views
             InitializeComponent();
             ViewModel = App.ServiceProvider.GetRequiredService<BrandDetailsViewModel>();
             DataContext = ViewModel;
+
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+            SectionFrame.Navigated += (s, e) =>
+            {
+                if (e.Content is FrameworkElement fe)
+                    fe.DataContext = ViewModel; // единый VM для подпейджей
+            };
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -23,44 +32,55 @@ namespace DromHub.Views
             base.OnNavigatedTo(e);
             if (e.Parameter is Guid id)
                 await ViewModel.InitializeAsync(id, this.XamlRoot);
+
+            NavigateToSection(ViewModel.Section);
         }
 
-        // --- prev / next ---
-        private void PrevBrand_Click(object sender, RoutedEventArgs e)
+        private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (ViewModel.PrevBrandId.HasValue)
-                Frame?.Navigate(typeof(BrandDetailsPage), ViewModel.PrevBrandId.Value);
+            if (e.PropertyName == nameof(ViewModel.Section))
+                NavigateToSection(ViewModel.Section);
         }
-        private void NextBrand_Click(object sender, RoutedEventArgs e)
+
+        private void NavigateToSection(BrandDetailsSection section)
         {
-            if (ViewModel.NextBrandId.HasValue)
-                Frame?.Navigate(typeof(BrandDetailsPage), ViewModel.NextBrandId.Value);
+            Type pageType = section switch
+            {
+                BrandDetailsSection.Overview => typeof(BrandDetailsOverviewPage),
+                BrandDetailsSection.Parts => typeof(BrandDetailsPartsPage),
+                BrandDetailsSection.Settings => typeof(BrandDetailsSettingsPage),
+                BrandDetailsSection.About => typeof(BrandDetailsAboutPage),
+                BrandDetailsSection.Changes => typeof(BrandDetailsChangesPage),
+                _ => typeof(BrandDetailsOverviewPage)
+            };
+
+            if (SectionFrame.CurrentSourcePageType != pageType)
+                SectionFrame.Navigate(pageType);
         }
 
-        // --- меню разделов ---
-        private void Menu_Overview_Click(object sender, RoutedEventArgs e) => ViewModel.Section = BrandDetailsSection.Overview;
-        private void Menu_Parts_Click(object sender, RoutedEventArgs e) => ViewModel.Section = BrandDetailsSection.Parts;
-        private void Menu_Aliases_Click(object sender, RoutedEventArgs e) => ViewModel.Section = BrandDetailsSection.Aliases;
-        private void Menu_About_Click(object sender, RoutedEventArgs e) => ViewModel.Section = BrandDetailsSection.About;
-        private void Menu_Changes_Click(object sender, RoutedEventArgs e) => ViewModel.Section = BrandDetailsSection.Changes;
-
-        // --- наценка ---
-        private void PresetMarkup_Click(object sender, RoutedEventArgs e)
+        private void SectionButton_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is Button b && double.TryParse(b.Tag?.ToString(), out var v))
-                ViewModel.MarkupEditor = v;
+            if (sender is AppBarToggleButton b && b.Tag is string tag
+                && Enum.TryParse<BrandDetailsSection>(tag, out var section))
+            {
+                ViewModel.Section = section;
+            }
         }
-        private void ConfirmDisable_Click(object sender, RoutedEventArgs e) => ViewModel.ConfirmDisable();
-        private void CancelDisable_Click(object sender, RoutedEventArgs e) => ViewModel.CancelDisable();
 
-        // --- алиасы ---
-        private async void AddAlias_Click(object sender, RoutedEventArgs e) => await ViewModel.AddAliasAsync();
-        private async void EditAlias_Click(object sender, RoutedEventArgs e) => await ViewModel.EditAliasAsync();
-        private async void DeleteAlias_Click(object sender, RoutedEventArgs e) => await ViewModel.DeleteAliasAsync();
+        // Навигация между брендами
+        private void GoPrev_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.HasPrev && ViewModel.PrevBrandId is Guid id)
+                Frame?.Navigate(typeof(BrandDetailsPage), id);
+        }
+        private void GoNext_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.HasNext && ViewModel.NextBrandId is Guid id)
+                Frame?.Navigate(typeof(BrandDetailsPage), id);
+        }
 
-        // --- разное ---
+        // Шапочные действия
         private async void OpenWebsite_Click(object sender, RoutedEventArgs e) => await ViewModel.OpenWebsiteAsync();
-
         private void CreatePart_Click(object sender, RoutedEventArgs e)
         {
             _ = new ContentDialog
@@ -70,42 +90,6 @@ namespace DromHub.Views
                 CloseButtonText = "ОК",
                 XamlRoot = this.XamlRoot
             }.ShowAsync();
-        }
-
-        private void SectionOverview_Click(object sender, RoutedEventArgs e)
-            => ViewModel.Section = DromHub.ViewModels.BrandDetailsSection.Overview;
-
-        private void SectionParts_Click(object sender, RoutedEventArgs e)
-            => ViewModel.Section = DromHub.ViewModels.BrandDetailsSection.Parts;
-
-        private void SectionAliases_Click(object sender, RoutedEventArgs e)
-            => ViewModel.Section = DromHub.ViewModels.BrandDetailsSection.Aliases;
-
-        private void SectionAbout_Click(object sender, RoutedEventArgs e)
-            => ViewModel.Section = DromHub.ViewModels.BrandDetailsSection.About;
-
-        private void SectionChanges_Click(object sender, RoutedEventArgs e)
-            => ViewModel.Section = DromHub.ViewModels.BrandDetailsSection.Changes;
-
-        private void GoPrev_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel?.HasPrev == true && ViewModel.PrevBrandId is Guid id)
-            {
-                Frame?.Navigate(typeof(BrandDetailsPage), id);
-            }
-        }
-
-        private void GoNext_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel?.HasNext == true && ViewModel.NextBrandId is Guid id)
-            {
-                Frame?.Navigate(typeof(BrandDetailsPage), id);
-            }
-        }
-
-        private void DisableInfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args)
-        {
-            ViewModel.CancelDisable();
         }
         private void OpenMergeWizard_Click(object sender, RoutedEventArgs e)
         {

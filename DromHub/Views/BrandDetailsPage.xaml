@@ -7,29 +7,13 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     xmlns:converters="using:DromHub.Converters"
-    xmlns:models="using:DromHub.Models"
     mc:Ignorable="d">
 
     <Page.Resources>
-        <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
-        <converters:BrandMarkupBadgeConverter x:Key="MarkupPctToBadgeConverter"/>
-        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupPctToTooltipConverter"/>
-        <converters:NullToBooleanConverter x:Key="NullToBooleanConverter"/>
+        <!-- для подсветки активной вкладки, если используете -->
         <converters:EnumEqualsConverter x:Key="EnumEquals"/>
-        <converters:SectionToVisibilityConverter x:Key="SectionToVisibilityConverter"/>
-        <converters:SectionEqualsToFontWeightConverter x:Key="SectionEqualsToFontWeightConverter"/>
 
-        <Style x:Key="HeaderLinkButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="4,2"/>
-            <Setter Property="MinWidth" Value="0"/>
-        </Style>
-        <Style x:Key="HeaderDividerText" TargetType="TextBlock">
-            <Setter Property="Opacity" Value="0.6"/>
-            <Setter Property="Margin" Value="6,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
+        <!-- Небольшие стили карт и хедера (как в WinUI Gallery) -->
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="12"/>
@@ -42,38 +26,39 @@
     <Grid RowSpacing="12" Padding="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <!-- header -->
             <RowDefinition Height="Auto"/>
+            <!-- info strip -->
             <RowDefinition Height="*"/>
+            <!-- body -->
         </Grid.RowDefinitions>
 
-        <!-- ===== ШАПКА ===== -->
-        <!-- HEADER -->
-        <Grid Grid.Row="0"
-      ColumnDefinitions="Auto,*,Auto"
-      VerticalAlignment="Center"
-      Padding="4,0">
+        <!-- ===== HEADER ===== -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Padding="4,0">
 
             <!-- Prev -->
             <AppBarButton Grid.Column="0"
-                  Icon="Back"
-                  Label="{Binding PrevBrandNameUpper}"
-                  IsEnabled="{Binding HasPrev}"
-                  Click="GoPrev_Click">
+                          Icon="Back"
+                          Label="{Binding PrevBrandNameUpper}"
+                          IsEnabled="{Binding HasPrev}"
+                          Click="GoPrev_Click">
                 <ToolTipService.ToolTip>
                     <ToolTip Content="Предыдущий бренд"/>
                 </ToolTipService.ToolTip>
             </AppBarButton>
 
-            <!-- Center: секции (главная | запчасти | синонимы | о бренде | изменения) -->
+            <!-- Center: разделы -->
             <CommandBar Grid.Column="1"
-            Background="Transparent"
-            DefaultLabelPosition="Right"
-            IsOpen="False"
-            HorizontalAlignment="Center">
+                        Background="Transparent"
+                        DefaultLabelPosition="Right"
+                        IsOpen="False"
+                        HorizontalAlignment="Center">
 
                 <AppBarToggleButton Label="ГЛАВНАЯ"
-                        IsChecked="{Binding Section, Mode=TwoWay,
-                                    Converter={StaticResource EnumEquals}, ConverterParameter=Overview}">
+                                    Tag="Overview"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Overview}">
                     <AppBarToggleButton.Icon>
                         <SymbolIcon Symbol="Home"/>
                     </AppBarToggleButton.Icon>
@@ -82,8 +67,10 @@
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="ЗАПЧАСТИ"
-                        IsChecked="{Binding Section, Mode=TwoWay,
-                                    Converter={StaticResource EnumEquals}, ConverterParameter=Parts}">
+                                    Tag="Parts"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Parts}">
                     <AppBarToggleButton.Icon>
                         <SymbolIcon Symbol="List"/>
                     </AppBarToggleButton.Icon>
@@ -91,19 +78,24 @@
 
                 <AppBarSeparator/>
 
-                <AppBarToggleButton Label="СИНОНИМЫ"
-                        IsChecked="{Binding Section, Mode=TwoWay,
-                                    Converter={StaticResource EnumEquals}, ConverterParameter=Aliases}">
+                <!-- БЫЛО: СИНОНИМЫ. СТАЛО: НАСТРОЙКИ (наценка+алиасы) -->
+                <AppBarToggleButton Label="НАСТРОЙКИ"
+                                    Tag="Settings"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Settings}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="Link"/>
+                        <SymbolIcon Symbol="Setting"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
 
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="О БРЕНДЕ"
-                        IsChecked="{Binding Section, Mode=TwoWay,
-                                    Converter={StaticResource EnumEquals}, ConverterParameter=About}">
+                                    Tag="About"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=About}">
                     <AppBarToggleButton.Icon>
                         <SymbolIcon Symbol="Help"/>
                     </AppBarToggleButton.Icon>
@@ -112,8 +104,10 @@
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="ИЗМЕНЕНИЯ"
-                        IsChecked="{Binding Section, Mode=TwoWay,
-                                    Converter={StaticResource EnumEquals}, ConverterParameter=Changes}">
+                                    Tag="Changes"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Changes}">
                     <AppBarToggleButton.Icon>
                         <SymbolIcon Symbol="Sync"/>
                     </AppBarToggleButton.Icon>
@@ -122,17 +116,17 @@
 
             <!-- Next -->
             <AppBarButton Grid.Column="2"
-                  Icon="Forward"
-                  Label="{Binding NextBrandNameUpper}"
-                  IsEnabled="{Binding HasNext}"
-                  Click="GoNext_Click">
+                          Icon="Forward"
+                          Label="{Binding NextBrandNameUpper}"
+                          IsEnabled="{Binding HasNext}"
+                          Click="GoNext_Click">
                 <ToolTipService.ToolTip>
                     <ToolTip Content="Следующий бренд"/>
                 </ToolTipService.ToolTip>
             </AppBarButton>
         </Grid>
 
-        <!-- ===== Инфо-полоса ===== -->
+        <!-- ===== INFO STRIP ===== -->
         <Grid Grid.Row="1" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*"/>
@@ -158,164 +152,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- ===== Контент по разделам ===== -->
+        <!-- ===== BODY: секции в под-страницах ===== -->
         <Grid Grid.Row="2">
-
-            <!-- Главная: обзор (только чтение) -->
-            <Grid Visibility="{Binding Section, Converter={StaticResource SectionToVisibilityConverter}, ConverterParameter=Overview}">
-                <Border Style="{StaticResource Card}">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="Краткая статистика" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-
-                        <!-- Ряд метрик -->
-                        <Grid ColumnSpacing="12" RowSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Детали -->
-                            <Border Grid.Column="0">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <SymbolIcon Symbol="AllApps"/>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Parts.Count}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                                        <TextBlock Text="деталей" Opacity="0.6" FontSize="12"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                <ToolTipService.ToolTip>
-                                    <ToolTip Content="Количество запчастей этого бренда"/>
-                                </ToolTipService.ToolTip>
-                            </Border>
-
-                            <!-- Синонимы -->
-                            <Border Grid.Column="1">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <SymbolIcon Symbol="Link"/>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Aliases.Count}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                                        <TextBlock Text="синонимов" Opacity="0.6" FontSize="12"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                <ToolTipService.ToolTip>
-                                    <ToolTip Content="Все синонимы (включая основной)"/>
-                                </ToolTipService.ToolTip>
-                            </Border>
-
-                            <!-- Наценка -->
-                            <Border Grid.Column="2">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <SymbolIcon Symbol="Tag"/>
-                                    <StackPanel>
-                                        <!-- Без StringFormat — используем твой конвертер бейджа -->
-                                        <TextBlock Text="{Binding MarkupEditor, Converter={StaticResource MarkupPctToBadgeConverter}}"
-                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                                        <TextBlock Text="наценка" Opacity="0.6" FontSize="12"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                <ToolTipService.ToolTip>
-                                    <ToolTip Content="{Binding MarkupEditor, Converter={StaticResource MarkupPctToTooltipConverter}}"/>
-                                </ToolTipService.ToolTip>
-                            </Border>
-
-                            <!-- Тип бренда: OEM / Аналог -->
-                            <Border Grid.Column="3">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <SymbolIcon Symbol="Shop"/>
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding BrandTypeDisplay}" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                                        <TextBlock Text="тип бренда" Opacity="0.6" FontSize="12"/>
-                                    </StackPanel>
-                                </StackPanel>
-                                <ToolTipService.ToolTip>
-                                    <ToolTip Content="OEM — оригинальный производитель; Аналог — независимый производитель"/>
-                                </ToolTipService.ToolTip>
-                            </Border>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Запчасти -->
-            <Grid Visibility="{Binding Section, Converter={StaticResource SectionToVisibilityConverter}, ConverterParameter=Parts}">
-                <Border Style="{StaticResource Card}">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Запчасти бренда" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-                        <ListView ItemsSource="{Binding Parts}">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:Part">
-                                    <Grid ColumnDefinitions="150,*,Auto" Padding="8,4">
-                                        <TextBlock Text="{x:Bind Article}"/>
-                                        <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Синонимы -->
-            <Grid Visibility="{Binding Section, Converter={StaticResource SectionToVisibilityConverter}, ConverterParameter=Aliases}">
-                <Border Style="{StaticResource Card}">
-                    <Grid RowSpacing="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <ListView Grid.Row="0"
-                                  ItemsSource="{Binding Aliases}"
-                                  SelectedItem="{Binding SelectedAlias, Mode=TwoWay}">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:BrandAlias">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{x:Bind Alias}" Margin="0,0,12,0"
-                                                   FontWeight="{x:Bind IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
-                                        <TextBlock Text="{x:Bind Note}" Opacity="0.6"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                            <Button Content="Добавить" Click="AddAlias_Click"/>
-                            <Button Content="Редактировать" Click="EditAlias_Click" IsEnabled="{Binding CanEditAlias}"/>
-                            <Button Content="Удалить" Click="DeleteAlias_Click" IsEnabled="{Binding CanDeleteAlias}"/>
-                        </StackPanel>
-
-                        <controls:InfoBar Grid.Row="2" Margin="0,8,0,0"
-                                          IsOpen="{Binding UndoIsOpen, Mode=TwoWay}"
-                                          Severity="Informational"
-                                          Title="Синоним удалён"
-                                          Message="{Binding UndoMessage}">
-                            <controls:InfoBar.ActionButton>
-                                <Button Content="Отменить" Command="{Binding UndoDeleteAliasCommand}"/>
-                            </controls:InfoBar.ActionButton>
-                        </controls:InfoBar>
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!-- О бренде -->
-            <Grid Visibility="{Binding Section, Converter={StaticResource SectionToVisibilityConverter}, ConverterParameter=About}">
-                <Border Style="{StaticResource Card}">
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="О бренде" Style="{ThemeResource SubtitleTextBlockStyle}"/>
-                        <TextBlock Text="{Binding AboutText}" TextWrapping="Wrap" Opacity="0.9"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Изменения -->
-            <Grid Visibility="{Binding Section, Converter={StaticResource SectionToVisibilityConverter}, ConverterParameter=Changes}">
-                <Border Style="{StaticResource Card}">
-                    <TextBlock Text="История изменений (пока пусто)" Opacity="0.8"/>
-                </Border>
-            </Grid>
+            <Frame x:Name="SectionFrame"/>
         </Grid>
     </Grid>
 </Page>

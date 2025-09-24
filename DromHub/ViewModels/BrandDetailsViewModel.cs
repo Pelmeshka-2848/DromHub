@@ -14,7 +14,7 @@ using Windows.System;
 
 namespace DromHub.ViewModels
 {
-    public enum BrandDetailsSection { Overview, Parts, Aliases, About, Changes }
+    public enum BrandDetailsSection { Overview, Parts, Settings, About, Changes }
 
     public class BrandDetailsViewModel : ObservableObject
     {

@@ -1,0 +1,125 @@
+<Page
+    x:Class="DromHub.Views.BrandDetailsSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:DromHub.Models"
+    xmlns:converters="using:DromHub.Converters">
+
+    <Page.Resources>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+        </Style>
+        <converters:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter"/>
+        <converters:BrandMarkupBadgeConverter x:Key="MarkupPctToBadgeConverter"/>
+        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupPctToTooltipConverter"/>
+    </Page.Resources>
+
+    <Grid ColumnSpacing="16" RowSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <!-- Наценка -->
+            <ColumnDefinition Width="3*"/>
+            <!-- Алиасы -->
+        </Grid.ColumnDefinitions>
+
+        <!-- === Наценка === -->
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Наценка" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+
+                <!-- пресеты -->
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="0%"  Tag="0"  Click="PresetMarkup_Click"/>
+                    <Button Content="10%" Tag="10" Click="PresetMarkup_Click"/>
+                    <Button Content="15%" Tag="15" Click="PresetMarkup_Click"/>
+                    <Button Content="20%" Tag="20" Click="PresetMarkup_Click"/>
+                    <Button Content="30%" Tag="30" Click="PresetMarkup_Click"/>
+                </StackPanel>
+
+                <!-- редакторы -->
+                <StackPanel Spacing="8">
+                    <NumberBox Header="Значение, %"
+                                        Value="{Binding MarkupEditor, Mode=TwoWay}"
+                                        Minimum="0" Maximum="1000"
+                                        SmallChange="1" LargeChange="10"
+                                        SpinButtonPlacementMode="Compact"
+                                        Width="160"/>
+                    <Slider Minimum="0"
+                            Maximum="100"
+                            StepFrequency="1"
+                            Value="{Binding MarkupEditor, Mode=TwoWay}"
+                            IsThumbToolTipEnabled="True"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding MarkupEditor, Converter={StaticResource MarkupPctToBadgeConverter}}"
+                                   Opacity="0.8" VerticalAlignment="Center"/>
+                        <TextBlock Text="— 0% = наценка не применяется" Opacity="0.6" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Сохранить" Command="{Binding SaveMarkupCommand}" MinWidth="120"/>
+                        <Button Content="Сбросить в 0%" Command="{Binding ResetMarkupCommand}" MinWidth="120"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- подтверждение отключения -->
+                <InfoBar Margin="0,8,0,0"
+                         IsOpen="{Binding ShowDisableConfirm, Mode=TwoWay}"
+                         IsClosable="True"
+                         Closed="DisableInfoBar_Closed"
+                         Severity="Warning"
+                         Title="Наценка будет отключена (0%)"
+                         Message="Позиции бренда будут рассчитываться без наценки. Продолжить?">
+                    <InfoBar.ActionButton>
+                        <Button Content="Отключить" Click="ConfirmDisable_Click"/>
+                    </InfoBar.ActionButton>
+                </InfoBar>
+            </StackPanel>
+        </Border>
+
+        <!-- === Алиасы === -->
+        <Border Grid.Column="1" Style="{StaticResource Card}">
+            <Grid RowSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ListView Grid.Row="0"
+                          ItemsSource="{Binding Aliases}"
+                          SelectedItem="{Binding SelectedAlias, Mode=TwoWay}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:BrandAlias">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{x:Bind Alias}" Margin="0,0,12,0"
+                                           FontWeight="{x:Bind IsPrimary, Converter={StaticResource BoolToFontWeightConverter}}"/>
+                                <TextBlock Text="{x:Bind Note}" Opacity="0.6"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="Добавить" Click="AddAlias_Click"/>
+                    <Button Content="Редактировать" Click="EditAlias_Click" IsEnabled="{Binding CanEditAlias}"/>
+                    <Button Content="Удалить" Click="DeleteAlias_Click" IsEnabled="{Binding CanDeleteAlias}"/>
+                </StackPanel>
+
+                <InfoBar Grid.Row="2" Margin="0,8,0,0"
+                         IsOpen="{Binding UndoIsOpen, Mode=TwoWay}"
+                         Severity="Informational"
+                         Title="Синоним удалён"
+                         Message="{Binding UndoMessage}">
+                    <InfoBar.ActionButton>
+                        <Button Content="Отменить" Command="{Binding UndoDeleteAliasCommand}"/>
+                    </InfoBar.ActionButton>
+                </InfoBar>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

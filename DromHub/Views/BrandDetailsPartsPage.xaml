@@ -1,0 +1,23 @@
+<Page
+    x:Class="DromHub.Views.BrandDetailsPartsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:DromHub.Models">
+    <Border CornerRadius="8" Padding="12" BorderThickness="1"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+        <StackPanel Spacing="8">
+            <TextBlock Text="Запчасти бренда" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+            <ListView ItemsSource="{Binding Parts}">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Part">
+                        <Grid ColumnDefinitions="150,*,Auto" Padding="8,4">
+                            <TextBlock Text="{x:Bind Article}"/>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </StackPanel>
+    </Border>
+</Page>

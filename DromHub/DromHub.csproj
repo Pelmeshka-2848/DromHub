@@ -17,7 +17,12 @@
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\BrandDetailsAboutPage.xaml" />
+    <None Remove="Views\BrandDetailsChangesPage.xaml" />
+    <None Remove="Views\BrandDetailsOverviewPage.xaml" />
     <None Remove="Views\BrandDetailsPage.xaml" />
+    <None Remove="Views\BrandDetailsPartsPage.xaml" />
+    <None Remove="Views\BrandDetailsSettingsPage.xaml" />
     <None Remove="Views\BrandMergePage.xaml" />
     <None Remove="Views\BrandPage.xaml" />
     <None Remove="Views\BrandsListPage.xaml" />
@@ -58,6 +63,31 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsSettingsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsChangesPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsAboutPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsPartsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandDetailsOverviewPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Views\BrandMergePage.xaml">
