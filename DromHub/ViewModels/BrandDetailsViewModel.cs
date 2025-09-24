@@ -2,58 +2,119 @@
 using CommunityToolkit.Mvvm.Input;
 using DromHub.Data;
 using DromHub.Models;
-using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.System;
 
 namespace DromHub.ViewModels
 {
-    public partial class BrandDetailsViewModel : ObservableObject
+    public enum BrandDetailsSection { Overview, Parts, Aliases, About, Changes }
+
+    public class BrandDetailsViewModel : ObservableObject
     {
         private readonly ApplicationDbContext _db;
         private XamlRoot _xr;
 
-        [ObservableProperty] private Guid brandId;
-        [ObservableProperty] private string brandName;
+        // --- Identity / title ---
+        private Guid _brandId;
+        public Guid BrandId { get => _brandId; set => SetProperty(ref _brandId, value); }
 
-        // markup
-        [ObservableProperty] private double markupEditor; // 0..1000
-        [ObservableProperty] private bool showDisableConfirm;
+        private string _brandName;
+        public string BrandName { get => _brandName; set { if (SetProperty(ref _brandName, value)) BrandNameUpper = (value ?? "").ToUpperInvariant(); } }
 
-        // aliases + undo
-        public ObservableCollection<BrandAlias> Aliases { get; } = new();
-        [ObservableProperty] private BrandAlias selectedAlias;
-        [ObservableProperty] private bool undoIsOpen;
-        [ObservableProperty] private string undoMessage;
-        private BrandAlias _lastDeleted;
+        private string _brandNameUpper;
+        public string BrandNameUpper { get => _brandNameUpper; set => SetProperty(ref _brandNameUpper, value); }
 
-        // parts
-        public ObservableCollection<Part> Parts { get; } = new();
+        // --- Meta ---
+        private string _country = "Страна не указана";
+        public string Country { get => _country; set => SetProperty(ref _country, value); }
 
-        // диагностика
-        [ObservableProperty] private bool diagNoPrimaryAlias;
-        [ObservableProperty] private bool diagNoParts;
-        [ObservableProperty] private bool diagDuplicateNames;
+        private string _ownerCompany;
+        public string OwnerCompany { get => _ownerCompany; set => SetProperty(ref _ownerCompany, value); }
 
-        // соседи
-        [ObservableProperty] private Guid? prevBrandId;
-        [ObservableProperty] private Guid? nextBrandId;
-        [ObservableProperty] private string prevBrandName;
-        [ObservableProperty] private string nextBrandName;
+        private string _website;
+        public string Website { get => _website; set { if (SetProperty(ref _website, value)) OnPropertyChanged(nameof(HasWebsite)); } }
+
+        public bool HasWebsite => Uri.TryCreate(Website, UriKind.Absolute, out _);
+        public string WebsiteDisplay => Website;
+
+        // --- Neighbors ---
+        private Guid? _prevBrandId;
+        public Guid? PrevBrandId { get => _prevBrandId; set { if (SetProperty(ref _prevBrandId, value)) OnPropertyChanged(nameof(HasPrev)); } }
+
+        private string _prevBrandNameUpper;
+        public string PrevBrandNameUpper { get => _prevBrandNameUpper; set => SetProperty(ref _prevBrandNameUpper, value); }
+
+        private Guid? _nextBrandId;
+        public Guid? NextBrandId { get => _nextBrandId; set { if (SetProperty(ref _nextBrandId, value)) OnPropertyChanged(nameof(HasNext)); } }
+
+        private string _nextBrandNameUpper;
+        public string NextBrandNameUpper { get => _nextBrandNameUpper; set => SetProperty(ref _nextBrandNameUpper, value); }
+
         public bool HasPrev => PrevBrandId.HasValue;
         public bool HasNext => NextBrandId.HasValue;
 
-        public IAsyncRelayCommand SaveMarkupCommand { get; }
-        public IAsyncRelayCommand ResetMarkupCommand { get; }
-        public IRelayCommand UndoDeleteAliasCommand { get; }
+        // --- Section ---
+        private BrandDetailsSection _section = BrandDetailsSection.Overview;
+        public BrandDetailsSection Section { get => _section; set => SetProperty(ref _section, value); }
+
+        // --- Markup ---
+        private double _markupEditor; // 0..1000
+        public double MarkupEditor { get => _markupEditor; set => SetProperty(ref _markupEditor, value); }
+
+        private bool _showDisableConfirm;
+        public bool ShowDisableConfirm { get => _showDisableConfirm; set => SetProperty(ref _showDisableConfirm, value); }
+
+        // --- Collections ---
+        public ObservableCollection<Part> Parts { get; } = new();
+        public ObservableCollection<BrandAlias> Aliases { get; } = new();
+
+        // --- Aliases selection + undo ---
+        private BrandAlias _selectedAlias;
+        public BrandAlias SelectedAlias
+        {
+            get => _selectedAlias;
+            set
+            {
+                if (SetProperty(ref _selectedAlias, value))
+                {
+                    OnPropertyChanged(nameof(CanEditAlias));
+                    OnPropertyChanged(nameof(CanDeleteAlias));
+                }
+            }
+        }
+
+        private bool _undoIsOpen;
+        public bool UndoIsOpen { get => _undoIsOpen; set => SetProperty(ref _undoIsOpen, value); }
+
+        private string _undoMessage;
+        public string UndoMessage { get => _undoMessage; set => SetProperty(ref _undoMessage, value); }
+
+        private BrandAlias _lastDeleted;
 
         public bool CanEditAlias => SelectedAlias != null;
         public bool CanDeleteAlias => SelectedAlias != null && !SelectedAlias.IsPrimary;
+
+        // --- Diagnostics ---
+        private bool _diagNoPrimaryAlias;
+        public bool DiagNoPrimaryAlias { get => _diagNoPrimaryAlias; set => SetProperty(ref _diagNoPrimaryAlias, value); }
+
+        private bool _diagNoParts;
+        public bool DiagNoParts { get => _diagNoParts; set => SetProperty(ref _diagNoParts, value); }
+
+        private bool _diagDuplicateNames;
+        public bool DiagDuplicateNames { get => _diagDuplicateNames; set => SetProperty(ref _diagDuplicateNames, value); }
+
+        // --- Commands ---
+        public IAsyncRelayCommand SaveMarkupCommand { get; }
+        public IAsyncRelayCommand ResetMarkupCommand { get; }
+        public IRelayCommand UndoDeleteAliasCommand { get; }
 
         public BrandDetailsViewModel(ApplicationDbContext db)
         {
@@ -71,79 +132,79 @@ namespace DromHub.ViewModels
             var brand = await _db.Brands
                 .Include(b => b.Aliases)
                 .Include(b => b.Parts)
-                .AsNoTracking()
                 .FirstOrDefaultAsync(b => b.Id == id);
-
             if (brand == null) return;
 
             BrandName = brand.Name;
 
-            // markup (0% = off)
+            // TODO: когда появятся поля в БД — заполнить Country/OwnerCompany/Website из brand.*
+            // Пока оставляем дефолты, чтобы не было ложных присваиваний.
+
+            // markup
             var markup = await _db.BrandMarkups
                 .Where(m => m.BrandId == id)
                 .Select(m => (double?)m.MarkupPct)
                 .FirstOrDefaultAsync();
             MarkupEditor = markup ?? 0;
 
+            // parts
+            Parts.Clear();
+            var parts = await _db.Parts
+                .Where(p => p.BrandId == id)
+                .OrderBy(p => p.Name)
+                .Take(1000)
+                .AsNoTracking()
+                .ToListAsync();
+            foreach (var p in parts) Parts.Add(p);
+
             // aliases
             Aliases.Clear();
             foreach (var a in brand.Aliases.OrderByDescending(a => a.IsPrimary).ThenBy(a => a.Alias))
                 Aliases.Add(a);
 
-            // parts (покажем как есть – без доп. проекций)
-            Parts.Clear();
-            if (brand.Parts != null)
-            {
-                foreach (var p in brand.Parts.OrderBy(p => p.GetType().GetProperty("PartNumber") != null ?
-                                                           p.GetType().GetProperty("PartNumber")!.GetValue(p) : null)
-                                             .ThenBy(p => p.GetType().GetProperty("Name") != null ?
-                                                           p.GetType().GetProperty("Name")!.GetValue(p) : null))
-                    Parts.Add(p);
-            }
-
-            // диагностика
+            // diagnostics
             DiagNoPrimaryAlias = !brand.Aliases.Any(a => a.IsPrimary);
             DiagNoParts = brand.Parts == null || brand.Parts.Count == 0;
             DiagDuplicateNames = await _db.Brands.AnyAsync(b => b.Id != brand.Id && b.NormalizedName == brand.NormalizedName);
 
-            await ComputeNeighboursAsync();
-            OnPropertyChanged(nameof(HasPrev));
-            OnPropertyChanged(nameof(HasNext));
+            // neighbors
+            await LoadNeighborsAsync(id);
         }
 
-        private async Task ComputeNeighboursAsync()
+        private async Task LoadNeighborsAsync(Guid id)
         {
-            var all = await _db.Brands
-                .AsNoTracking()
+            var sorted = await _db.Brands
                 .OrderBy(b => b.Name)
                 .Select(b => new { b.Id, b.Name })
+                .AsNoTracking()
                 .ToListAsync();
 
-            var idx = all.FindIndex(x => x.Id == BrandId);
-            if (idx > 0)
+            var index = sorted.FindIndex(x => x.Id == id);
+
+            if (index > 0)
             {
-                PrevBrandId = all[idx - 1].Id;
-                PrevBrandName = all[idx - 1].Name;
+                PrevBrandId = sorted[index - 1].Id;
+                PrevBrandNameUpper = (sorted[index - 1].Name ?? "").ToUpperInvariant();
             }
             else
             {
                 PrevBrandId = null;
-                PrevBrandName = null;
+                PrevBrandNameUpper = null;
             }
 
-            if (idx >= 0 && idx < all.Count - 1)
+            if (index >= 0 && index < sorted.Count - 1)
             {
-                NextBrandId = all[idx + 1].Id;
-                NextBrandName = all[idx + 1].Name;
+                NextBrandId = sorted[index + 1].Id;
+                NextBrandNameUpper = (sorted[index + 1].Name ?? "").ToUpperInvariant();
             }
             else
             {
                 NextBrandId = null;
-                NextBrandName = null;
+                NextBrandNameUpper = null;
             }
         }
 
-        // --- markup ---
+        // --- Markup ---
         private async Task SaveMarkupAsync()
         {
             if (MarkupEditor == 0 && !ShowDisableConfirm)
@@ -174,21 +235,22 @@ namespace DromHub.ViewModels
 
         private async Task ResetMarkupAsync()
         {
-            var existing = await _db.BrandMarkups.FirstOrDefaultAsync(m => m.BrandId == BrandId);
-            if (existing != null)
+            var m = await _db.BrandMarkups.FirstOrDefaultAsync(x => x.BrandId == BrandId);
+            if (m != null)
             {
-                existing.MarkupPct = 0m;
+                m.MarkupPct = 0m;
                 await _db.SaveChangesAsync();
             }
             MarkupEditor = 0;
         }
 
         public void ConfirmDisable() => _ = SaveMarkupAsync();
+        public void CancelDisable() => ShowDisableConfirm = false;
 
-        // --- aliases ---
+        // --- Aliases ---
         public async Task AddAliasAsync()
         {
-            var dlg = new AddAliasDialog { XamlRoot = _xr };
+            var dlg = new Views.AddAliasDialog { XamlRoot = _xr };
             if (await dlg.ShowAsync() != ContentDialogResult.Primary) return;
 
             var alias = new BrandAlias { Id = Guid.NewGuid(), BrandId = BrandId, Alias = dlg.AliasName, IsPrimary = false };
@@ -200,7 +262,7 @@ namespace DromHub.ViewModels
         public async Task EditAliasAsync()
         {
             if (SelectedAlias == null) return;
-            var dlg = new EditBrandDialog(SelectedAlias.Alias) { XamlRoot = _xr };
+            var dlg = new Views.EditBrandDialog(SelectedAlias.Alias) { XamlRoot = _xr };
             if (await dlg.ShowAsync() != ContentDialogResult.Primary) return;
 
             SelectedAlias.Alias = dlg.BrandName;
@@ -210,7 +272,7 @@ namespace DromHub.ViewModels
 
         public async Task DeleteAliasAsync()
         {
-            if (SelectedAlias == null || SelectedAlias.IsPrimary) return;
+            if (!CanDeleteAlias) return;
 
             _lastDeleted = SelectedAlias;
             _db.BrandAliases.Remove(_lastDeleted);
@@ -237,5 +299,33 @@ namespace DromHub.ViewModels
             _lastDeleted = null;
             UndoIsOpen = false;
         }
+
+        // --- Website ---
+        public async Task OpenWebsiteAsync()
+        {
+            if (!HasWebsite) return;
+            try
+            {
+                _ = await Launcher.LaunchUriAsync(new Uri(Website));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                await new ContentDialog
+                {
+                    Title = "Не удалось открыть сайт",
+                    Content = Website,
+                    CloseButtonText = "ОК",
+                    XamlRoot = _xr
+                }.ShowAsync();
+            }
+        }
+
+        // About
+        public string AboutText =>
+            $"Бренд {BrandName}.\n" +
+            $"Страна: {(!string.IsNullOrWhiteSpace(Country) ? Country : "—")}.\n" +
+            $"Владелец: {(!string.IsNullOrWhiteSpace(OwnerCompany) ? OwnerCompany : "—")}.\n" +
+            $"Сайт: {(HasWebsite ? Website : "—")}.";
     }
 }
