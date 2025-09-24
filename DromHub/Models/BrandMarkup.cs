@@ -19,11 +19,6 @@ namespace DromHub.Models
         [Column("markup_pct", TypeName = "numeric(6,2)")]
         public decimal MarkupPct { get; set; }
 
-        // Флаг применения наценки
-        [Required]
-        [Column("is_enabled")]
-        public bool IsEnabled { get; set; } = true;
-
         [Column("note")]
         public string? Note { get; set; }
 

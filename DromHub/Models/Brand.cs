@@ -41,8 +41,6 @@ namespace DromHub.Models
         // Поля для UI
         [NotMapped] public int PartsCount { get; set; }
         [NotMapped] public decimal? MarkupPercent { get; set; }
-        // null — нет записи; false — запись есть, но выключена; true — включена
-        [NotMapped] public bool? MarkupEnabled { get; set; }
 
         // Для фильтров/диагностики
         [NotMapped] public int AliasesCount { get; set; }                // все алиасы

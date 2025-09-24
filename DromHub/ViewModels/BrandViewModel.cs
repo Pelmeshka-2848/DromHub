@@ -222,7 +222,7 @@ namespace DromHub.ViewModels
                     q = q.Where(b => EF.Functions.ILike(b.Name, $"%{text}%") ||
                                      b.Aliases.Any(a => EF.Functions.ILike(a.Alias, $"%{text}%")));
 
-                // Проекция с полями для фильтров
+                // Проекция с полями для фильтров/бейджей
                 var list = await q
                     .Select(b => new Brand
                     {
@@ -230,14 +230,14 @@ namespace DromHub.ViewModels
                         Name = b.Name,
                         IsOem = b.IsOem,
                         PartsCount = _context.Parts.Count(p => p.BrandId == b.Id),
+
+                        // если записи нет — считаем 0% (наценка не применяется)
                         MarkupPercent = _context.BrandMarkups
                             .Where(m => m.BrandId == b.Id)
                             .Select(m => (decimal?)m.MarkupPct)
-                            .FirstOrDefault(),
-                        MarkupEnabled = _context.BrandMarkups
-                            .Where(m => m.BrandId == b.Id)
-                            .Select(m => (bool?)m.IsEnabled)
-                            .FirstOrDefault(),
+                            .FirstOrDefault() ?? 0m,
+
+                        // Кол-ва для быстрых фильтров/диагностики
                         AliasesCount = _context.BrandAliases.Count(a => a.BrandId == b.Id),
                         NonPrimaryAliasesCount = _context.BrandAliases.Count(a => a.BrandId == b.Id && !a.IsPrimary)
                     })
@@ -245,11 +245,21 @@ namespace DromHub.ViewModels
                     .AsNoTracking()
                     .ToListAsync();
 
-                // Фильтры
-                if (FilterIsOem) list = list.Where(b => b.IsOem).ToList();
-                if (FilterWithMarkup) list = list.Where(b => b.MarkupEnabled == true).ToList();
-                if (FilterMarkupOff) list = list.Where(b => b.MarkupEnabled == false).ToList();
-                if (FilterNoAliases) list = list.Where(b => b.NonPrimaryAliasesCount == 0).ToList();
+                // Фильтры (двухсост. наценка: 0% = выкл, ≠0% = вкл)
+                if (FilterIsOem)
+                    list = list.Where(b => b.IsOem).ToList();
+
+                if (FilterWithMarkup)
+                    list = list.Where(b => (b.MarkupPercent ?? 0m) != 0m).ToList();
+
+                if (FilterMarkupOff)
+                    list = list.Where(b => (b.MarkupPercent ?? 0m) == 0m).ToList();
+
+                // "Без алиасов": оставил критерий "нет дополнительных (неосновных) алиасов"
+                if (FilterNoAliases)
+                    list = list.Where(b => b.NonPrimaryAliasesCount == 0).ToList();
+                // Если нужно "совсем без алиасов", замените на:
+                // list = list.Where(b => b.AliasesCount == 0).ToList();
 
                 Brands.Clear();
                 foreach (var b in list) Brands.Add(b);
