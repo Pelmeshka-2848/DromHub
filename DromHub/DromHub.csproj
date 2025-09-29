@@ -17,16 +17,7 @@
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Views\BrandDetailsAboutPage.xaml" />
-    <None Remove="Views\BrandDetailsChangesPage.xaml" />
-    <None Remove="Views\BrandDetailsOverviewPage.xaml" />
-    <None Remove="Views\BrandDetailsPage.xaml" />
-    <None Remove="Views\BrandDetailsPartsPage.xaml" />
-    <None Remove="Views\BrandDetailsSettingsPage.xaml" />
-    <None Remove="Views\BrandMergePage.xaml" />
     <None Remove="Views\BrandPage.xaml" />
-    <None Remove="Views\BrandsListPage.xaml" />
-    <None Remove="Views\BrandsOverviewPage.xaml" />
     <None Remove="Views\MainPage.xaml" />
   </ItemGroup>
   <ItemGroup>
@@ -65,63 +56,51 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsSettingsPage.xaml">
+    <Page Update="Views\BrandSettingsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsChangesPage.xaml">
+    <Page Update="Views\BrandChangesPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsAboutPage.xaml">
+    <Page Update="Views\BrandAboutPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsPartsPage.xaml">
+    <Page Update="Views\BrandPartsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsOverviewPage.xaml">
+    <Page Update="Views\BrandOverviewPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandMergePage.xaml">
+    <Page Update="Views\BrandMergeWizardPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandDetailsPage.xaml">
+    <Page Update="Views\BrandShellPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandsListPage.xaml">
+    <Page Update="Views\BrandsIndexPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\BrandsOverviewPage.xaml">
+    <Page Update="Views\BrandsHomePage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Dialog\AddAliasDialog.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Dialog\DeleteBrandDialog.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Dialog\EditBrandDialog.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Dialog\AddBrandDialog.xaml">
-      <SubType>Designer</SubType>
-    </Page>
     <Page Update="Views\BrandPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

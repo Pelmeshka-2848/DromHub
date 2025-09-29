@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
-    public partial class BrandsListViewModel : ObservableObject
+    public partial class BrandsIndexViewModel : ObservableObject
     {
         private readonly ApplicationDbContext _db;
 
@@ -27,7 +27,7 @@ namespace DromHub.ViewModels
         // Для кнопок/состояния
         [ObservableProperty] private Brand selectedBrand;
 
-        public BrandsListViewModel(ApplicationDbContext db) => _db = db;
+        public BrandsIndexViewModel(ApplicationDbContext db) => _db = db;
 
         public async Task LoadAsync()
         {

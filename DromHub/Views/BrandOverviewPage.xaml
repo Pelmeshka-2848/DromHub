@@ -1,0 +1,174 @@
+<Page
+    x:Class="DromHub.Views.BrandOverviewPage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:converters="using:DromHub.Converters"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <converters:BrandMarkupBadgeConverter x:Key="MarkupBadgeConverter"/>
+        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupTooltipConverter"/>
+
+        <!-- Карточный стиль -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer Padding="12" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+
+            <!-- 1) HERO -->
+            <Border Style="{StaticResource Card}">
+                <Grid ColumnSpacing="16" RowSpacing="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Monogram / аватар -->
+                    <Grid Width="64" Height="64">
+                        <Ellipse Fill="{ThemeResource AccentAcrylicBackgroundFillColorBaseBrush}"/>
+                        <TextBlock Text="{Binding Monogram}" Foreground="White"
+                                   FontSize="24" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Название + подпись -->
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding BrandNameUpper}" Style="{ThemeResource TitleTextBlockStyle}"/>
+                        <TextBlock Text="{Binding Signature}" Opacity="0.75"/>
+                    </StackPanel>
+
+                    <!-- Маркап-бейдж (как подсказка) -->
+                    <TextBlock Grid.Column="2"
+                               VerticalAlignment="Center"
+                               Text="{Binding MarkupPct, Converter={StaticResource MarkupBadgeConverter}}"
+                               Opacity="0.8">
+                        <ToolTipService.ToolTip>
+                            <ToolTip Content="{Binding MarkupPct, Converter={StaticResource MarkupTooltipConverter}}"/>
+                        </ToolTipService.ToolTip>
+                    </TextBlock>
+                </Grid>
+            </Border>
+
+            <!-- 2) ТРИ СТАТ-ПЛИТКИ -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Детали -->
+                <Border Style="{StaticResource Card}" Grid.Column="0">
+                    <StackPanel HorizontalAlignment="Center" Spacing="6">
+                        <SymbolIcon Symbol="AllApps"/>
+                        <TextBlock Text="{Binding PartsCount}" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock Text="деталей" Opacity="0.7"/>
+                    </StackPanel>
+                    <ToolTipService.ToolTip>
+                        <ToolTip Content="Всего карточек запчастей этого бренда в базе"/>
+                    </ToolTipService.ToolTip>
+                </Border>
+
+                <!-- Синонимы -->
+                <Border Style="{StaticResource Card}" Grid.Column="1">
+                    <StackPanel HorizontalAlignment="Center" Spacing="6">
+                        <SymbolIcon Symbol="Link"/>
+                        <TextBlock Text="{Binding AliasesCount}" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock Text="синонимов" Opacity="0.7"/>
+                    </StackPanel>
+                    <ToolTipService.ToolTip>
+                        <ToolTip Content="Количество зарегистрированных алиасов бренда"/>
+                    </ToolTipService.ToolTip>
+                </Border>
+
+                <!-- Наценка -->
+                <Border Style="{StaticResource Card}" Grid.Column="2">
+                    <StackPanel HorizontalAlignment="Center" Spacing="6">
+                        <FontIcon Glyph="&#xE9D7;"/>
+                        <TextBlock Text="{Binding MarkupPct}" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock Text="% наценки" Opacity="0.7"/>
+                    </StackPanel>
+                    <ToolTipService.ToolTip>
+                        <ToolTip Content="{Binding MarkupPct, Converter={StaticResource MarkupTooltipConverter}}"/>
+                    </ToolTipService.ToolTip>
+                </Border>
+            </Grid>
+
+            <!-- 3) ПОДПИСЬ-БАНДЛ: OEM/Аналог, страна, сайт -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE915;"/>
+                        <TextBlock Text="{Binding OemAnalogText}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE909;"/>
+                        <TextBlock Text="{Binding Country}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE774;"/>
+                        <TextBlock Text="{Binding WebsiteHost}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 6) АУРА КАЧЕСТВА -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE91F;"/>
+                    <TextBlock Text="{Binding AuraText}" />
+                </StackPanel>
+                <ToolTipService.ToolTip>
+                    <ToolTip Content="Небуквальный индикатор: быстрый намёк на позиционирование бренда."/>
+                </ToolTipService.ToolTip>
+            </Border>
+
+            <!-- 8) ХАРД-ФАКТЫ -->
+            <Border Style="{StaticResource Card}">
+                <Grid ColumnSpacing="12" RowSpacing="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Тип" Opacity="0.7"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OemAnalogText}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Страна" Opacity="0.7"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Country}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Сайт" Opacity="0.7"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WebsiteHost}"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Синонимов" Opacity="0.7"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding AliasesCount}"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Деталей" Opacity="0.7"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PartsCount}"/>
+                </Grid>
+            </Border>
+
+            <!-- 10) Микро-подсказки -->
+            <TextBlock Opacity="0.6" Text="Наведи на числа/бейджи для подсказок. Это обзорный экран — без действий."/>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

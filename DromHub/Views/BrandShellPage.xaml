@@ -1,5 +1,5 @@
 <Page
-    x:Class="DromHub.Views.BrandDetailsPage"
+    x:Class="DromHub.Views.BrandShellPage"
     x:Name="PageRoot"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -124,32 +124,6 @@
                     <ToolTip Content="Следующий бренд"/>
                 </ToolTipService.ToolTip>
             </AppBarButton>
-        </Grid>
-
-        <!-- ===== INFO STRIP ===== -->
-        <Grid Grid.Row="1" ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*"/>
-                <ColumnDefinition Width="2*"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Spacing="2">
-                <TextBlock Text="{Binding BrandNameUpper}" Style="{ThemeResource TitleTextBlockStyle}"/>
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="{Binding Country}" Opacity="0.8"/>
-                    <TextBlock Text="{Binding OwnerCompany}" Opacity="0.6"/>
-                </StackPanel>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button Content="Открыть сайт" Click="OpenWebsite_Click" IsEnabled="{Binding HasWebsite}">
-                    <ToolTipService.ToolTip>
-                        <ToolTip Content="{Binding WebsiteDisplay}"/>
-                    </ToolTipService.ToolTip>
-                </Button>
-                <Button Content="Создать запчасть" Click="CreatePart_Click"/>
-                <Button Content="Объединить…" Click="OpenMergeWizard_Click"/>
-            </StackPanel>
         </Grid>
 
         <!-- ===== BODY: секции в под-страницах ===== -->

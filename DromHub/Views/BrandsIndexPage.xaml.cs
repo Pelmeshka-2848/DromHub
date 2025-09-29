@@ -10,14 +10,14 @@ using System.Linq;
 
 namespace DromHub.Views
 {
-    public sealed partial class BrandsListPage : Page
+    public sealed partial class BrandsIndexPage : Page
     {
-        public BrandsListViewModel ViewModel { get; }
+        public BrandsIndexViewModel ViewModel { get; }
 
-        public BrandsListPage()
+        public BrandsIndexPage()
         {
             InitializeComponent();
-            ViewModel = App.ServiceProvider.GetRequiredService<BrandsListViewModel>();
+            ViewModel = App.ServiceProvider.GetRequiredService<BrandsIndexViewModel>();
             DataContext = ViewModel;
 
             Loaded += async (_, __) =>
@@ -86,7 +86,7 @@ namespace DromHub.Views
         private void OpenBrand_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedBrand is Brand b)
-                Frame?.Navigate(typeof(BrandDetailsPage), b.Id);
+                Frame?.Navigate(typeof(BrandShellPage), b.Id);
         }
 
         private void CreatePart_Click(object sender, RoutedEventArgs e)
@@ -102,7 +102,7 @@ namespace DromHub.Views
 
         private void OpenMergeWizard_Click(object sender, RoutedEventArgs e)
         {
-            Frame?.Navigate(typeof(BrandMergePage));
+            Frame?.Navigate(typeof(BrandMergeWizardPage));
         }
     }
 }

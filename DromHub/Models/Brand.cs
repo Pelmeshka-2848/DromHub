@@ -31,6 +31,14 @@ namespace DromHub.Models
         [Column("is_oem")]
         public bool IsOem { get; set; } = false;
 
+        // НОВОЕ: метаданные бренда
+        [Column("country"), MaxLength(128)]
+        public string Country { get; set; }
+
+        [Column("website"), MaxLength(512)]
+        public string Website { get; set; }
+
+
         public void UpdateNormalizedName() => NormalizedName = Name?.ToUpperInvariant();
 
         // Навигация
@@ -45,9 +53,5 @@ namespace DromHub.Models
         // Для фильтров/диагностики
         [NotMapped] public int AliasesCount { get; set; }                // все алиасы
         [NotMapped] public int NonPrimaryAliasesCount { get; set; }      // без основного
-
-        // (опционально, если захочешь чипы)
-        [NotMapped] public string CountryCode { get; set; }
-        [NotMapped] public string QualityTier { get; set; }
     }
 }

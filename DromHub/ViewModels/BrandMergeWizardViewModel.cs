@@ -13,10 +13,10 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
-    public class BrandMergeViewModel
+    public class BrandMergeWizardViewModel
     {
         private readonly ApplicationDbContext _db;
-        private readonly ILogger<BrandMergeViewModel> _log;
+        private readonly ILogger<BrandMergeWizardViewModel> _log;
 
         public XamlRoot XamlRoot { get; set; }
 
@@ -44,7 +44,7 @@ namespace DromHub.ViewModels
 
         public IAsyncRelayCommand MergeCommand { get; }
 
-        public BrandMergeViewModel(ApplicationDbContext db, ILogger<BrandMergeViewModel> log)
+        public BrandMergeWizardViewModel(ApplicationDbContext db, ILogger<BrandMergeWizardViewModel> log)
         {
             _db = db;
             _log = log;

@@ -58,9 +58,9 @@ namespace DromHub
                 "PartSearchPage" => typeof(PartSearchPage),
 
                 // Бренды
-                "BrandsOverviewPage" => typeof(BrandsOverviewPage),
-                "BrandsListPage" => typeof(BrandsListPage),
-                "BrandMergePage" => typeof(BrandMergePage),
+                "BrandsOverviewPage" => typeof(BrandsHomePage),
+                "BrandsListPage" => typeof(BrandsIndexPage),
+                "BrandMergePage" => typeof(BrandMergeWizardPage),
 
                 // по умолчанию ничего не делаем
                 _ => null
