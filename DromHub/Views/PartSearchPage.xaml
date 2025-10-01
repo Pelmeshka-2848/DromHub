@@ -33,15 +33,19 @@
                     <ColumnDefinition Width="1*" MinWidth="120"/>
                     <ColumnDefinition Width="Auto" MinWidth="100"/>
                     <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <!-- новая для Просмотра -->
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="Артикул" FontWeight="Bold" Grid.Column="0"/>
                 <TextBlock Text="Каталожный №" FontWeight="Bold" Grid.Column="1"/>
                 <TextBlock Text="Название" FontWeight="Bold" Grid.Column="2"/>
                 <TextBlock Text="Бренд" FontWeight="Bold" Grid.Column="3"/>
-                <TextBlock Text="Редактировать" FontWeight="Bold" Grid.Column="4"/>
-                <TextBlock Text="Удалить" FontWeight="Bold" Grid.Column="5"/>
+                <TextBlock Text="Просмотр" FontWeight="Bold" Grid.Column="4"/>
+                <TextBlock Text="Редактировать" FontWeight="Bold" Grid.Column="5"/>
+                <TextBlock Text="Удалить" FontWeight="Bold" Grid.Column="6"/>
             </Grid>
+
 
             <!-- Список результатов -->
             <ListView ItemsSource="{Binding Parts}" Height="500">
@@ -61,6 +65,8 @@
                                 <ColumnDefinition Width="1*" MinWidth="120"/>
                                 <ColumnDefinition Width="Auto" MinWidth="100"/>
                                 <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <!-- для кнопки Просмотр -->
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Text="{Binding Article}" Grid.Column="0"/>
@@ -68,16 +74,19 @@
                             <TextBlock Text="{Binding Name}" Grid.Column="2" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding Brand.Name}" Grid.Column="3"/>
 
-                            <Button 
-                                Content="Редактировать"
-                                Padding="10,5"
+                            <Button Content="Просмотр"
                                 Grid.Column="4"
+                                Padding="10,5"
+                                Click="ViewPart_Click"/>
+
+                            <Button Content="Редактировать"
+                                Grid.Column="5"
+                                Padding="10,5"
                                 Click="EditPart_Click"/>
 
-                            <Button 
-                                Content="Удалить"
+                            <Button Content="Удалить"
+                                Grid.Column="6"
                                 Padding="10,5"
-                                Grid.Column="5"
                                 Click="DeletePart_Click"/>
                         </Grid>
                     </DataTemplate>

@@ -67,6 +67,23 @@ namespace DromHub.Views
             }
         }
 
+        private async void ViewPart_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is Part part)
+            {
+                // Передаём ваш ApplicationDbContext (в вашем коде он называется ViewModel.Context)
+                var dialog = new ViewPartDialog(part, ViewModel.Context)
+                {
+                    XamlRoot = this.XamlRoot
+                };
+
+                await dialog.ShowAsync();
+            }
+        }
+
+
+
+
         private async void EditPart_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.DataContext is Part part)

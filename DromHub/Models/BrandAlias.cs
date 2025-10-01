@@ -21,7 +21,7 @@ namespace DromHub.Models
         public string Alias { get; set; }
 
         [Column("note")]
-        public string Note { get; set; }
+        public string? Note { get; set; }
 
         [Required]
         [Column("brand_id")]

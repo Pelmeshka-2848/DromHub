@@ -1,26 +1,25 @@
-﻿using DromHub.Models;
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 
 namespace DromHub.Converters
 {
-    /// <summary>
-    /// null (и, опционально, пустая строка) -> Collapsed, иначе Visible.
-    /// </summary>
-    public sealed class NullToVisibilityConverter : IValueConverter
+    public class NullToVisibilityConverter : IValueConverter
     {
-        public bool TreatEmptyStringAsNull { get; set; } = true;
-        public Visibility NullVisibility { get; set; } = Visibility.Collapsed;
-        public Visibility NotNullVisibility { get; set; } = Visibility.Visible;
-
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            bool isNull = value is null || (TreatEmptyStringAsNull && value is string s && string.IsNullOrWhiteSpace(s));
-            return isNull ? NullVisibility : NotNullVisibility;
+            bool isInverted = parameter?.ToString() == "invert";
+            bool isVisible = value != null && !string.IsNullOrEmpty(value.ToString());
+
+            if (isInverted)
+                isVisible = !isVisible;
+
+            return isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
-            => throw new NotImplementedException();
+        {
+            throw new NotImplementedException();
+        }
     }
 }
