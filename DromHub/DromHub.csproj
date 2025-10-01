@@ -13,25 +13,43 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Content Remove="Assets\Fonts\SF-Pro.ttf" />
+	<Content Include="Assets\Fonts\SF-Pro.ttf" />
     <Content Remove="assets\MessageWindow.xaml" />
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Assets\car.svg" />
+    <None Remove="Assets\chart.line.uptrend.xyaxis.svg" />
+    <None Remove="Assets\chevron.backward.svg" />
+    <None Remove="Assets\chevron.forward.svg" />
+    <None Remove="Assets\clock.svg" />
+    <None Remove="Assets\diamond.fill.svg" />
+    <None Remove="Assets\diamond.svg" />
+    <None Remove="Assets\engine.combustion.svg" />
+    <None Remove="Assets\fan.svg" />
+    <None Remove="Assets\gear.svg" />
+    <None Remove="Assets\headlight.high.beam.svg" />
+    <None Remove="Assets\house.svg" />
+    <None Remove="Assets\info.svg" />
+    <None Remove="Assets\list.bullet.svg" />
+    <None Remove="Assets\minus.plus.batteryblock.svg" />
+    <None Remove="Assets\oilcan.svg" />
+    <None Remove="Assets\pedal.brake.svg" />
+    <None Remove="Assets\rhombus.fill.svg" />
+    <None Remove="Assets\rhombus.svg" />
+    <None Remove="Assets\shippingbox.svg" />
+    <None Remove="Assets\square.stack.3d.up.svg" />
+    <None Remove="Assets\star.fill.svg" />
+    <None Remove="Assets\steeringwheel.svg" />
+    <None Remove="Assets\suspension.shock.svg" />
+    <None Remove="Assets\tag.svg" />
+    <None Remove="Assets\transmission.svg" />
     <None Remove="Views\BrandPage.xaml" />
     <None Remove="Views\MainPage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Page Remove="assets\MessageWindow.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
   <ItemGroup>

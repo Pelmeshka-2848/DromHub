@@ -12,15 +12,6 @@
     <Page.Resources>
         <!-- для подсветки активной вкладки, если используете -->
         <converters:EnumEqualsConverter x:Key="EnumEquals"/>
-
-        <!-- Небольшие стили карт и хедера (как в WinUI Gallery) -->
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="12"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
-        </Style>
     </Page.Resources>
 
     <Grid RowSpacing="12" Padding="12">
@@ -38,13 +29,15 @@
 
             <!-- Prev -->
             <AppBarButton Grid.Column="0"
-                          Icon="Back"
                           Label="{Binding PrevBrandNameUpper}"
                           IsEnabled="{Binding HasPrev}"
                           Click="GoPrev_Click">
                 <ToolTipService.ToolTip>
-                    <ToolTip Content="Предыдущий бренд"/>
+                    <ToolTip Content="Предыдущий бренд" FontFamily="{StaticResource SFPro}"/>
                 </ToolTipService.ToolTip>
+                <AppBarButton.Icon>
+                    <ImageIcon Source="/Assets/chevron.backward.svg"/>
+                </AppBarButton.Icon>
             </AppBarButton>
 
             <!-- Center: разделы -->
@@ -55,24 +48,26 @@
                         HorizontalAlignment="Center">
 
                 <AppBarToggleButton Label="ГЛАВНАЯ"
+                                    FontFamily="{StaticResource SFPro}"
                                     Tag="Overview"
                                     Checked="SectionButton_Checked"
                                     IsChecked="{Binding Section, Mode=TwoWay,
                                                 Converter={StaticResource EnumEquals}, ConverterParameter=Overview}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="Home"/>
+                        <ImageIcon Source="/Assets/house.svg"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
 
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="ЗАПЧАСТИ"
+                                    FontFamily="{StaticResource SFPro}"
                                     Tag="Parts"
                                     Checked="SectionButton_Checked"
                                     IsChecked="{Binding Section, Mode=TwoWay,
                                                 Converter={StaticResource EnumEquals}, ConverterParameter=Parts}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="List"/>
+                        <ImageIcon Source="/Assets/list.bullet.svg"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
 
@@ -80,49 +75,54 @@
 
                 <!-- БЫЛО: СИНОНИМЫ. СТАЛО: НАСТРОЙКИ (наценка+алиасы) -->
                 <AppBarToggleButton Label="НАСТРОЙКИ"
+                                    FontFamily="{StaticResource SFPro}"
                                     Tag="Settings"
                                     Checked="SectionButton_Checked"
                                     IsChecked="{Binding Section, Mode=TwoWay,
                                                 Converter={StaticResource EnumEquals}, ConverterParameter=Settings}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="Setting"/>
+                        <ImageIcon Source="/Assets/gear.svg"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
 
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="О БРЕНДЕ"
+                                    FontFamily="{StaticResource SFPro}"
                                     Tag="About"
                                     Checked="SectionButton_Checked"
                                     IsChecked="{Binding Section, Mode=TwoWay,
                                                 Converter={StaticResource EnumEquals}, ConverterParameter=About}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="Help"/>
+                        <ImageIcon Source="/Assets/info.svg"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
 
                 <AppBarSeparator/>
 
                 <AppBarToggleButton Label="ИЗМЕНЕНИЯ"
+                                    FontFamily="{StaticResource SFPro}"
                                     Tag="Changes"
                                     Checked="SectionButton_Checked"
                                     IsChecked="{Binding Section, Mode=TwoWay,
                                                 Converter={StaticResource EnumEquals}, ConverterParameter=Changes}">
                     <AppBarToggleButton.Icon>
-                        <SymbolIcon Symbol="Sync"/>
+                        <ImageIcon Source="/Assets/clock.svg"/>
                     </AppBarToggleButton.Icon>
                 </AppBarToggleButton>
             </CommandBar>
 
             <!-- Next -->
             <AppBarButton Grid.Column="2"
-                          Icon="Forward"
                           Label="{Binding NextBrandNameUpper}"
                           IsEnabled="{Binding HasNext}"
                           Click="GoNext_Click">
                 <ToolTipService.ToolTip>
-                    <ToolTip Content="Следующий бренд"/>
+                    <ToolTip Content="Следующий бренд" FontFamily="{StaticResource SFPro}"/>
                 </ToolTipService.ToolTip>
+                <AppBarButton.Icon>
+                    <ImageIcon Source="/Assets/chevron.forward.svg"/>
+                </AppBarButton.Icon>
             </AppBarButton>
         </Grid>
 

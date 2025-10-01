@@ -5,170 +5,195 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
-    xmlns:converters="using:DromHub.Converters"
     mc:Ignorable="d">
 
     <Page.Resources>
-        <converters:BrandMarkupBadgeConverter x:Key="MarkupBadgeConverter"/>
-        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupTooltipConverter"/>
+        <x:String x:Key="CoverageHint">Доля бренда по числу деталей среди всех брендов.</x:String>
 
-        <!-- Карточный стиль -->
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="14"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorSecondaryBrush}"/>
+        <!-- Горизонтальный “hairline”: прозрачные края → лёгкий центр -->
+        <LinearGradientBrush x:Key="SoftDividerHBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#00000000" Offset="0.0"/>
+            <GradientStop Color="#33000000" Offset="0.5"/>
+            <GradientStop Color="#00000000" Offset="1.0"/>
+        </LinearGradientBrush>
+
+        <!-- Вертикальный -->
+        <LinearGradientBrush x:Key="SoftDividerVBrush" StartPoint="0,0" EndPoint="0,1">
+            <!-- верх -->
+            <GradientStop Color="#33000000" Offset="0.00"/>
+            <GradientStop Color="#33000000" Offset="0.06"/>
+
+            <!-- середина однотонная -->
+            <GradientStop Color="#33000000" Offset="0.50"/>
+
+            <!-- низ -->
+            <GradientStop Color="#33000000" Offset="0.94"/>
+            <GradientStop Color="#33000000" Offset="1.00"/>
+        </LinearGradientBrush>
+
+
+        <!-- Удобные стили для 1-px линий -->
+        <Style x:Key="HairlineH" TargetType="Rectangle">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Fill" Value="{ThemeResource SoftDividerHBrush}"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
+
+        <Style x:Key="HairlineV" TargetType="Rectangle">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Fill" Value="{ThemeResource SoftDividerVBrush}"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
     </Page.Resources>
 
-    <ScrollViewer Padding="12" VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="12">
+    <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto">
+        <Grid ColumnSpacing="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- 1) HERO -->
-            <Border Style="{StaticResource Card}">
-                <Grid ColumnSpacing="16" RowSpacing="4">
+            <!-- ===== ЛЕВЫЙ СТОЛБЕЦ ===== -->
+            <StackPanel Grid.Column="0" Spacing="4" Orientation="Vertical">
+
+                    <TextBlock Text="{Binding BrandNameUpper}"
+                               FontFamily="{StaticResource SFPro}"
+                               Style="{ThemeResource DisplayTextBlockStyle}"
+                               VerticalAlignment="Center"/>
+
+                    <!-- Лента под заголовком -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <!-- Избранное -->
+                    <ToggleButton x:Name="FavButton"
+                                  IsChecked="{Binding IsFavorite, Mode=TwoWay}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="0">
+                        <ImageIcon Source="/Assets/star.svg" Height="36"/>
+                        <ToolTipService.ToolTip>
+                            <ToolTip Content="Избранное"/>
+                        </ToolTipService.ToolTip>
+                    </ToggleButton>
+
+                    <!-- Популярность -->
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/diamond.svg" Height="20"/>
+                    </StackPanel>
+
+                    <!-- Тип OEM/Аналог -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="ТИП ПРОИЗВОДИТЕЛЯ:" FontFamily="{StaticResource SFPro}" Style="{ThemeResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/car.svg" Height="20"/>
+                    </StackPanel>
+
+                    <!-- Метки -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="МЕТКИ:" FontFamily="{StaticResource SFPro}" Style="{ThemeResource BodyTextBlockStyle}" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/oilcan.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/steeringwheel.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/suspension.shock.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/pedal.brake.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/minus.plus.batteryblock.svg" Height="20"/>
+                        <ImageIcon Source="/Assets/headlight.high.beam.svg" Height="20"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="3*"/>
                     </Grid.ColumnDefinitions>
-
-                    <!-- Monogram / аватар -->
-                    <Grid Width="64" Height="64">
-                        <Ellipse Fill="{ThemeResource AccentAcrylicBackgroundFillColorBaseBrush}"/>
-                        <TextBlock Text="{Binding Monogram}" Foreground="White"
-                                   FontSize="24" FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Grid>
-
-                    <!-- Название + подпись -->
-                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding BrandNameUpper}" Style="{ThemeResource TitleTextBlockStyle}"/>
-                        <TextBlock Text="{Binding Signature}" Opacity="0.75"/>
-                    </StackPanel>
-
-                    <!-- Маркап-бейдж (как подсказка) -->
-                    <TextBlock Grid.Column="2"
-                               VerticalAlignment="Center"
-                               Text="{Binding MarkupPct, Converter={StaticResource MarkupBadgeConverter}}"
-                               Opacity="0.8">
-                        <ToolTipService.ToolTip>
-                            <ToolTip Content="{Binding MarkupPct, Converter={StaticResource MarkupTooltipConverter}}"/>
-                        </ToolTipService.ToolTip>
-                    </TextBlock>
-                </Grid>
-            </Border>
-
-            <!-- 2) ТРИ СТАТ-ПЛИТКИ -->
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Детали -->
-                <Border Style="{StaticResource Card}" Grid.Column="0">
-                    <StackPanel HorizontalAlignment="Center" Spacing="6">
-                        <SymbolIcon Symbol="AllApps"/>
-                        <TextBlock Text="{Binding PartsCount}" FontSize="24" FontWeight="SemiBold"/>
-                        <TextBlock Text="деталей" Opacity="0.7"/>
-                    </StackPanel>
-                    <ToolTipService.ToolTip>
-                        <ToolTip Content="Всего карточек запчастей этого бренда в базе"/>
-                    </ToolTipService.ToolTip>
-                </Border>
-
-                <!-- Синонимы -->
-                <Border Style="{StaticResource Card}" Grid.Column="1">
-                    <StackPanel HorizontalAlignment="Center" Spacing="6">
-                        <SymbolIcon Symbol="Link"/>
-                        <TextBlock Text="{Binding AliasesCount}" FontSize="24" FontWeight="SemiBold"/>
-                        <TextBlock Text="синонимов" Opacity="0.7"/>
-                    </StackPanel>
-                    <ToolTipService.ToolTip>
-                        <ToolTip Content="Количество зарегистрированных алиасов бренда"/>
-                    </ToolTipService.ToolTip>
-                </Border>
-
-                <!-- Наценка -->
-                <Border Style="{StaticResource Card}" Grid.Column="2">
-                    <StackPanel HorizontalAlignment="Center" Spacing="6">
-                        <FontIcon Glyph="&#xE9D7;"/>
-                        <TextBlock Text="{Binding MarkupPct}" FontSize="24" FontWeight="SemiBold"/>
-                        <TextBlock Text="% наценки" Opacity="0.7"/>
-                    </StackPanel>
-                    <ToolTipService.ToolTip>
-                        <ToolTip Content="{Binding MarkupPct, Converter={StaticResource MarkupTooltipConverter}}"/>
-                    </ToolTipService.ToolTip>
-                </Border>
-            </Grid>
-
-            <!-- 3) ПОДПИСЬ-БАНДЛ: OEM/Аналог, страна, сайт -->
-            <Border Style="{StaticResource Card}">
-                <StackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE915;"/>
-                        <TextBlock Text="{Binding OemAnalogText}" FontWeight="SemiBold"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE909;"/>
-                        <TextBlock Text="{Binding Country}"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE774;"/>
-                        <TextBlock Text="{Binding WebsiteHost}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- 6) АУРА КАЧЕСТВА -->
-            <Border Style="{StaticResource Card}">
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE91F;"/>
-                    <TextBlock Text="{Binding AuraText}" />
-                </StackPanel>
-                <ToolTipService.ToolTip>
-                    <ToolTip Content="Небуквальный индикатор: быстрый намёк на позиционирование бренда."/>
-                </ToolTipService.ToolTip>
-            </Border>
-
-            <!-- 8) ХАРД-ФАКТЫ -->
-            <Border Style="{StaticResource Card}">
-                <Grid ColumnSpacing="12" RowSpacing="6">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="180"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Тип" Opacity="0.7"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding OemAnalogText}"/>
+                    <!-- ЛИНИИ (вместо Borders) -->
+                    <!-- верхняя горизонтальная -->
+                    <Rectangle Style="{StaticResource HairlineH}"
+                               Grid.Row="0" Grid.ColumnSpan="3"
+                               VerticalAlignment="Bottom"/>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Страна" Opacity="0.7"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Country}"/>
+                    <!-- нижняя горизонтальная -->
+                    <Rectangle Style="{StaticResource HairlineH}"
+                               Grid.Row="2" Grid.ColumnSpan="3"
+                               VerticalAlignment="Top"/>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Сайт" Opacity="0.7"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WebsiteHost}"/>
+                    <!-- центральная вертикальная между колонками -->
+                    <Rectangle Style="{StaticResource HairlineV}"
+                               Grid.Column="1" Grid.RowSpan="3"/>
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Синонимов" Opacity="0.7"/>
-                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding AliasesCount}"/>
+                    <!-- ТВОИ СЕКЦИИ (как просил: вернуть StackPanel) -->
+                    <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Vertical" Spacing="4" Margin="0 10 0 10">
+                        <TextBlock Text="АССОРТИМЕНТ:" FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ImageIcon Source="/Assets/square.stack.3d.up.svg" Height="28"/>
+                            <TextBlock Text="20% + 2.2" FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource SubtitleTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="УЗНАВАЕМОСТЬ:" FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ImageIcon Source="/Assets/tag.svg" Height="28"/>
+                            <TextBlock Text="10% + 0.5" FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource SubtitleTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="МАРЖИНАЛЬНОСТЬ:" FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <ImageIcon Source="/Assets/chart.line.uptrend.xyaxis.svg" Height="28"/>
+                            <TextBlock Text="30% + 5.1" FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource SubtitleTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Деталей" Opacity="0.7"/>
-                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PartsCount}"/>
+                    <StackPanel Grid.Column="2" Grid.Row="1">
+                        <TextBlock Text="МЕТКИ:" FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <!-- …твой контент… -->
+                    </StackPanel>
                 </Grid>
-            </Border>
+            </StackPanel>
 
-            <!-- 10) Микро-подсказки -->
-            <TextBlock Opacity="0.6" Text="Наведи на числа/бейджи для подсказок. Это обзорный экран — без действий."/>
-        </StackPanel>
+            <!-- ===== ЦЕНТР ===== -->
+            <Grid Grid.Column="1">
+
+                <!-- Монограмма -->
+                <TextBlock Text="{Binding Monogram}"
+                           Opacity="0.06"
+                           FontSize="220"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- ===== ПРАВЫЙ СТОЛБЕЦ ===== -->
+            <StackPanel Grid.Column="2" Spacing="16">
+                <TextBlock Text="О БРЕНДЕ" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                <TextBlock TextWrapping="WrapWholeWords"
+                           Opacity="0.85"
+                           Text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer viverra, erat eu vehicula tempus, augue elit cursus justo, vitae iaculis neque nibh at arcu. Curabitur laoreet dui at dui porta, non tempus purus feugiat."/>
+                <TextBlock Text="Резерв под будущие данные"
+                           Style="{ThemeResource CaptionTextBlockStyle}"/>
+            </StackPanel>
+
+        </Grid>
     </ScrollViewer>
 </Page>
