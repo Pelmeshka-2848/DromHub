@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="Assets\car.svg" />
+    <None Remove="Assets\centsign.svg" />
     <None Remove="Assets\chart.line.uptrend.xyaxis.svg" />
     <None Remove="Assets\chevron.backward.svg" />
     <None Remove="Assets\chevron.forward.svg" />
