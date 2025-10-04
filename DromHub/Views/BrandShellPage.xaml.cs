@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
 using System;
 
 namespace DromHub.Views
@@ -14,6 +15,7 @@ namespace DromHub.Views
         public BrandShellPage()
         {
             InitializeComponent();
+
             ViewModel = App.ServiceProvider.GetRequiredService<BrandShellViewModel>();
             DataContext = ViewModel;
 
@@ -26,23 +28,31 @@ namespace DromHub.Views
             SectionFrame.Navigated += (_, e) =>
             {
                 if (e.Content is FrameworkElement fe && fe.DataContext == null)
-                    fe.DataContext = ViewModel; // единый VM прокидываем в подпейджи
+                    fe.DataContext = ViewModel; // единый VM для подпейджей
             };
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
             if (e.Parameter is Guid id)
                 await ViewModel.InitializeAsync(id, this.XamlRoot);
 
-            // экран по умолчанию — Overview
-            SectionFrame.Navigate(typeof(BrandOverviewPage), ViewModel.BrandId);
+            // Экран по умолчанию — Overview, БЕЗ анимации
+            if (SectionFrame.Content == null ||
+                SectionFrame.CurrentSourcePageType != typeof(BrandOverviewPage))
+            {
+                SectionFrame.Navigate(
+                    typeof(BrandOverviewPage),
+                    ViewModel.BrandId,
+                    new SuppressNavigationTransitionInfo());
+            }
         }
 
         private void NavigateToSection(BrandDetailsSection section)
         {
-            Type pageType = section switch
+            var pageType = section switch
             {
                 BrandDetailsSection.Overview => typeof(BrandOverviewPage),
                 BrandDetailsSection.Parts => typeof(BrandPartsPage),
@@ -52,8 +62,14 @@ namespace DromHub.Views
                 _ => typeof(BrandOverviewPage)
             };
 
+            // Переключение разделов — всегда без анимации
             if (SectionFrame.CurrentSourcePageType != pageType)
-                SectionFrame.Navigate(pageType, ViewModel.BrandId);
+            {
+                SectionFrame.Navigate(
+                    pageType,
+                    ViewModel.BrandId,
+                    new SuppressNavigationTransitionInfo());
+            }
         }
 
         private void SectionButton_Checked(object sender, RoutedEventArgs e)
@@ -65,17 +81,33 @@ namespace DromHub.Views
             }
         }
 
-        // навигация между брендами
+        // ===== Навигация между брендами (слайд) =====
         private void GoPrev_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.HasPrev && ViewModel.PrevBrandId is Guid id)
-                Frame?.Navigate(typeof(BrandShellPage), id);
+            {
+                Frame?.Navigate(
+                    typeof(BrandShellPage),
+                    id,
+                    new SlideNavigationTransitionInfo
+                    {
+                        Effect = SlideNavigationTransitionEffect.FromLeft
+                    });
+            }
         }
 
         private void GoNext_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.HasNext && ViewModel.NextBrandId is Guid id)
-                Frame?.Navigate(typeof(BrandShellPage), id);
+            {
+                Frame?.Navigate(
+                    typeof(BrandShellPage),
+                    id,
+                    new SlideNavigationTransitionInfo
+                    {
+                        Effect = SlideNavigationTransitionEffect.FromRight
+                    });
+            }
         }
     }
 }
