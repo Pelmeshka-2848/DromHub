@@ -50,12 +50,17 @@
     <!-- ========= LAYOUT ========= -->
     <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto">
         <!-- 3 колонки: левый / центр / правый -->
-        <Grid ColumnSpacing="24">
+        <Grid ColumnSpacing="20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="7*"/>
                 <ColumnDefinition Width="0.1*"/>
                 <ColumnDefinition Width="6*"/>
             </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
             <!-- ===== LEFT COLUMN ===== -->
             <StackPanel Grid.Column="0" Spacing="4">
@@ -74,7 +79,7 @@
                                   Background="Transparent"
                                   BorderThickness="0"
                                   Padding="0">
-                        <ImageIcon Source="/Assets/star.svg" Height="32"/>
+                        <ImageIcon Source="/Assets/star.svg" Height="32" Width="32"/>
                         <ToolTipService.ToolTip>
                             <ToolTip Content="Избранное"/>
                         </ToolTipService.ToolTip>
@@ -82,9 +87,9 @@
 
                     <!-- популярность -->
                     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17"/>
-                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17"/>
-                        <ImageIcon Source="/Assets/diamond.svg" Height="17"/>
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17" Width="17"/>
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17" Width="17"/>
+                        <ImageIcon Source="/Assets/diamond.svg" Height="17" Width="17"/>
                     </StackPanel>
 
                     <!-- тип -->
@@ -361,6 +366,10 @@
                            FontWeight="Bold"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel HorizontalAlignment="Center"  Grid.Row="1" Grid.ColumnSpan="3" VerticalAlignment="Bottom">
+                <TextBlock Text="- Synonym | SYNONIM | sYNONIM | sYnOnn1m -"  HorizontalAlignment="Center" FontFamily="{StaticResource SFPro}" Style="{ThemeResource BodyTextBlockStyle}"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>
