@@ -57,11 +57,13 @@
                 <RowDefinition Height="Auto"/>
                 <!-- 1: основной контент -->
                 <RowDefinition Height="Auto"/>
-                <!-- 2: сцена/заполнение -->
-                <RowDefinition Height="*"/>
-                <!-- 3: синонимы -->
+                <!-- 2: кнопка открыть в браузере -->
                 <RowDefinition Height="Auto"/>
-                <!-- 4: ID -->
+                <!-- 3: сцена/заполнение -->
+                <RowDefinition Height="*"/>
+                <!-- 4: синонимы -->
+                <RowDefinition Height="Auto"/>
+                <!-- 5: ID -->
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -436,16 +438,24 @@
                            VerticalAlignment="Center"/>
             </Grid>
 
-            <!-- ===== Row 3: СИНОНИМЫ ===== -->
-            <Grid Grid.Row="3" Grid.ColumnSpan="2">
+            <!-- ===== Row 2: КНОПКА ===== -->
+            <Grid Grid.Row="2" Grid.Column="0">
+                <Button Content="Открыть в браузере"
+                        Margin="20,0,20,0"
+                        FontFamily="{StaticResource SFPro}"
+                        Style="{StaticResource AccentButtonStyle}"/>
+            </Grid>
+
+            <!-- ===== Row 4: СИНОНИМЫ ===== -->
+            <Grid Grid.Row="4" Grid.ColumnSpan="2">
                 <TextBlock Text="- Synonym | SYNONIM | sYNONIM | sYnOnn1m -"
                            FontFamily="{StaticResource SFPro}"
                            Style="{ThemeResource BodyStrongTextBlockStyle}"
                            HorizontalAlignment="Center"/>
             </Grid>
 
-            <!-- ===== Row 4: ID ===== -->
-            <Grid Grid.Row="4" Grid.ColumnSpan="2">
+            <!-- ===== Row 5: ID ===== -->
+            <Grid Grid.Row="5" Grid.ColumnSpan="2">
                 <TextBlock Text="{Binding BrandId}"
                            FontFamily="{StaticResource SFPro}"
                            Style="{ThemeResource CaptionTextBlockStyle}"
