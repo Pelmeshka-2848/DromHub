@@ -14,11 +14,11 @@ namespace DromHub.Models
 
         [Required, MaxLength(255)]
         [Column("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Column("normalized_name")]
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-        public string NormalizedName { get; private set; }
+        public string? NormalizedName { get; private set; }
 
         [Column("created_at")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -29,29 +29,39 @@ namespace DromHub.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         [Column("is_oem")]
-        public bool IsOem { get; set; } = false;
-
-        // НОВОЕ: метаданные бренда
-        [Column("country"), MaxLength(128)]
-        public string Country { get; set; }
+        public bool IsOem { get; set; }
 
         [Column("website"), MaxLength(512)]
-        public string Website { get; set; }
+        public string? Website { get; set; }
 
+        // НОВОЕ
+        [Column("description"), MaxLength(2000)]
+        public string? Description { get; set; }
 
-        public void UpdateNormalizedName() => NormalizedName = Name?.ToUpperInvariant();
+        [Column("user_notes"), MaxLength(4000)]
+        public string? UserNotes { get; set; }
 
-        // Навигация
-        public virtual ICollection<BrandAlias> Aliases { get; set; }
-        public virtual BrandMarkup Markup { get; set; }
-        public virtual ICollection<Part> Parts { get; set; }
+        [Column("year_founded")]
+        public int? YearFounded { get; set; }
 
-        // Поля для UI
+        // FK → countries
+        [Column("country_id")]
+        public Guid? CountryId { get; set; }   // ← было int?, должно быть Guid?
+        public Country? Country { get; set; }
+
+        // Навигация (как у тебя было)
+        public virtual ICollection<BrandAlias>? Aliases { get; set; }
+        public virtual BrandMarkup? Markup { get; set; }
+        public virtual ICollection<Part>? Parts { get; set; }
+
+        // UI helpers
         [NotMapped] public int PartsCount { get; set; }
+        [NotMapped] public int AliasesCount { get; set; }
+
+        // Наценка бренда в процентах (заполняем из BrandMarkups)
         [NotMapped] public decimal? MarkupPercent { get; set; }
 
-        // Для фильтров/диагностики
-        [NotMapped] public int AliasesCount { get; set; }                // все алиасы
-        [NotMapped] public int NonPrimaryAliasesCount { get; set; }      // без основного
+        // Число непервичных алиасов (для фильтра "без алиасов")
+        [NotMapped] public int NonPrimaryAliasesCount { get; set; }
     }
 }

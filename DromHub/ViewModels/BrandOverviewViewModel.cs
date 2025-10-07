@@ -1,10 +1,12 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using DromHub.Data;
+using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.UI.Xaml;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Windows.System;
 
@@ -18,154 +20,216 @@ namespace DromHub.ViewModels
         private XamlRoot _xr;
         public Guid BrandId { get; private set; }
 
-        // ---- БАЗА ----
-        private string _brandName;
-        public string BrandName
-        {
-            get => _brandName;
-            private set
-            {
-                if (SetProperty(ref _brandName, value))
-                {
-                    OnPropertyChanged(nameof(BrandNameUpper));
-                    OnPropertyChanged(nameof(Monogram));
-                    OnPropertyChanged(nameof(Signature));
-                }
-            }
-        }
-        public string BrandNameUpper => (BrandName ?? "").ToUpperInvariant();
+        // ===== БАЗОВЫЕ ПОЛЯ / ЧИПСЫ =====
+        [ObservableProperty] private string brandName = "";
+        public string BrandNameUpper => BrandName.ToUpperInvariant();
         public string Monogram => string.IsNullOrWhiteSpace(BrandName) ? "?" : BrandName.Trim()[0].ToString().ToUpperInvariant();
 
-        private bool _isOem;
-        public bool IsOem
-        {
-            get => _isOem;
-            private set { if (SetProperty(ref _isOem, value)) OnPropertyChanged(nameof(OemAnalogText)); }
-        }
+        [ObservableProperty] private bool isOem;
         public string OemAnalogText => IsOem ? "OEM" : "Аналог";
 
-        private string _country = "Страна не указана";
-        public string Country
-        {
-            get => _country;
-            private set
-            {
-                if (SetProperty(ref _country, value))
-                {
-                    OnPropertyChanged(nameof(Signature));
-                    RecalcCountryProgress();
-                }
-            }
-        }
-
-        private string _website;
-        public string Website
-        {
-            get => _website;
-            private set
-            {
-                if (SetProperty(ref _website, value))
-                {
-                    OnPropertyChanged(nameof(HasWebsite));
-                    OnPropertyChanged(nameof(WebsiteHost));
-                    OnPropertyChanged(nameof(Signature));
-                }
-            }
-        }
+        [ObservableProperty] private string? website;
         public bool HasWebsite => Uri.TryCreate(Website, UriKind.Absolute, out _);
-        public string WebsiteHost => HasWebsite ? new Uri(Website).Host : "—";
-        public string Signature => $"{(IsOem ? "OEM" : "Аналог")} • {Country} • {WebsiteHost}";
+        public string WebsiteHost => HasWebsite ? new Uri(Website!).Host : "—";
 
-        private int _partsCount;
-        public int PartsCount { get => _partsCount; private set => SetProperty(ref _partsCount, value); }
+        [ObservableProperty] private int? yearFounded;
+        public int? AgeYears => YearFounded is int y && y > 1800 ? Math.Max(0, DateTime.UtcNow.Year - y) : null;
 
-        private int _aliasesCount;
-        public int AliasesCount { get => _aliasesCount; private set => SetProperty(ref _aliasesCount, value); }
+        // страна
+        [ObservableProperty] private string countryName = "—";
+        [ObservableProperty] private string countryIso2 = "—";
+        [ObservableProperty] private string countryWorldIconAsset = "/Assets/globe.svg";
 
-        private decimal _markupPct;
-        public decimal MarkupPct
-        {
-            get => _markupPct;
-            private set
-            {
-                if (SetProperty(ref _markupPct, value))
-                    MarkupPctCapped = (double)Math.Clamp(value, 0m, 100m);
-            }
-        }
-        public string MarkupPctDisplay => $"Текущее значение: {MarkupPct:F2}%";
+        // чипсы — значения
+        public string ChipYearText => YearFounded?.ToString() ?? "—";
+        public string ChipMarkupText => $"{MarkupPct:F1}";
+        public string ChipCountryText => CountryIso2;
+        public string ChipPartsText => PartsCount.ToString();
+        public string ChipAgeText => AgeYears?.ToString() ?? "—";
 
-        // ---- UI-флажок ----
-        private bool _isFavorite;
-        public bool IsFavorite { get => _isFavorite; set => SetProperty(ref _isFavorite, value); }
+        // описание / заметки
+        [ObservableProperty] private string? description;
+        [ObservableProperty] private string? userNotes;
+        public string DescriptionOrPlaceholder => string.IsNullOrWhiteSpace(Description) ? "—" : Description!;
+        public string UserNotesOrPlaceholder => string.IsNullOrWhiteSpace(UserNotes) ? "—" : UserNotes!;
 
-        // ---- МЕТРИКИ ДЛЯ ПОЛОС ----
-        private double _coveragePct; public double CoveragePct { get => _coveragePct; private set => SetProperty(ref _coveragePct, value); }
-        private double _synonymsPct; public double SynonymsPct { get => _synonymsPct; private set => SetProperty(ref _synonymsPct, value); }
-        private double _partsPct; public double PartsPct { get => _partsPct; private set => SetProperty(ref _partsPct, value); }
-        private double _markupPctCapped; public double MarkupPctCapped { get => _markupPctCapped; private set => SetProperty(ref _markupPctCapped, value); }
-        private double _countryProgress; public double CountryProgress { get => _countryProgress; private set => SetProperty(ref _countryProgress, value); }
+        // счётчики
+        [ObservableProperty] private int partsCount;
+        [ObservableProperty] private int aliasesCount;
 
-        private void RecalcCountryProgress() =>
-            CountryProgress = (!string.IsNullOrWhiteSpace(Country) && Country != "Страна не указана") ? 100 : 0;
+        // синонимы строкой
+        [ObservableProperty] private string aliasesJoinedDisplay = "—";
 
-        // ---- ИНИЦИАЛИЗАЦИЯ ----
+        // избранное (локальный флажок UI)
+        [ObservableProperty] private bool isFavorite;
+
+        // ===== МЕТРИКИ (значение + дельта) =====
+        [ObservableProperty] private double assortmentValue;    // 0..100
+        [ObservableProperty] private double assortmentDelta;
+
+        [ObservableProperty] private double awarenessValue;     // 0..100
+        [ObservableProperty] private double awarenessDelta;
+
+        [ObservableProperty] private double marginValue;        // 0..100
+        [ObservableProperty] private double marginDelta;
+
+        public string AssortmentDisplay => $"{AssortmentValue:F0}% {(AssortmentDelta >= 0 ? "+" : "−")}{Math.Abs(AssortmentDelta):F1}";
+        public string AwarenessDisplay => $"{AwarenessValue:F0}% {(AwarenessDelta >= 0 ? "+" : "−")}{Math.Abs(AwarenessDelta):F1}";
+        public string MarginDisplay => $"{MarkupPct:F0}% {(MarginDelta >= 0 ? "+" : "−")}{Math.Abs(MarginDelta):F1}";
+
+        // Для правой колонки (ProgressBar)
+        public double BarAValue => AssortmentValue;
+        public double BarBValue => AwarenessValue;
+        public string BarADeltaText => $"{AssortmentDelta:+0.0;-0.0;0.0}";
+        public string BarBDeltaText => $"{AwarenessDelta:+0.0;-0.0;0.0}";
+        public string BarATextCenter => $"{AssortmentValue:F0}";
+        public string BarBTextCenter => $"{AwarenessValue:F0}";
+
+        // Маржа (в процентах)
+        [ObservableProperty] private decimal markupPct;
+
+        // ===== INIT =====
         public async Task InitializeAsync(Guid id, XamlRoot xr)
         {
             _xr = xr;
             BrandId = id;
 
             var b = await _db.Brands
-                             .Include(x => x.Parts)
-                             .Include(x => x.Aliases)
-                             .AsNoTracking()
-                             .FirstOrDefaultAsync(x => x.Id == id);
-            if (b == null) return;
+                .Include(x => x.Country)
+                .Include(x => x.Aliases)
+                .Include(x => x.Parts)
+                .Include(x => x.Markup)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (b is null) return;
 
             BrandName = b.Name;
             IsOem = b.IsOem;
-            Country = string.IsNullOrWhiteSpace(b.Country) ? "Страна не указана" : b.Country;
-            Website = string.IsNullOrWhiteSpace(b.Website) ? "" : b.Website;
+            Website = b.Website;
+            YearFounded = b.YearFounded;
+            Description = b.Description;
+            UserNotes = b.UserNotes;
 
             PartsCount = b.Parts?.Count ?? 0;
             AliasesCount = b.Aliases?.Count ?? 0;
 
-            var m = await _db.BrandMarkups
-                             .Where(x => x.BrandId == id)
-                             .Select(x => (decimal?)x.MarkupPct)
-                             .FirstOrDefaultAsync();
-            MarkupPct = m ?? 0m;
+            // страна
+            CountryName = b.Country?.Name ?? "—";
+            CountryIso2 = string.IsNullOrWhiteSpace(b.Country?.Iso2) ? "—" : b.Country!.Iso2.ToUpperInvariant();
+            CountryWorldIconAsset = BuildRegionIconAssetName(b.Country?.RegionIconName, b.Country?.Region);
 
-            // Перцентили по всем брендам
+            // маржа
+            MarkupPct = (decimal)(b.Markup?.MarkupPct ?? 0);
+
+            // синонимы -> строка
+            var aliasStrings = (b.Aliases ?? new List<BrandAlias>())
+                .Select(ReadAliasString)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            AliasesCount = aliasStrings.Count;
+            AliasesJoinedDisplay = aliasStrings.Count > 0
+                ? $"- {string.Join(" | ", aliasStrings)} -"
+                : "—";
+
+            // ===== расчёт метрик и дельт =====
             var stats = await _db.Brands
                 .Select(x => new
                 {
                     Parts = _db.Parts.Count(p => p.BrandId == x.Id),
-                    Aliases = _db.BrandAliases.Count(a => a.BrandId == x.Id)
+                    Aliases = _db.BrandAliases.Count(a => a.BrandId == x.Id),
+                    Markup = (double?)_db.BrandMarkups.Where(m => m.BrandId == x.Id)
+                                                       .Select(m => m.MarkupPct)
+                                                       .FirstOrDefault()
                 })
                 .ToListAsync();
 
-            var total = Math.Max(1, stats.Count);
-            var partsRank = stats.Count(s => s.Parts <= PartsCount);
-            var aliasRank = stats.Count(s => s.Aliases <= AliasesCount);
+            var count = Math.Max(1, stats.Count);
+            double maxParts = stats.Count > 0 ? Math.Max(1, stats.Max(s => s.Parts)) : 1;
+            double maxAliases = stats.Count > 0 ? Math.Max(1, stats.Max(s => s.Aliases)) : 1;
 
-            CoveragePct = 100.0 * partsRank / total;
-            PartsPct = CoveragePct;
-            SynonymsPct = 100.0 * aliasRank / total;
+            double meanPartsRatio = stats.Count > 0 ? stats.Average(s => s.Parts / maxParts) * 100.0 : 0.0;
+            double meanAliasesRatio = stats.Count > 0 ? stats.Average(s => s.Aliases / maxAliases) * 100.0 : 0.0;
+            double meanMarkup = stats.Count > 0 ? stats.Average(s => s.Markup ?? 0.0) : 0.0;
 
-            RecalcCountryProgress();
+            AssortmentValue = PartsCount / maxParts * 100.0;
+            AwarenessValue = AliasesCount / maxAliases * 100.0;
+            MarginValue = Math.Clamp((double)MarkupPct, 0, 100);
+
+            AssortmentDelta = AssortmentValue - meanPartsRatio;
+            AwarenessDelta = AwarenessValue - meanAliasesRatio;
+            MarginDelta = (double)MarkupPct - meanMarkup;
+
+            // уведомления зависимых свойств
+            OnPropertyChanged(nameof(BrandNameUpper));
+            OnPropertyChanged(nameof(Monogram));
+            OnPropertyChanged(nameof(WebsiteHost));
+            OnPropertyChanged(nameof(HasWebsite));
+            OnPropertyChanged(nameof(AgeYears));
+
+            OnPropertyChanged(nameof(ChipYearText));
+            OnPropertyChanged(nameof(ChipMarkupText));
+            OnPropertyChanged(nameof(ChipCountryText));
+            OnPropertyChanged(nameof(ChipPartsText));
+            OnPropertyChanged(nameof(ChipAgeText));
+
+            OnPropertyChanged(nameof(AssortmentDisplay));
+            OnPropertyChanged(nameof(AwarenessDisplay));
+            OnPropertyChanged(nameof(MarginDisplay));
+
+            OnPropertyChanged(nameof(BarAValue));
+            OnPropertyChanged(nameof(BarBValue));
+            OnPropertyChanged(nameof(BarADeltaText));
+            OnPropertyChanged(nameof(BarBDeltaText));
+            OnPropertyChanged(nameof(BarATextCenter));
+            OnPropertyChanged(nameof(BarBTextCenter));
+
+            OnPropertyChanged(nameof(DescriptionOrPlaceholder));
+            OnPropertyChanged(nameof(UserNotesOrPlaceholder));
         }
 
-        // ---- ОТКРЫТИЕ САЙТА ----
+        private static string ReadAliasString(object alias)
+        {
+            if (alias is null) return null;
+            var t = alias.GetType();
+            foreach (var prop in new[] { "Name", "Alias", "Value", "Text" })
+            {
+                var pi = t.GetProperty(prop, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+                if (pi != null && pi.PropertyType == typeof(string))
+                    return (pi.GetValue(alias) as string)?.Trim();
+            }
+            return alias.ToString();
+        }
+
+        private static string BuildFlagIconAssetName(string? flagIconName, string? iso2)
+            => !string.IsNullOrWhiteSpace(flagIconName)
+                ? $"/Assets/{flagIconName}.svg"
+                : !string.IsNullOrWhiteSpace(iso2)
+                    ? $"/Assets/flags/{iso2.ToLowerInvariant()}.svg"
+                    : "/Assets/flag.slash.circle.svg";
+
+        private static string BuildRegionIconAssetName(string? regionIconName, string? region)
+        {
+            if (!string.IsNullOrWhiteSpace(regionIconName))
+                return $"/Assets/{regionIconName}.svg";
+
+            return (region ?? "").ToLowerInvariant() switch
+            {
+                "europe" or "africa" or "emea" => "/Assets/globe.europe.africa.svg",
+                "americas" or "north america" or "south america" => "/Assets/globe.americas.svg",
+                "asia" or "apac" or "oceania" or "australia" => "/Assets/globe.asia.australia.svg",
+                _ => "/Assets/globe.svg"
+            };
+        }
+
         public async Task OpenWebsiteAsync()
         {
             if (!HasWebsite) return;
-            try
+            try { _ = await Launcher.LaunchUriAsync(new Uri(Website!)); }
+            catch
             {
-                _ = await Launcher.LaunchUriAsync(new Uri(Website));
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex);
                 await new Microsoft.UI.Xaml.Controls.ContentDialog
                 {
                     Title = "Не удалось открыть сайт",

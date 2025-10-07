@@ -1,25 +1,33 @@
 ﻿using DromHub.Models;
 using Microsoft.UI.Xaml.Data;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DromHub.Converters
 {
-    // Тултип: "30%" или "0% (не применяется)"
+    // Подсказка: "Наценка бренда: N%"
     public sealed class BrandMarkupBadgeTooltipConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is Brand b)
             {
-                var pct = b.MarkupPercent ?? 0m;
-                return pct == 0m ? "0% (не применяется)" : $"{pct:0.#}%";
+                decimal pct = 0m;
+
+                if (b.Markup != null) pct = b.Markup.MarkupPct;
+
+                var pi = typeof(Brand).GetProperty("MarkupPercent");
+                if (pi != null && pi.PropertyType == typeof(decimal?))
+                {
+                    var v = (decimal?)pi.GetValue(b);
+                    if (v.HasValue) pct = v.Value;
+                }
+
+                return $"Наценка бренда: {pct:0.#}%";
             }
-            return "0% (не применяется)";
+            return "Наценка бренда: 0%";
         }
-        public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+            => throw new NotSupportedException();
     }
 }

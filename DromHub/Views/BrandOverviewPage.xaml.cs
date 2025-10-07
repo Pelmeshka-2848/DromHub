@@ -23,5 +23,10 @@ namespace DromHub.Views
             if (e.Parameter is Guid id)
                 await ViewModel.InitializeAsync(id, this.XamlRoot);
         }
+
+        private async void OnOpenInBrowserClicked(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            await ViewModel.OpenWebsiteAsync();
+        }
     }
 }

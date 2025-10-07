@@ -13,270 +13,299 @@
         </Style>
     </Page.Resources>
 
-    <!-- единый скролл на всю страницу -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <!-- Аккордеон: 4 строки -->
-        <Grid x:Name="Root" RowSpacing="10" Margin="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <!-- Контейнер для фиксированной кнопки -->
+    <Grid>
+        <!-- единый скролл на всю страницу -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <!-- Аккордеон: 4 строки -->
+            <Grid x:Name="Root" RowSpacing="10" Margin="0,0,0,60">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- === ОСНОВНЫЕ === -->
-            <Expander x:Name="ExpCore"
-                      Grid.Row="0"
-                      Expanding="Accordion_Expanding">
-                <Expander.Header>
-                    <TextBlock Text="ОСНОВНЫЕ"
-                               Style="{ThemeResource SubtitleTextBlockStyle}"
-                               FontFamily="{StaticResource SFPro}"
-                               Margin="10,4,10,4"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
-                </Expander.Header>
+                <!-- === ОСНОВНЫЕ === -->
+                <Expander x:Name="ExpCore"
+                          Grid.Row="0"
+                          Expanding="Accordion_Expanding">
+                    <Expander.Header>
+                        <TextBlock Text="ОСНОВНЫЕ"
+                                   Style="{ThemeResource SubtitleTextBlockStyle}"
+                                   FontFamily="{StaticResource SFPro}"
+                                   Margin="10,4,10,4"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Expander.Header>
 
-                <Grid Margin="10,4,10,4" ColumnSpacing="12" RowSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="420"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                    <Grid Margin="10,4,10,4" ColumnSpacing="12" RowSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="420"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                    <!-- Name -->
-                    <FontIcon Grid.Row="0" Grid.Column="0" Glyph="&#xE70F;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="0" Grid.Column="1">
-                        <TextBlock Text="Название бренда"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="2–80 символов, регистр/пробелы нормализуются; уникальность среди брендов"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <TextBox Grid.Row="0" Grid.Column="2"
-                             PlaceholderText="Например: BOSCH"
-                             FontFamily="{StaticResource SFPro}"
-                             MaxLength="80"/>
-
-                    <!-- IsOem -->
-                    <FontIcon Grid.Row="1" Grid.Column="0" Glyph="&#xE82D;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="1" Grid.Column="1">
-                        <TextBlock Text="Производитель"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="OEM или Аналог"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <ToggleSwitch Grid.Row="1" Grid.Column="2" OnContent="OEM" OffContent="Аналог"/>
-
-                    <!-- CountryCode -->
-                    <FontIcon Grid.Row="2" Grid.Column="0" Glyph="&#xE909;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="2" Grid.Column="1">
-                        <TextBlock Text="Страна (ISO-2)"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="Код из ISO-3166-1 alpha-2 (RU, DE, CN, …)"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <ComboBox Grid.Row="2" Grid.Column="2" MinWidth="200">
-                        <ComboBoxItem Content="RU"/>
-                        <ComboBoxItem Content="DE"/>
-                        <ComboBoxItem Content="CN"/>
-                        <ComboBoxItem Content="US"/>
-                        <ComboBoxItem Content="JP"/>
-                    </ComboBox>
-
-                    <!-- Website -->
-                    <FontIcon Grid.Row="3" Grid.Column="0" Glyph="&#xE774;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="3" Grid.Column="1">
-                        <TextBlock Text="Сайт"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="Полный URL: https://…  (пусто → «—»)"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <TextBox Grid.Row="3" Grid.Column="2"
-                             PlaceholderText="https://example.com"
-                             FontFamily="{StaticResource SFPro}"/>
-
-                    <!-- YearFounded -->
-                    <FontIcon Grid.Row="4" Grid.Column="0" Glyph="&#xE823;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="4" Grid.Column="1">
-                        <TextBlock Text="Год основания"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="Минимум 1850, максимум — текущий"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <NumberBox Grid.Row="4" Grid.Column="2" Minimum="1850" Maximum="2100" Value="1998"/>
-
-                    <!-- ShortDescription -->
-                    <FontIcon Grid.Row="5" Grid.Column="0" Glyph="&#xE8C8;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="5" Grid.Column="1">
-                        <TextBlock Text="Краткое описание"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="0–400 символов, кратко и по делу"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <TextBox Grid.Row="5" Grid.Column="2"
-                             FontFamily="{StaticResource SFPro}"
-                             TextWrapping="Wrap" AcceptsReturn="True" Height="88"
-                             PlaceholderText="Описание бренда…"/>
-
-                    <!-- Tags/Labels -->
-                    <FontIcon Grid.Row="6" Grid.Column="0" Glyph="&#xE8EC;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="6" Grid.Column="1">
-                        <TextBlock Text="Метки"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="Выберите из справочника или добавьте новые (по ролям)"
-                                   FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Row="6" Grid.Column="2">
-                        <AutoSuggestBox PlaceholderText="Добавить метку…"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <Border CornerRadius="12" Padding="8,4" Margin="0,0,6,0"
-                                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
-                                <TextBlock Text="Электрика"
-                                           FontFamily="{StaticResource SFPro}"
-                                           Style="{ThemeResource CaptionTextBlockStyle}"/>
-                            </Border>
-                            <Border CornerRadius="12" Padding="8,4"
-                                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
-                                <TextBlock Text="Подвеска"
-                                           FontFamily="{StaticResource SFPro}"
-                                           Style="{ThemeResource CaptionTextBlockStyle}"/>
-                            </Border>
+                        <!-- Name -->
+                        <FontIcon Grid.Row="0" Grid.Column="0" Glyph="&#xE70F;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Название бренда"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Влияет на отображение и поиск; при изменении выполняется нормализация и переиндексация."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
                         </StackPanel>
-                    </StackPanel>
-                </Grid>
-            </Expander>
+                        <TextBox Grid.Row="0" Grid.Column="2"
+                                 PlaceholderText="Например: BOSCH"
+                                 FontFamily="{StaticResource SFPro}"
+                                 MaxLength="80"/>
 
-            <!-- === АЛИАСЫ === -->
-            <Expander x:Name="ExpAliases"
-                      Grid.Row="1"
-                      Expanding="Accordion_Expanding">
-                <Expander.Header>
-                    <TextBlock Text="АЛИАСЫ"
-                               Style="{ThemeResource SubtitleTextBlockStyle}"
-                               FontFamily="{StaticResource SFPro}"
-                               Margin="10,4,10,4"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
-                </Expander.Header>
+                        <!-- IsOem -->
+                        <FontIcon Grid.Row="1" Grid.Column="0" Glyph="&#xE82D;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Производитель"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Определяет бейдж OEM/Аналог и влияет на фильтры и отчёты."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Row="1" Grid.Column="2" OnContent="OEM" OffContent="Аналог"/>
 
-                <Grid Margin="10,4,10,4" RowSpacing="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                        <!-- CountryCode -->
+                        <FontIcon Grid.Row="2" Grid.Column="0" Glyph="&#xE909;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Страна (ISO-2)"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Используется для флага/локализации и фильтров по стране; только ISO-3166-1 alpha-2."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <ComboBox Grid.Row="2" Grid.Column="2" MinWidth="200">
+                            <ComboBoxItem Content="RU"/>
+                            <ComboBoxItem Content="DE"/>
+                            <ComboBoxItem Content="CN"/>
+                            <ComboBoxItem Content="US"/>
+                            <ComboBoxItem Content="JP"/>
+                        </ComboBox>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal">
-                        <TextBox PlaceholderText="Новый алиас…" Width="320"
+                        <!-- Website -->
+                        <FontIcon Grid.Row="3" Grid.Column="0" Glyph="&#xE774;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Сайт"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Показываем кнопку «Открыть сайт» и проверяем ссылку; пустое значение отображается как «—»."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <TextBox Grid.Row="3" Grid.Column="2"
+                                 PlaceholderText="https://example.com"
                                  FontFamily="{StaticResource SFPro}"/>
-                        <Button Content="Добавить" Margin="8,0,0,0"/>
-                    </StackPanel>
 
-                    <ListView Grid.Row="1" Height="160">
-                        <ListViewItem Content="BOSCH"/>
-                        <ListViewItem Content="Robert Bosch"/>
-                        <ListViewItem Content="BOSCH GmbH"/>
-                    </ListView>
-                </Grid>
-            </Expander>
+                        <!-- YearFounded -->
+                        <FontIcon Grid.Row="4" Grid.Column="0" Glyph="&#xE823;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="4" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Год основания"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Используется в профиле бренда и сортировках по возрасту; вне диапазона не принимается."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <NumberBox Grid.Row="4" Grid.Column="2" Minimum="1850" Maximum="2100" Value="1998"/>
 
-            <!-- === ЦЕНООБРАЗОВАНИЕ === -->
-            <Expander x:Name="ExpPricing"
-                      Grid.Row="2"
-                      Expanding="Accordion_Expanding">
-                <Expander.Header>
-                    <TextBlock Text="ЦЕНООБРАЗОВАНИЕ"
-                               Style="{ThemeResource SubtitleTextBlockStyle}"
-                               FontFamily="{StaticResource SFPro}"
-                               Margin="10,4,10,4"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
-                </Expander.Header>
+                        <!-- ShortDescription -->
+                        <FontIcon Grid.Row="5" Grid.Column="0" Glyph="&#xE8C8;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="5" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Краткое описание"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Показывается в карточках и «О бренде», участвует в поиске; обрезается до 400 символов."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <TextBox Grid.Row="5" Grid.Column="2"
+                                 FontFamily="{StaticResource SFPro}"
+                                 TextWrapping="Wrap" AcceptsReturn="True" Height="88"
+                                 PlaceholderText="Описание бренда…"/>
 
-                <Grid Margin="10,4,10,4" ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="420"/>
-                    </Grid.ColumnDefinitions>
+                        <!-- Tags/Labels -->
+                        <FontIcon Grid.Row="6" Grid.Column="0" Glyph="&#xE8EC;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="6" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Метки"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Влияют на фильтры каталога и рекомендации; новые метки добавятся в справочник (по правам)."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="6" Grid.Column="2">
+                            <AutoSuggestBox PlaceholderText="Добавить метку…"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <Border CornerRadius="12" Padding="8,4" Margin="0,0,6,0"
+                                        Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                                    <TextBlock Text="Электрика"
+                                               FontFamily="{StaticResource SFPro}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                </Border>
+                                <Border CornerRadius="12" Padding="8,4"
+                                        Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                                    <TextBlock Text="Подвеска"
+                                               FontFamily="{StaticResource SFPro}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Expander>
 
-                    <FontIcon Grid.Column="0" Glyph="&#xEAFD;" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="1">
-                        <TextBlock Text="Наценка бренда, %"
+                <!-- === АЛИАСЫ === -->
+                <Expander x:Name="ExpAliases"
+                          Grid.Row="1"
+                          Expanding="Accordion_Expanding">
+                    <Expander.Header>
+                        <TextBlock Text="АЛИАСЫ"
+                                   Style="{ThemeResource SubtitleTextBlockStyle}"
                                    FontFamily="{StaticResource SFPro}"
-                                   Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                        <TextBlock Text="Диапазон 0–200, шаг 0.1"
+                                   Margin="10,4,10,4"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Expander.Header>
+
+                    <Grid Margin="10,4,10,4" RowSpacing="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- описание блока -->
+                        <TextBlock Grid.Row="0"
+                                   Text="Используются при поиске и импорте; значения уникальны в пределах бренда, нормализуем регистр и пробелы. Изменения применяются сразу после сохранения."
                                    FontFamily="{StaticResource SFPro}"
                                    Style="{ThemeResource CaptionTextBlockStyle}"/>
-                    </StackPanel>
-                    <NumberBox Grid.Column="2" Minimum="0" Maximum="200" SmallChange="0.1" Value="15"/>
-                </Grid>
-            </Expander>
 
-            <!-- === ПОЛЬЗОВАТЕЛЬСКИЕ === -->
-            <Expander x:Name="ExpUser"
-                      Grid.Row="3"
-                      Margin="20,0,20,20"
-                      Expanding="Accordion_Expanding">
-                <Expander.Header>
-                    <TextBlock Text="ПОЛЬЗОВАТЕЛЬСКИЕ"
-                               Style="{ThemeResource SubtitleTextBlockStyle}"
-                               FontFamily="{StaticResource SFPro}"
-                               Margin="10,4,10,4"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis"/>
-                </Expander.Header>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBox PlaceholderText="Новый алиас…" Width="320"
+                                     FontFamily="{StaticResource SFPro}"/>
+                            <Button Content="Добавить" Margin="8,0,0,0"/>
+                        </StackPanel>
 
-                <Grid Margin="10,4,10,4" RowSpacing="12" ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="420"/>
-                    </Grid.ColumnDefinitions>
+                        <ListView Grid.Row="2" Height="160">
+                            <ListViewItem Content="BOSCH"/>
+                            <ListViewItem Content="Robert Bosch"/>
+                            <ListViewItem Content="BOSCH GmbH"/>
+                        </ListView>
+                    </Grid>
+                </Expander>
 
-                    <!-- IsFavorite -->
-                    <FontIcon Grid.Row="0" Grid.Column="0" Glyph="&#xEB52;" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1"
-                               Text="Избранное"
-                               FontFamily="{StaticResource SFPro}"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                    <ToggleSwitch Grid.Row="0" Grid.Column="2"/>
+                <!-- === ЦЕНООБРАЗОВАНИЕ === -->
+                <Expander x:Name="ExpPricing"
+                          Grid.Row="2"
+                          Expanding="Accordion_Expanding">
+                    <Expander.Header>
+                        <TextBlock Text="ЦЕНООБРАЗОВАНИЕ"
+                                   Style="{ThemeResource SubtitleTextBlockStyle}"
+                                   FontFamily="{StaticResource SFPro}"
+                                   Margin="10,4,10,4"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Expander.Header>
 
-                    <!-- UserNotes -->
-                    <FontIcon Grid.Row="1" Grid.Column="0" Glyph="&#xE70B;" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1"
-                               Text="Заметки пользователя"
-                               FontFamily="{StaticResource SFPro}"
-                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-                    <TextBox Grid.Row="1" Grid.Column="2" Height="72"
-                             FontFamily="{StaticResource SFPro}"
-                             AcceptsReturn="True" TextWrapping="Wrap"
-                             PlaceholderText="Короткие заметки…"/>
-                </Grid>
-            </Expander>
-        </Grid>
-    </ScrollViewer>
+                    <Grid Margin="10,4,10,4" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="420"/>
+                        </Grid.ColumnDefinitions>
+
+                        <FontIcon Grid.Column="0" Glyph="&#xEAFD;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Наценка бренда, %"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Используется при расчёте розничной цены по всему бренду; изменения вступят в силу после сохранения."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <NumberBox Grid.Column="2" Minimum="0" Maximum="200" SmallChange="0.1" Value="15"/>
+                    </Grid>
+                </Expander>
+
+                <!-- === ПОЛЬЗОВАТЕЛЬСКИЕ === -->
+                <Expander x:Name="ExpUser"
+                          Grid.Row="3"
+                          Margin="20,0,20,20"
+                          Expanding="Accordion_Expanding">
+                    <Expander.Header>
+                        <TextBlock Text="ПОЛЬЗОВАТЕЛЬСКИЕ"
+                                   Style="{ThemeResource SubtitleTextBlockStyle}"
+                                   FontFamily="{StaticResource SFPro}"
+                                   Margin="10,4,10,4"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Expander.Header>
+
+                    <Grid Margin="10,4,10,4" RowSpacing="12" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="420"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- RowDefinitions добавлены -->
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- IsFavorite -->
+                        <FontIcon Grid.Row="0" Grid.Column="0" Glyph="&#xEB52;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Избранное"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Влияет на персональные списки и быстрый доступ; настройка только для текущего пользователя."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Row="0" Grid.Column="2"/>
+
+                        <!-- UserNotes -->
+                        <FontIcon Grid.Row="1" Grid.Column="0" Glyph="&#xE70B;" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Заметки пользователя"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                            <TextBlock Text="Хранятся в ваших настройках и видны только вам."
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+                        <TextBox Grid.Row="1" Grid.Column="2" Height="72"
+                                 FontFamily="{StaticResource SFPro}"
+                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                 PlaceholderText="Короткие заметки…"/>
+                    </Grid>
+                </Expander>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Фиксированная кнопка сохранения -->
+        <Button Content="Сохранить изменения"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="20,10,20,10"/>
+    </Grid>
 </Page>

@@ -30,6 +30,10 @@
     <None Remove="Assets\engine.combustion.svg" />
     <None Remove="Assets\fan.svg" />
     <None Remove="Assets\gear.svg" />
+    <None Remove="Assets\globe.americas.svg" />
+    <None Remove="Assets\globe.central.south.asia.svg" />
+    <None Remove="Assets\globe.europe.africa.svg" />
+    <None Remove="Assets\globe.svg" />
     <None Remove="Assets\headlight.high.beam.svg" />
     <None Remove="Assets\house.svg" />
     <None Remove="Assets\info.svg" />
