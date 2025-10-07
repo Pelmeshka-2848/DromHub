@@ -2,8 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
+using Microsoft.UI.Xaml.Navigation;
 using System;
 
 namespace DromHub.Views
@@ -82,32 +83,43 @@ namespace DromHub.Views
         }
 
         // ===== Навигация между брендами (слайд) =====
-        private void GoPrev_Click(object sender, RoutedEventArgs e)
+        private void NavigateToBrand(Guid id, SlideNavigationTransitionEffect effect)
+        {
+            Frame?.Navigate(
+                typeof(BrandShellPage),
+                id,
+                new SlideNavigationTransitionInfo { Effect = effect });
+        }
+
+        private void Prev_KeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
         {
             if (ViewModel.HasPrev && ViewModel.PrevBrandId is Guid id)
             {
-                Frame?.Navigate(
-                    typeof(BrandShellPage),
-                    id,
-                    new SlideNavigationTransitionInfo
-                    {
-                        Effect = SlideNavigationTransitionEffect.FromLeft
-                    });
+                NavigateToBrand(id, SlideNavigationTransitionEffect.FromLeft);
+                args.Handled = true;
             }
+        }
+
+        private void Next_KeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+        {
+            if (ViewModel.HasNext && ViewModel.NextBrandId is Guid id)
+            {
+                NavigateToBrand(id, SlideNavigationTransitionEffect.FromRight);
+                args.Handled = true;
+            }
+        }
+
+        // Обновим кнопки, чтобы тоже использовали общий helper
+        private void GoPrev_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.HasPrev && ViewModel.PrevBrandId is Guid id)
+                NavigateToBrand(id, SlideNavigationTransitionEffect.FromLeft);
         }
 
         private void GoNext_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.HasNext && ViewModel.NextBrandId is Guid id)
-            {
-                Frame?.Navigate(
-                    typeof(BrandShellPage),
-                    id,
-                    new SlideNavigationTransitionInfo
-                    {
-                        Effect = SlideNavigationTransitionEffect.FromRight
-                    });
-            }
+                NavigateToBrand(id, SlideNavigationTransitionEffect.FromRight);
         }
     }
 }

@@ -345,7 +345,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0"
-                                       Text="МЕТРИКА 1"
+                                       Text="ПОЛНОТА"
                                        FontFamily="{StaticResource SFPro}"
                                        Style="{ThemeResource BodyTextBlockStyle}"/>
 
@@ -379,7 +379,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0"
-                                       Text="МЕТРИКА 2"
+                                       Text="АКТУАЛЬНОСТЬ"
                                        FontFamily="{StaticResource SFPro}"
                                        Style="{ThemeResource BodyTextBlockStyle}"/>
 

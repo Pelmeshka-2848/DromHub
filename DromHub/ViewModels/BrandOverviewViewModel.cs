@@ -63,29 +63,27 @@ namespace DromHub.ViewModels
         // избранное (локальный флажок UI)
         [ObservableProperty] private bool isFavorite;
 
-        // ===== МЕТРИКИ (значение + дельта) =====
-        [ObservableProperty] private double assortmentValue;    // 0..100
-        [ObservableProperty] private double assortmentDelta;
-
-        [ObservableProperty] private double awarenessValue;     // 0..100
-        [ObservableProperty] private double awarenessDelta;
-
-        [ObservableProperty] private double marginValue;        // 0..100
-        [ObservableProperty] private double marginDelta;
+        // ===== МЕТРИКИ (перцентили) слева =====
+        [ObservableProperty] private double assortmentValue; // 0..100
+        [ObservableProperty] private double assortmentDelta; // п.п. к медианному перцентилю (50)
+        [ObservableProperty] private double awarenessValue;  // 0..100
+        [ObservableProperty] private double awarenessDelta;  // п.п. к медианному перцентилю (50)
+        [ObservableProperty] private double marginValue;     // 0..100 (перцентиль реальной маржи)
+        [ObservableProperty] private double marginDelta;     // п.п. к медиане реальной маржи
 
         public string AssortmentDisplay => $"{AssortmentValue:F0}% {(AssortmentDelta >= 0 ? "+" : "−")}{Math.Abs(AssortmentDelta):F1}";
         public string AwarenessDisplay => $"{AwarenessValue:F0}% {(AwarenessDelta >= 0 ? "+" : "−")}{Math.Abs(AwarenessDelta):F1}";
         public string MarginDisplay => $"{MarkupPct:F0}% {(MarginDelta >= 0 ? "+" : "−")}{Math.Abs(MarginDelta):F1}";
 
-        // Для правой колонки (ProgressBar)
-        public double BarAValue => AssortmentValue;
-        public double BarBValue => AwarenessValue;
-        public string BarADeltaText => $"{AssortmentDelta:+0.0;-0.0;0.0}";
-        public string BarBDeltaText => $"{AwarenessDelta:+0.0;-0.0;0.0}";
-        public string BarATextCenter => $"{AssortmentValue:F0}";
-        public string BarBTextCenter => $"{AwarenessValue:F0}";
+        // ===== ПРАВЫЕ БАРЫ: полнота/актуальность =====
+        [ObservableProperty] private double barAValue;              // completeness 0..100
+        [ObservableProperty] private double barBValue;              // freshness 0..100
+        [ObservableProperty] private string barADeltaText = "0.0";  // ±x.x
+        [ObservableProperty] private string barBDeltaText = "0.0";
+        [ObservableProperty] private string barATextCenter = "0";   // число в центре
+        [ObservableProperty] private string barBTextCenter = "0";
 
-        // Маржа (в процентах)
+        // Маржа (в процентах для текста)
         [ObservableProperty] private decimal markupPct;
 
         // ===== INIT =====
@@ -122,7 +120,7 @@ namespace DromHub.ViewModels
             // маржа
             MarkupPct = (decimal)(b.Markup?.MarkupPct ?? 0);
 
-            // синонимы -> строка
+            // алиасы -> строка
             var aliasStrings = (b.Aliases ?? new List<BrandAlias>())
                 .Select(ReadAliasString)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -134,33 +132,54 @@ namespace DromHub.ViewModels
                 ? $"- {string.Join(" | ", aliasStrings)} -"
                 : "—";
 
-            // ===== расчёт метрик и дельт =====
+            // ===== расчёты: перцентили и «правые» бары =====
             var stats = await _db.Brands
-                .Select(x => new
-                {
-                    Parts = _db.Parts.Count(p => p.BrandId == x.Id),
-                    Aliases = _db.BrandAliases.Count(a => a.BrandId == x.Id),
-                    Markup = (double?)_db.BrandMarkups.Where(m => m.BrandId == x.Id)
-                                                       .Select(m => m.MarkupPct)
-                                                       .FirstOrDefault()
-                })
+                .Select(x => new BrandStat(
+                    x.Id,
+                    _db.Parts.Count(p => p.BrandId == x.Id),
+                    _db.BrandAliases.Count(a => a.BrandId == x.Id),
+                    (double?)_db.BrandMarkups.Where(m => m.BrandId == x.Id).Select(m => m.MarkupPct).FirstOrDefault(),
+                    x.Website,
+                    x.Description,
+                    x.UserNotes,
+                    x.CountryId,
+                    x.YearFounded,
+                    x.UpdatedAt
+                ))
+                .AsNoTracking()
                 .ToListAsync();
 
-            var count = Math.Max(1, stats.Count);
-            double maxParts = stats.Count > 0 ? Math.Max(1, stats.Max(s => s.Parts)) : 1;
-            double maxAliases = stats.Count > 0 ? Math.Max(1, stats.Max(s => s.Aliases)) : 1;
+            var me = stats.First(s => s.Id == id);
 
-            double meanPartsRatio = stats.Count > 0 ? stats.Average(s => s.Parts / maxParts) * 100.0 : 0.0;
-            double meanAliasesRatio = stats.Count > 0 ? stats.Average(s => s.Aliases / maxAliases) * 100.0 : 0.0;
-            double meanMarkup = stats.Count > 0 ? stats.Average(s => s.Markup ?? 0.0) : 0.0;
+            // Перцентили
+            var partsAll = stats.Select(s => (double)s.Parts).OrderBy(v => v).ToList();
+            var aliasAll = stats.Select(s => (double)s.Aliases).OrderBy(v => v).ToList();
+            var markupAll = stats.Select(s => s.Markup ?? 0.0).OrderBy(v => v).ToList();
 
-            AssortmentValue = PartsCount / maxParts * 100.0;
-            AwarenessValue = AliasesCount / maxAliases * 100.0;
-            MarginValue = Math.Clamp((double)MarkupPct, 0, 100);
+            double markupPctReal = (double)MarkupPct;
+            double markupMedian = Median(markupAll);
 
-            AssortmentDelta = AssortmentValue - meanPartsRatio;
-            AwarenessDelta = AwarenessValue - meanAliasesRatio;
-            MarginDelta = (double)MarkupPct - meanMarkup;
+            AssortmentValue = PercentileRank(partsAll, me.Parts);
+            AwarenessValue = PercentileRank(aliasAll, me.Aliases);
+            MarginValue = PercentileRank(markupAll, markupPctReal);
+
+            AssortmentDelta = AssortmentValue - 50.0;           // против медианного перцентиля
+            AwarenessDelta = AwarenessValue - 50.0;           // против медианного перцентиля
+            MarginDelta = markupPctReal - markupMedian;   // п.п. к медиане реальной маржи
+
+            // Полнота карточки (BarA)
+            double completenessMe = ComputeCompleteness(me);
+            double completenessAvg = stats.Average(ComputeCompleteness);
+            BarAValue = completenessMe;
+            BarADeltaText = $"{(completenessMe - completenessAvg):+0.0;-0.0;0.0}";
+            BarATextCenter = $"{completenessMe:F0}";
+
+            // Актуальность (BarB)
+            double freshMe = FreshnessScore(me.UpdatedAt);
+            double freshAvg = stats.Average(s => FreshnessScore(s.UpdatedAt));
+            BarBValue = freshMe;
+            BarBDeltaText = $"{(freshMe - freshAvg):+0.0;-0.0;0.0}";
+            BarBTextCenter = $"{freshMe:F0}";
 
             // уведомления зависимых свойств
             OnPropertyChanged(nameof(BrandNameUpper));
@@ -178,13 +197,6 @@ namespace DromHub.ViewModels
             OnPropertyChanged(nameof(AssortmentDisplay));
             OnPropertyChanged(nameof(AwarenessDisplay));
             OnPropertyChanged(nameof(MarginDisplay));
-
-            OnPropertyChanged(nameof(BarAValue));
-            OnPropertyChanged(nameof(BarBValue));
-            OnPropertyChanged(nameof(BarADeltaText));
-            OnPropertyChanged(nameof(BarBDeltaText));
-            OnPropertyChanged(nameof(BarATextCenter));
-            OnPropertyChanged(nameof(BarBTextCenter));
 
             OnPropertyChanged(nameof(DescriptionOrPlaceholder));
             OnPropertyChanged(nameof(UserNotesOrPlaceholder));
@@ -224,6 +236,72 @@ namespace DromHub.ViewModels
             };
         }
 
+        // ===== helpers: перцентили / медиана / полнота / актуальность =====
+
+        private static double PercentileRank(List<double> sortedAsc, double value)
+        {
+            if (sortedAsc == null || sortedAsc.Count == 0) return 0.0;
+            int lo = 0, hi = sortedAsc.Count;
+            while (lo < hi)
+            {
+                int mid = (lo + hi) / 2;
+                if (sortedAsc[mid] <= value) lo = mid + 1;
+                else hi = mid;
+            }
+            return 100.0 * lo / sortedAsc.Count;
+        }
+
+        private static double Median(List<double> sortedAsc)
+        {
+            if (sortedAsc == null || sortedAsc.Count == 0) return 0.0;
+            int n = sortedAsc.Count;
+            if (n % 2 == 1) return sortedAsc[n / 2];
+            return (sortedAsc[n / 2 - 1] + sortedAsc[n / 2]) / 2.0;
+        }
+
+        private static double ComputeCompleteness(BrandStat s)
+        {
+            // веса суммой ~100
+            const double wCountry = 15, wWebsite = 15, wYear = 10, wDesc = 15, wNotes = 5, wAliases = 20, wParts = 15, wMarkup = 5;
+
+            double score = 0;
+            if (s.CountryId != null) score += wCountry;
+            if (!string.IsNullOrWhiteSpace(s.Website)) score += wWebsite;
+            if (s.YearFounded is int yf && yf >= 1800) score += wYear;
+            if (!string.IsNullOrWhiteSpace(s.Description)) score += wDesc;
+            if (!string.IsNullOrWhiteSpace(s.UserNotes)) score += wNotes;
+            if (s.Aliases > 0) score += wAliases;
+            if (s.Parts > 0) score += wParts;
+            if (s.Markup is double mk && mk > 0) score += wMarkup;
+
+            return score;
+        }
+
+        private static double FreshnessScore(DateTime updatedAtUtc)
+        {
+            var days = Math.Max(0, (DateTime.UtcNow - updatedAtUtc).TotalDays);
+            const double freshMax = 30.0;   // 100 при ≤30 дней
+            const double staleMax = 365.0;  // 0 при ≥365 дней
+            if (days <= freshMax) return 100.0;
+            if (days >= staleMax) return 0.0;
+            double t = (days - freshMax) / (staleMax - freshMax); // 0..1
+            return 100.0 * (1.0 - t);
+        }
+
+        private sealed record BrandStat(
+            Guid Id,
+            int Parts,
+            int Aliases,
+            double? Markup,
+            string? Website,
+            string? Description,
+            string? UserNotes,
+            Guid? CountryId,
+            int? YearFounded,
+            DateTime UpdatedAt
+        );
+
+        // ---- ОТКРЫТИЕ САЙТА ----
         public async Task OpenWebsiteAsync()
         {
             if (!HasWebsite) return;

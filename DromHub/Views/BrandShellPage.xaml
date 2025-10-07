@@ -14,6 +14,19 @@
         <converters:EnumEqualsConverter x:Key="EnumEquals"/>
     </Page.Resources>
 
+    <Page.KeyboardAccelerators>
+        <!-- Вперёд/назад по брендам -->
+        <KeyboardAccelerator Key="Left"  Invoked="Prev_KeyboardAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Right" Invoked="Next_KeyboardAccelerator_Invoked"/>
+
+        <!-- Опционально дублируем через Alt+[←/→], если хочешь всегда работать из текстовых полей
+         (оставь закомментированным, если не нужно) -->
+        <!--
+    <KeyboardAccelerator Modifiers="Menu" Key="Left"  Invoked="Prev_KeyboardAccelerator_Invoked"/>
+    <KeyboardAccelerator Modifiers="Menu" Key="Right" Invoked="Next_KeyboardAccelerator_Invoked"/>
+    -->
+    </Page.KeyboardAccelerators>
+
     <Grid RowSpacing="12" Padding="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
