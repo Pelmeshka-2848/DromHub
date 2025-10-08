@@ -4,140 +4,258 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
     Title="Просмотр детали"
-    PrimaryButtonText="Закрыть"
-    DefaultButton="Primary"
     Width="1200"
-    Height="900">
+    Height="900"
+    DefaultButton="Primary"
+    PrimaryButtonText="Закрыть"
+    mc:Ignorable="d">
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Верхняя часть - изображение -->
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="15" Padding="16" HorizontalAlignment="Center">
-                <!-- Область изображения -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefault}" 
-                        Height="400" 
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
-                        BorderThickness="1"
-                        Width="400">
+        <!--  Верхняя часть - изображение  -->
+        <ScrollViewer
+            Grid.Row="0"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                Padding="16"
+                HorizontalAlignment="Center"
+                Spacing="15">
+                <!--  Область изображения  -->
+                <Border
+                    Width="400"
+                    Height="400"
+                    Background="{ThemeResource CardBackgroundFillColorDefault}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                    BorderThickness="1"
+                    CornerRadius="8">
 
                     <Grid>
-                        <!-- Картинка -->
-                        <Image x:Name="PartImage"
-                               Stretch="Uniform"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               MaxWidth="380"
-                               MaxHeight="380"
-                               ImageFailed="PartImage_ImageFailed"/>
+                        <!--  Картинка  -->
+                        <Image
+                            x:Name="PartImage"
+                            MaxWidth="380"
+                            MaxHeight="380"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            ImageFailed="PartImage_ImageFailed"
+                            Stretch="Uniform" />
 
-                        <!-- Заглушка "нет изображения" -->
-                        <StackPanel x:Name="NoImagePlaceholder"
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center" 
-                                    Spacing="10"
-                                    Visibility="Collapsed">
-                            <TextBlock Text="📷" FontSize="64" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Нет изображения" 
-                                       FontSize="18"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorSecondary}"/>
+                        <!--  Заглушка "нет изображения"  -->
+                        <StackPanel
+                            x:Name="NoImagePlaceholder"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="10"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="64"
+                                Text="📷" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="18"
+                                Foreground="{ThemeResource TextFillColorSecondary}"
+                                Text="Нет изображения" />
                         </StackPanel>
                     </Grid>
                 </Border>
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Нижняя часть - информация и кроссы -->
+        <StackPanel
+            Grid.Row="0"
+            Margin="0,15,0,0"
+            HorizontalAlignment="Center"
+            Spacing="10">
+            <Button
+                x:Name="AddToCartButton"
+                Padding="20,10"
+                Click="AddToCartButton_Click"
+                Content="Add to Cart"
+                FontSize="14"
+                Style="{ThemeResource AccentButtonStyle}" />
+        </StackPanel>
+
+        <!--  Нижняя часть - информация и кроссы  -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="25" Padding="20">
-                <!-- Основная информация -->
+            <StackPanel Padding="20" Spacing="25">
+                <!--  Основная информация  -->
                 <StackPanel Spacing="15">
-                    <TextBlock Text="Основная информация" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                    <TextBlock
+                        Margin="0,0,0,15"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Text="Основная информация" />
 
                     <Grid HorizontalAlignment="Left">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="400"/>
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="400" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="Название:" FontWeight="SemiBold" FontSize="15" Grid.Row="0" Grid.Column="0"/>
-                        <TextBlock Text="{Binding Part.Name}" TextWrapping="Wrap" FontSize="15" Grid.Row="0" Grid.Column="1" Margin="12,0,0,0"/>
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Text="Название:" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            FontSize="15"
+                            Text="{Binding Part.Name}"
+                            TextWrapping="Wrap" />
 
-                        <TextBlock Text="Каталожный №:" FontWeight="SemiBold" FontSize="15" Grid.Row="1" Grid.Column="0" Margin="0,12,0,0"/>
-                        <TextBlock Text="{Binding Part.CatalogNumber}" FontSize="15" Grid.Row="1" Grid.Column="1" Margin="12,12,0,0"/>
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Margin="0,12,0,0"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Text="Каталожный №:" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Margin="12,12,0,0"
+                            FontSize="15"
+                            Text="{Binding Part.CatalogNumber}" />
 
-                        <TextBlock Text="Артикул:" FontWeight="SemiBold" FontSize="15" Grid.Row="2" Grid.Column="0" Margin="0,12,0,0"/>
-                        <TextBlock Text="{Binding Part.Article}" FontSize="15" Grid.Row="2" Grid.Column="1" Margin="12,12,0,0"/>
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Margin="0,12,0,0"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Text="Артикул:" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Margin="12,12,0,0"
+                            FontSize="15"
+                            Text="{Binding Part.Article}" />
 
-                        <TextBlock Text="Бренд:" FontWeight="SemiBold" FontSize="15" Grid.Row="3" Grid.Column="0" Margin="0,12,0,0"/>
-                        <TextBlock Text="{Binding Part.Brand.Name}" FontSize="15" Grid.Row="3" Grid.Column="1" Margin="12,12,0,0"/>
+                        <TextBlock
+                            Grid.Row="3"
+                            Grid.Column="0"
+                            Margin="0,12,0,0"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Text="Бренд:" />
+                        <TextBlock
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Margin="12,12,0,0"
+                            FontSize="15"
+                            Text="{Binding Part.Brand.Name}" />
                     </Grid>
                 </StackPanel>
 
-                <!-- Список кроссов -->
+                <!--  Список кроссов  -->
                 <StackPanel>
-                    <TextBlock Text="Кроссы (альтернативные номера)" 
-                               FontSize="20" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                    <TextBlock
+                        Margin="0,0,0,15"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Text="Кроссы (альтернативные номера)" />
 
-                    <Border BorderBrush="{ThemeResource CardStrokeColorDefault}" 
-                            BorderThickness="1" 
-                            CornerRadius="4"
-                            Height="400">
-                        <ListView x:Name="CrossesListView" 
-                                  ItemsSource="{Binding Crosses}" 
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <Border
+                        Height="400"
+                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <ListView
+                            x:Name="CrossesListView"
+                            ItemsSource="{Binding Crosses}"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="MinHeight" Value="45"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="MinHeight" Value="45" />
                                 </Style>
                             </ListView.ItemContainerStyle>
 
                             <ListView.Header>
                                 <Grid Padding="16" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*"/>
-                                        <ColumnDefinition Width="1.5*"/>
-                                        <ColumnDefinition Width="3*"/>
-                                        <ColumnDefinition Width="1.5*"/>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="1.5*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Text="Каталожный №" FontWeight="SemiBold" FontSize="15" Grid.Column="0"/>
-                                    <TextBlock Text="Бренд" FontWeight="SemiBold" FontSize="15" Grid.Column="1"/>
-                                    <TextBlock Text="Примечание" FontWeight="SemiBold" FontSize="15" Grid.Column="2"/>
-                                    <TextBlock Text="Тип" FontWeight="SemiBold" FontSize="15" Grid.Column="3"/>
+                                    <TextBlock
+                                        Grid.Column="0"
+                                        FontSize="15"
+                                        FontWeight="SemiBold"
+                                        Text="Каталожный №" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        FontSize="15"
+                                        FontWeight="SemiBold"
+                                        Text="Бренд" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        FontSize="15"
+                                        FontWeight="SemiBold"
+                                        Text="Примечание" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        FontSize="15"
+                                        FontWeight="SemiBold"
+                                        Text="Тип" />
                                 </Grid>
                             </ListView.Header>
 
                             <ListView.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefault}" BorderThickness="0,0,0,1">
+                                    <Grid
+                                        Padding="16"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                                        BorderThickness="0,0,0,1">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="2*"/>
-                                            <ColumnDefinition Width="1.5*"/>
-                                            <ColumnDefinition Width="3*"/>
-                                            <ColumnDefinition Width="1.5*"/>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="1.5*" />
+                                            <ColumnDefinition Width="3*" />
+                                            <ColumnDefinition Width="1.5*" />
                                         </Grid.ColumnDefinitions>
 
-                                        <TextBlock Text="{Binding CatalogNumber}" FontSize="15" Grid.Column="0" TextWrapping="Wrap" Margin="0,0,8,0"/>
-                                        <TextBlock Text="{Binding Brand}" FontSize="15" Grid.Column="1" TextWrapping="Wrap" Margin="0,0,8,0"/>
-                                        <TextBlock Text="{Binding Note}" FontSize="15" Grid.Column="2" TextWrapping="Wrap" Margin="0,0,8,0"/>
-                                        <TextBlock Text="{Binding RelationType}" FontSize="15" Grid.Column="3" TextWrapping="Wrap"/>
+                                        <TextBlock
+                                            Grid.Column="0"
+                                            Margin="0,0,8,0"
+                                            FontSize="15"
+                                            Text="{Binding CatalogNumber}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Margin="0,0,8,0"
+                                            FontSize="15"
+                                            Text="{Binding Brand}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Margin="0,0,8,0"
+                                            FontSize="15"
+                                            Text="{Binding Note}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            FontSize="15"
+                                            Text="{Binding RelationType}"
+                                            TextWrapping="Wrap" />
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
@@ -146,5 +264,11 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+
+        <TeachingTip x:Name="MessageTip"
+                    Title="Success"
+                    Subtitle="Part added to cart!"
+                    IsOpen="False"
+                    PreferredPlacement="Top"/>
     </Grid>
 </ContentDialog>

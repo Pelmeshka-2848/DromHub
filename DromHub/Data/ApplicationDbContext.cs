@@ -17,7 +17,7 @@ namespace DromHub.Data
         {
         }
 
-        // DbSets для всех таблиц
+        // DbSets для всех таблиц (УДАЛИТЬ Cart и CartItem)
         public DbSet<Brand> Brands { get; set; }
         public DbSet<BrandAlias> BrandAliases { get; set; }
         public DbSet<BrandMarkup> BrandMarkups { get; set; }
@@ -30,6 +30,9 @@ namespace DromHub.Data
         public DbSet<SupplierMarkup> SupplierMarkups { get; set; }
         public DbSet<SupplierPricelistLayout> SupplierPricelistLayouts { get; set; }
         public DbSet<PriceMarkup> PriceMarkups { get; set; }
+        // УДАЛИТЬ эти строки:
+        // public DbSet<Cart> Carts { get; set; }
+        // public DbSet<CartItem> CartItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

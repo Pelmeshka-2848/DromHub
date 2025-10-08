@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DromHub.Models
 {
@@ -31,6 +27,9 @@ namespace DromHub.Models
 
         [Column("price_in", TypeName = "numeric(12,2)")]
         public decimal PriceIn { get; set; }
+
+        [NotMapped]
+        public decimal Price => PriceIn;
 
         [Column("note")]
         public string Note { get; set; }

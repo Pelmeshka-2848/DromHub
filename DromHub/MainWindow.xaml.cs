@@ -11,18 +11,18 @@ namespace DromHub
 {
     public sealed partial class MainWindow : Window
     {
-        private const double CinemaAspect = 21.0 / 9.0; // ≈ 2.333...  1.618
-        private bool _isAdjusting;                      // защита от рекурсии
+        private const double CinemaAspect = 21.0 / 9.0;
+        private bool _isAdjusting;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            // 1) Стартовый максимальный 21:9 внутри рабочей области (учитывает DPI/панель задач)
+            // 1) Стартовый максимальный 21:9 внутри рабочей области
             ResizeCinemaToWorkArea();
             CenterOnScreen();
 
-            // 2) Держим аспект 21:9 — подписка на изменение размера ИМЕННО ОКНА
+            // 2) Держим аспект 21:9
             var appWindow = GetAppWindow();
             appWindow.Changed += AppWindow_Changed;
 
@@ -33,10 +33,15 @@ namespace DromHub
 
         private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
         {
-            if (args.IsSettingsSelected) return;
-
-            if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
-                NavigateByTag(tag);
+            if (args.SelectedItemContainer != null)
+            {
+                var tag = args.SelectedItemContainer.Tag?.ToString();
+                if (tag == "CartPage")
+                {
+                    contentFrame.Navigate(typeof(CartPage)); // Используем contentFrame (маленькая c)
+                }
+                // добавьте другие страницы по необходимости
+            }
         }
 
         private void NavigationView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
@@ -57,6 +62,7 @@ namespace DromHub
                 "BrandsOverviewPage" => typeof(BrandsHomePage),
                 "BrandsListPage" => typeof(BrandsIndexPage),
                 "BrandMergePage" => typeof(BrandMergeWizardPage),
+                "CartPage" => typeof(CartPage), // ДОБАВЬТЕ ЭТУ СТРОЧКУ
                 _ => null
             };
 
@@ -99,8 +105,8 @@ namespace DromHub
                         newH = (int)Math.Round(newW / CinemaAspect);
                     }
 
-                    // (необязательно) минимальный размер 21:9, чтобы окно не превращали в «спичку»
-                    const int minW = 3200; // подставь своё желаемое
+                    // минимальный размер 21:9
+                    const int minW = 3200;
                     int minH = (int)Math.Round(minW / CinemaAspect);
                     if (newW < minW) { newW = minW; newH = minH; }
 
@@ -119,10 +125,10 @@ namespace DromHub
             if (appWindow == null) return;
 
             var displayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Nearest);
-            var work = displayArea.WorkArea; // уже в нужных единицах с учётом DPI
+            var work = displayArea.WorkArea;
 
             // Максимально возможная ширина в пределах рабочей области
-            const double MaxWidthRatio = 0.90; // 90% от рабочей ширины
+            const double MaxWidthRatio = 0.90;
             int targetW = (int)Math.Round(work.Width * MaxWidthRatio);
             int targetH = (int)Math.Round(targetW / CinemaAspect);
 
@@ -155,6 +161,7 @@ namespace DromHub
             appWindow.Move(new PointInt32(x, y));
         }
 
-        // Удалить подписку на Root.SizeChanged и сам обработчик Root_SizeChanged
+        // Добавьте свойство для доступа к Frame извне (если нужно)
+        public Frame ContentFrame => contentFrame;
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DromHub.Data;
 using DromHub.Models;
 using DromHub.ViewModels;
+using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Composition;
@@ -38,7 +39,7 @@ namespace DromHub
 
             // Регистрация контекста базы данных
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=admin"));
+                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=plane2004"));
 
             // Регистрация ViewModels
             services.AddTransient<PartViewModel>();
@@ -47,6 +48,9 @@ namespace DromHub
             services.AddTransient<BrandMergeWizardViewModel>();
             services.AddTransient<BrandsHomeViewModel>();
             services.AddTransient<BrandShellViewModel>();
+
+            // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
+            services.AddTransient<CartViewModel>();
 
             // Регистрация MainWindow
             services.AddTransient<MainWindow>();
@@ -61,11 +65,11 @@ namespace DromHub
         {
             m_window = new MainWindow();
             m_window.Activate();
+
             try
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
-
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
                     // Инициализация БД
@@ -90,7 +94,6 @@ namespace DromHub
             }
 
             TrySetMicaBackdrop();
-
             m_window.Activate();
         }
 

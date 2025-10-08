@@ -5,52 +5,89 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     Title="DromHub">
 
-    <NavigationView x:Name="nvSample"
-                    IsSettingsVisible="True"
-                    IsBackButtonVisible="Collapsed"
-                    IsBackEnabled="False"
-                    AlwaysShowHeader="True"
-                    PaneTitle="DromHub"
-                    PaneDisplayMode="Left"
-                    ExpandedModeThresholdWidth="500"
-                    SelectionFollowsFocus="Disabled"
-                    IsTabStop="False"
-                    SelectionChanged="NavigationView_SelectionChanged"
-                    ItemInvoked="NavigationView_ItemInvoked">
+    <NavigationView
+        x:Name="nvSample"
+        AlwaysShowHeader="True"
+        ExpandedModeThresholdWidth="500"
+        IsBackButtonVisible="Collapsed"
+        IsBackEnabled="False"
+        IsSettingsVisible="True"
+        IsTabStop="False"
+        ItemInvoked="NavigationView_ItemInvoked"
+        PaneDisplayMode="Left"
+        PaneTitle="DromHub"
+        SelectionChanged="NavigationView_SelectionChanged"
+        SelectionFollowsFocus="Disabled">
 
         <NavigationView.MenuItems>
             <!-- Главная -->
-            <NavigationViewItem Content="Главная" Tag="MainPage" x:Name="MainPageItem" SelectsOnInvoked="True">
+            <NavigationViewItem
+                x:Name="MainPageItem"
+                Content="Главная"
+                SelectsOnInvoked="True"
+                Tag="MainPage">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Home"/>
+                    <SymbolIcon Symbol="Home" />
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
 
             <!-- Запчасти -->
-            <NavigationViewItem Content="Запчасть" Tag="PartPage" x:Name="PartPageItem">
+            <NavigationViewItem
+                x:Name="PartPageItem"
+                Content="Запчасть"
+                Tag="PartPage">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Repair"/>
+                    <SymbolIcon Symbol="Repair" />
                 </NavigationViewItem.Icon>
                 <NavigationViewItem.MenuItems>
-                    <NavigationViewItem Content="Поиск" Tag="PartSearchPage" x:Name="PartSearchPageItem" SelectsOnInvoked="True"/>
+                    <NavigationViewItem
+                        x:Name="PartSearchPageItem"
+                        Content="Поиск"
+                        SelectsOnInvoked="True"
+                        Tag="PartSearchPage" />
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
 
-            <!-- Бренды (новая многостраничная структура) -->
-            <NavigationViewItem Content="Бренды" Tag="BrandsRoot" x:Name="BrandsRootItem">
+            <!-- Cart -->
+            <NavigationViewItem
+                x:Name="CartNavItem"
+                Content="Корзина"
+                Tag="CartPage">
                 <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Library"/>
+                    <SymbolIcon Symbol="Shop" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <!-- Бренды -->
+            <NavigationViewItem
+                x:Name="BrandsRootItem"
+                Content="Бренды"
+                Tag="BrandsRoot">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Library" />
                 </NavigationViewItem.Icon>
                 <NavigationViewItem.MenuItems>
-                    <NavigationViewItem Content="Обзор" Tag="BrandsOverviewPage" x:Name="BrandsOverviewPageItem" SelectsOnInvoked="True"/>
-                    <NavigationViewItem Content="Список" Tag="BrandsListPage" x:Name="BrandsListPageItem" SelectsOnInvoked="True"/>
-                    <NavigationViewItem Content="Слияние" Tag="BrandMergePage" x:Name="BrandMergePageItem" SelectsOnInvoked="True"/>
+                    <NavigationViewItem
+                        x:Name="BrandsOverviewPageItem"
+                        Content="Обзор"
+                        SelectsOnInvoked="True"
+                        Tag="BrandsOverviewPage" />
+                    <NavigationViewItem
+                        x:Name="BrandsListPageItem"
+                        Content="Список"
+                        SelectsOnInvoked="True"
+                        Tag="BrandsListPage" />
+                    <NavigationViewItem
+                        x:Name="BrandMergePageItem"
+                        Content="Слияние"
+                        SelectsOnInvoked="True"
+                        Tag="BrandMergePage" />
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 
         <NavigationView.AutoSuggestBox>
-            <AutoSuggestBox QueryIcon="Find" AutomationProperties.Name="Search" />
+            <AutoSuggestBox AutomationProperties.Name="Search" QueryIcon="Find" />
         </NavigationView.AutoSuggestBox>
 
         <Frame x:Name="contentFrame" />

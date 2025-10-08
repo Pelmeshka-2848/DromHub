@@ -1,5 +1,6 @@
 using DromHub.Data;
 using DromHub.Models;
+using DromHub.ViewModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -156,6 +157,83 @@ namespace DromHub.Views
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading crosses: {ex.Message}");
                 Crosses.Clear();
+            }
+        }
+
+        private async void AddToCartButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("=== Add to Cart Button Clicked ===");
+
+                if (Part == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("ERROR: Part is null");
+                    return;
+                }
+
+                // Используем статический экземпляр
+                var cartViewModel = CartViewModel.Instance;
+                System.Diagnostics.Debug.WriteLine("Using CartViewModel singleton instance");
+
+                System.Diagnostics.Debug.WriteLine($"Adding part {Part.CatalogNumber} to cart...");
+                await cartViewModel.AddToCartAsync(Part);
+                System.Diagnostics.Debug.WriteLine("Part added to cart successfully");
+
+                ShowSuccessMessage($"Part {Part.CatalogNumber} added to cart!");
+
+                System.Diagnostics.Debug.WriteLine("=== Add to Cart Completed ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR in AddToCart: {ex.Message}");
+                ShowErrorMessage($"Failed to add part to cart: {ex.Message}");
+            }
+        }
+
+
+        private void ShowSuccessMessage(string message)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Showing success message: {message}");
+
+                // Если используете TeachingTip
+                if (MessageTip != null)
+                {
+                    MessageTip.Title = "Success";
+                    MessageTip.Subtitle = message;
+                    MessageTip.IsOpen = true;
+                    System.Diagnostics.Debug.WriteLine("TeachingTip shown successfully");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("MessageTip is null, using fallback");
+                    // Fallback - просто логируем
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR in ShowSuccessMessage: {ex.Message}");
+            }
+        }
+
+        private void ShowErrorMessage(string message)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Showing error message: {message}");
+
+                if (MessageTip != null)
+                {
+                    MessageTip.Title = "Error";
+                    MessageTip.Subtitle = message;
+                    MessageTip.IsOpen = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR in ShowErrorMessage: {ex.Message}");
             }
         }
 
