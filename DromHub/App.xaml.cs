@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DromHub.Data;
@@ -12,7 +13,9 @@ using Microsoft.UI.Composition;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using OfficeOpenXml;
 using WinRT;
+using WinRT.Interop;
 
 namespace DromHub
 {
@@ -20,8 +23,9 @@ namespace DromHub
     {
         private static IServiceProvider _serviceProvider;
         public static ApplicationDbContext DbContext { get; private set; }
-        public Window MainWindow { get; private set; }
+        public static Window MainWindow { get; private set; }
         private Window m_window;
+        public static nint MainHwnd { get;  private set; }
         private WindowsSystemDispatcherQueueHelper m_wsdqHelper;
         private MicaController m_micaController;
         private SystemBackdropConfiguration m_configuration;
@@ -31,6 +35,7 @@ namespace DromHub
         {
             this.InitializeComponent();
             ConfigureServices();
+            ConfigureEpplusLicense();
         }
 
         private void ConfigureServices()
@@ -48,6 +53,7 @@ namespace DromHub
             services.AddTransient<BrandMergeWizardViewModel>();
             services.AddTransient<BrandsHomeViewModel>();
             services.AddTransient<BrandShellViewModel>();
+            services.AddTransient<MailParserViewModel>();
 
             // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
             services.AddTransient<CartViewModel>();
@@ -65,7 +71,8 @@ namespace DromHub
         {
             m_window = new MainWindow();
             m_window.Activate();
-
+            MainWindow = m_window;
+            MainHwnd = WindowNative.GetWindowHandle(m_window);
             try
             {
                 using (var scope = ServiceProvider.CreateScope())
@@ -95,6 +102,22 @@ namespace DromHub
 
             TrySetMicaBackdrop();
             m_window.Activate();
+        }
+
+        private static void ConfigureEpplusLicense()
+        {
+            // EPPlus 8+: ExcelPackage.License (статическое свойство)
+            // EPPlus ≤7: ExcelPackage.LicenseContext (старое свойство)
+            var prop = typeof(ExcelPackage).GetProperty("License", BindingFlags.Public | BindingFlags.Static);
+            if (prop != null)
+            {
+                // у EPPlus 8 тип тот же (LicenseContext)
+                prop.SetValue(null, LicenseContext.NonCommercial);
+            }
+            else
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            }
         }
 
         private static async Task EnsureTestPartExists(ApplicationDbContext context)

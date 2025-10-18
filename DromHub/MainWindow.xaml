@@ -20,7 +20,7 @@
         SelectionFollowsFocus="Disabled">
 
         <NavigationView.MenuItems>
-            <!-- Главная -->
+            <!--  Главная  -->
             <NavigationViewItem
                 x:Name="MainPageItem"
                 Content="Главная"
@@ -31,7 +31,7 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
 
-            <!-- Запчасти -->
+            <!--  Запчасти  -->
             <NavigationViewItem
                 x:Name="PartPageItem"
                 Content="Запчасть"
@@ -48,17 +48,7 @@
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
 
-            <!-- Cart -->
-            <NavigationViewItem
-                x:Name="CartNavItem"
-                Content="Корзина"
-                Tag="CartPage">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Shop" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-
-            <!-- Бренды -->
+            <!--  Бренды  -->
             <NavigationViewItem
                 x:Name="BrandsRootItem"
                 Content="Бренды"
@@ -83,6 +73,27 @@
                         SelectsOnInvoked="True"
                         Tag="BrandMergePage" />
                 </NavigationViewItem.MenuItems>
+            </NavigationViewItem>
+
+            <!-- Парсер почты -->
+            <NavigationViewItem
+                x:Name="MailParserPageItem"
+                Content="Парсер почты"
+                SelectsOnInvoked="True"
+                Tag="MailParserView">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Mail" />
+                </NavigationViewItem.Icon>
+            </NavigationViewItem>
+
+            <!--  Корзина  -->
+            <NavigationViewItem
+                x:Name="CartNavItem"
+                Content="Корзина"
+                Tag="CartPage">
+                <NavigationViewItem.Icon>
+                    <SymbolIcon Symbol="Shop" />
+                </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
 

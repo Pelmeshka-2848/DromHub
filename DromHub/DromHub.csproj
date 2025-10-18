@@ -13,6 +13,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Prices\**" />
+    <EmbeddedResource Remove="Prices\**" />
+    <None Remove="Prices\**" />
+    <Page Remove="Prices\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Remove="Assets\Fonts\SF-Pro.ttf" />
 	<Content Include="Assets\Fonts\SF-Pro.ttf" />
     <Content Remove="assets\MessageWindow.xaml" />
@@ -71,6 +77,8 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="EPPlus" Version="7.5.2" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
@@ -179,4 +187,7 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
     <DefaultLanguage>ru-RU</DefaultLanguage>
   </PropertyGroup>
+  <ItemGroup>
+    <PRIResource Remove="Prices\**" />
+  </ItemGroup>
 </Project>

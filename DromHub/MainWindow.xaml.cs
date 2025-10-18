@@ -36,11 +36,21 @@ namespace DromHub
             if (args.SelectedItemContainer != null)
             {
                 var tag = args.SelectedItemContainer.Tag?.ToString();
+                System.Diagnostics.Debug.WriteLine($"Selection changed: {tag}");
+
                 if (tag == "CartPage")
                 {
-                    contentFrame.Navigate(typeof(CartPage)); // Используем contentFrame (маленькая c)
+                    contentFrame.Navigate(typeof(CartPage));
                 }
-                // добавьте другие страницы по необходимости
+                else if (tag == "MailParserView") // ИЗМЕНИЛ НА MailParserView
+                {
+                    contentFrame.Navigate(typeof(MailParserView));
+                }
+                else
+                {
+                    // Для остальных страниц используем NavigateByTag
+                    NavigateByTag(tag);
+                }
             }
         }
 
@@ -54,20 +64,37 @@ namespace DromHub
 
         private void NavigateByTag(string tag, object parameter = null)
         {
-            Type pageType = tag switch
+            try
             {
-                "MainPage" => typeof(MainPage),
-                "PartPage" => typeof(PartSearchPage),
-                "PartSearchPage" => typeof(PartSearchPage),
-                "BrandsOverviewPage" => typeof(BrandsHomePage),
-                "BrandsListPage" => typeof(BrandsIndexPage),
-                "BrandMergePage" => typeof(BrandMergeWizardPage),
-                "CartPage" => typeof(CartPage), // ДОБАВЬТЕ ЭТУ СТРОЧКУ
-                _ => null
-            };
+                Type pageType = tag switch
+                {
+                    "MainPage" => typeof(MainPage),
+                    "PartPage" => typeof(PartSearchPage),
+                    "PartSearchPage" => typeof(PartSearchPage),
+                    "BrandsOverviewPage" => typeof(BrandsHomePage),
+                    "BrandsListPage" => typeof(BrandsIndexPage),
+                    "BrandMergePage" => typeof(BrandMergeWizardPage),
+                    "CartPage" => typeof(CartPage),
+                    "MailParserView" => typeof(MailParserView), // ИЗМЕНИЛ НА MailParserView
+                    _ => null
+                };
 
-            if (pageType != null && (contentFrame.CurrentSourcePageType != pageType || parameter != null))
-                contentFrame.Navigate(pageType, parameter);
+                if (pageType == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Unknown tag: {tag}");
+                    return;
+                }
+
+                if (contentFrame.CurrentSourcePageType != pageType || parameter != null)
+                {
+                    contentFrame.Navigate(pageType, parameter);
+                    System.Diagnostics.Debug.WriteLine($"Navigated to: {pageType.Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Navigation error for tag '{tag}': {ex.Message}");
+            }
         }
 
         private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
