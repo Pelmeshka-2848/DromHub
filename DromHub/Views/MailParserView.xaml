@@ -9,7 +9,9 @@
 
     <Page.Resources>
         <conv:ConnectionStatusConverter x:Key="ConnectionStatusConverter"/>
+        <conv:DoubleToPercentConverter x:Key="PercentFmt" Format="F0"/>
     </Page.Resources>
+
 
     <!-- Внешняя прокрутка — оборачиваем всё в ScrollViewer -->
     <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto">
@@ -46,57 +48,73 @@
             </Border>
 
             <!-- Блок: учётные данные -->
+            <!-- Поля для ввода учетных данных -->
             <Border Background="White"
-                    BorderBrush="LightGray"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="15">
-                <StackPanel Spacing="12">
+        BorderBrush="LightGray"
+        BorderThickness="1"
+        CornerRadius="8"
+        Padding="15">
+                <StackPanel Spacing="15">
                     <TextBlock Text="Учетные данные" FontWeight="SemiBold" FontSize="16"/>
 
                     <TextBox Header="Email адрес"
-                             Text="{Binding EmailAddress, Mode=TwoWay}"
-                             PlaceholderText="user@example.com"/>
+             Text="{Binding EmailAddress, Mode=TwoWay}"
+             PlaceholderText="user@example.com"/>
 
                     <PasswordBox Header="Пароль"
-                                 Password="{Binding Password, Mode=TwoWay}"
-                                 PlaceholderText="Введите пароль"/>
+                 Password="{Binding Password, Mode=TwoWay}"
+                 PlaceholderText="Введите пароль"/>
 
-                    <!-- Горизонтальный стек для кнопок -->
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <CheckBox Content="Запомнить меня"
+                IsChecked="{Binding RememberCredentials, Mode=TwoWay}" />
+                        <Button Content="Забыть сохранённые"
+              Command="{Binding ForgetSavedCredentialsCommand}" />
+                    </StackPanel>
+
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button Content="Подключиться и загрузить"
-                                Command="{Binding ConnectAndDownloadCommand}"
-                                Background="#0078D4"
-                                Foreground="White"
-                                Padding="12,8"/>
+              Command="{Binding ConnectAndDownloadCommand}"
+              Background="#0078D4"
+              Foreground="White"
+              Padding="15,10"/>
+
                         <Button Content="Очистить"
-                                Command="{Binding ClearCredentialsCommand}"
-                                Background="LightGray"
-                                Padding="12,8"/>
+              Command="{Binding ClearCredentialsCommand}"
+              Background="LightGray"
+              Padding="15,10"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- Блок: статус -->
+
+            <!-- Статус -->
             <Border Background="White"
-                    BorderBrush="LightGray"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="15">
-                <StackPanel Spacing="8">
+        BorderBrush="LightGray"
+        BorderThickness="1"
+        CornerRadius="8"
+        Padding="15">
+                <StackPanel Spacing="10">
                     <TextBlock Text="Статус" FontWeight="SemiBold" FontSize="16"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <ProgressRing IsActive="{Binding IsLoading, Mode=OneWay}"
-                                      Height="20" Width="20"/>
-                        <TextBlock Text="{Binding IsConnected, Converter={StaticResource ConnectionStatusConverter}}"
-                                   VerticalAlignment="Center"/>
+                        <ProgressRing IsActive="{Binding IsLoading}" Height="20" Width="20"/>
+                        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <TextBlock Text="{Binding StatusMessage, Mode=OneWay}"
-                               FontWeight="SemiBold"
-                               Foreground="#0078D4"
-                               TextWrapping="Wrap"/>
+                    <!-- Прогресс парсинга -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding ParsingStage}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressBar Minimum="0" Maximum="100" Height="8"
+                     Value="{Binding ParsingProgress}" Width="300"/>
+                            <TextBlock Text="{Binding ParsingProgress, Converter={StaticResource PercentFmt}}"/>
+                        </StackPanel>
+                        <TextBlock>
+    <Run Text="Поставщик: "/>
+    <Run Text="{Binding CurrentSupplier}"/>
+                        </TextBlock>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
