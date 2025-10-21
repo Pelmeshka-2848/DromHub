@@ -61,7 +61,6 @@ namespace DromHub.ViewModels
                 AddLog("🔑 Найдены сохранённые учётные данные");
             }
 
-            LoadCredentialPresets();
             UpdateServerSelection(SelectedMailServer);
         }
 
@@ -76,6 +75,20 @@ namespace DromHub.ViewModels
             { MailServerType.Custom, ("imap.example.com", 993, SecureSocketOptions.Auto) }
         };
 
+        private string GetServerLabel(MailServerType server)
+        {
+            return server switch
+            {
+                MailServerType.Gmail => "Gmail",
+                MailServerType.MailRu => "Mail.ru",
+                MailServerType.Yandex => "Yandex",
+                MailServerType.Custom => string.IsNullOrWhiteSpace(CustomServer)
+                    ? "пользовательский сервер"
+                    : CustomServer,
+                _ => server.ToString()
+            };
+        }
+
         // ===== PROPERTIES =====
         [ObservableProperty] private MailServerType selectedMailServer = MailServerType.MailRu; // по умолчанию Mail.ru
         [ObservableProperty] private string emailAddress = "";
@@ -87,15 +100,15 @@ namespace DromHub.ViewModels
         [ObservableProperty] private bool isLoading;
         [ObservableProperty] private bool isConnected;
         [ObservableProperty] private Visibility customServerVisibility = Visibility.Collapsed;
-        [ObservableProperty] private Visibility gmailPresetsVisibility = Visibility.Collapsed;
+        [ObservableProperty] private Visibility credentialPresetsVisibility = Visibility.Collapsed;
         [ObservableProperty] private ObservableCollection<string> logEntries = new();
 
         // «Запомнить меня» (локально, без БД)
         [ObservableProperty] private bool rememberCredentials = true;
 
-        [ObservableProperty] private ObservableCollection<CredentialPreset> gmailPresets = new();
-        [ObservableProperty] private CredentialPreset? selectedGmailPreset;
-        [ObservableProperty] private bool canDeleteGmailPreset;
+        [ObservableProperty] private ObservableCollection<CredentialPreset> credentialPresets = new();
+        [ObservableProperty] private CredentialPreset? selectedCredentialPreset;
+        [ObservableProperty] private bool canDeleteCredentialPreset;
 
         // Прогресс парсинга
         [ObservableProperty] private double parsingProgress;          // 0..100
@@ -114,16 +127,18 @@ namespace DromHub.ViewModels
 
         public sealed class CredentialPreset
         {
-            public CredentialPreset(string id, string displayName, string email)
+            public CredentialPreset(string id, string displayName, string email, MailServerType server)
             {
                 Id = id;
                 DisplayName = displayName;
                 Email = email;
+                Server = server;
             }
 
             public string Id { get; }
             public string DisplayName { get; }
             public string Email { get; }
+            public MailServerType Server { get; }
         }
 
         // поставщики → ищем последнее письмо по From
@@ -175,16 +190,27 @@ namespace DromHub.ViewModels
             UpdateStatus(message);
         }
 
-        private void LoadCredentialPresets()
+        private void RefreshCredentialPresets()
         {
-            GmailPresets.Clear();
+            var server = SelectedMailServer;
 
-            foreach (var preset in SecureCreds.LoadPresets(MailServerType.Gmail))
+            _isSyncingPresetFromEmail = true;
+            SelectedCredentialPreset = null;
+            _isSyncingPresetFromEmail = false;
+
+            CredentialPresets.Clear();
+
+            foreach (var preset in SecureCreds.LoadPresets(server))
             {
-                GmailPresets.Add(new CredentialPreset(
+                var displayName = string.IsNullOrWhiteSpace(preset.DisplayName)
+                    ? preset.Email
+                    : preset.DisplayName;
+
+                CredentialPresets.Add(new CredentialPreset(
                     preset.Id,
-                    string.IsNullOrWhiteSpace(preset.DisplayName) ? preset.Email : preset.DisplayName,
-                    preset.Email));
+                    displayName,
+                    preset.Email,
+                    preset.Server));
             }
 
             SyncSelectedPresetToEmail();
@@ -193,16 +219,9 @@ namespace DromHub.ViewModels
         private void UpdateServerSelection(MailServerType server)
         {
             CustomServerVisibility = server == MailServerType.Custom ? Visibility.Visible : Visibility.Collapsed;
-            GmailPresetsVisibility = server == MailServerType.Gmail ? Visibility.Visible : Visibility.Collapsed;
+            CredentialPresetsVisibility = Visibility.Visible;
 
-            if (server == MailServerType.Gmail)
-            {
-                SyncSelectedPresetToEmail();
-            }
-            else
-            {
-                SelectedGmailPreset = null;
-            }
+            RefreshCredentialPresets();
         }
 
         private void SyncSelectedPresetToEmail()
@@ -210,19 +229,19 @@ namespace DromHub.ViewModels
             if (_isApplyingPresetSelection)
                 return;
 
-            if (SelectedMailServer != MailServerType.Gmail || GmailPresets.Count == 0)
+            if (CredentialPresets.Count == 0)
             {
                 _isSyncingPresetFromEmail = true;
-                SelectedGmailPreset = null;
+                SelectedCredentialPreset = null;
                 _isSyncingPresetFromEmail = false;
                 return;
             }
 
-            var match = GmailPresets.FirstOrDefault(p =>
+            var match = CredentialPresets.FirstOrDefault(p =>
                 string.Equals(p.Email, EmailAddress, StringComparison.OrdinalIgnoreCase));
 
             _isSyncingPresetFromEmail = true;
-            SelectedGmailPreset = match;
+            SelectedCredentialPreset = match;
             _isSyncingPresetFromEmail = false;
         }
 
@@ -236,13 +255,12 @@ namespace DromHub.ViewModels
             if (_isApplyingPresetSelection)
                 return;
 
-            if (SelectedMailServer == MailServerType.Gmail)
-                SyncSelectedPresetToEmail();
+            SyncSelectedPresetToEmail();
         }
 
-        partial void OnSelectedGmailPresetChanged(CredentialPreset? value)
+        partial void OnSelectedCredentialPresetChanged(CredentialPreset? value)
         {
-            CanDeleteGmailPreset = value != null;
+            CanDeleteCredentialPreset = value != null;
 
             if (_isSyncingPresetFromEmail || value == null)
                 return;
@@ -255,14 +273,14 @@ namespace DromHub.ViewModels
                 if (SecureCreds.TryLoadPresetPassword(value.Id, out var presetPassword))
                 {
                     Password = presetPassword;
-                    AddLog($"⭐ Загружен Gmail-пресет: {value.DisplayName}");
-                    UpdateStatus($"Загружен пресет Gmail: {value.DisplayName}");
+                    AddLog($"⭐ Загружен пресет ({GetServerLabel(value.Server)}): {value.DisplayName}");
+                    UpdateStatus($"Загружен пресет: {value.DisplayName}");
                 }
                 else
                 {
                     Password = string.Empty;
-                    AddLog($"⭐ Выбран Gmail-пресет (без пароля): {value.DisplayName}");
-                    UpdateStatus($"Выбран пресет Gmail: {value.DisplayName}");
+                    AddLog($"⭐ Выбран пресет (без пароля): {value.DisplayName}");
+                    UpdateStatus($"Выбран пресет: {value.DisplayName}");
                 }
             }
             finally
@@ -785,80 +803,59 @@ namespace DromHub.ViewModels
         }
 
         [RelayCommand]
-        private void SaveGmailPreset()
+        private void SaveCredentialPreset()
         {
-            if (SelectedMailServer != MailServerType.Gmail)
+            if (string.IsNullOrWhiteSpace(EmailAddress))
             {
-                UpdateStatus("Пресеты доступны только для Gmail");
+                UpdateStatus("Введите адрес электронной почты для сохранения пресета");
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(EmailAddress))
-            {
-                UpdateStatus("Введите адрес Gmail для сохранения пресета");
-                return;
-            }
+            var server = SelectedMailServer;
 
             try
             {
-                var presetInfo = SecureCreds.SavePreset(MailServerType.Gmail, EmailAddress, Password, EmailAddress);
+                var presetInfo = SecureCreds.SavePreset(server, EmailAddress, Password, EmailAddress);
                 var displayName = string.IsNullOrWhiteSpace(presetInfo.DisplayName)
                     ? presetInfo.Email
                     : presetInfo.DisplayName;
 
-                var existing = GmailPresets.FirstOrDefault(p =>
-                    string.Equals(p.Id, presetInfo.Id, StringComparison.Ordinal));
+                RefreshCredentialPresets();
 
-                if (existing == null)
-                {
-                    var newPreset = new CredentialPreset(presetInfo.Id, displayName, presetInfo.Email);
-                    GmailPresets.Add(newPreset);
-                    SelectedGmailPreset = newPreset;
-                }
-                else
-                {
-                    var index = GmailPresets.IndexOf(existing);
-                    if (index >= 0)
-                    {
-                        var updated = new CredentialPreset(presetInfo.Id, displayName, presetInfo.Email);
-                        GmailPresets[index] = updated;
-                        SelectedGmailPreset = updated;
-                    }
-                }
-
-                AddLog($"💾 Сохранён пресет Gmail для {presetInfo.Email}");
-                UpdateStatus($"Сохранён пресет Gmail: {displayName}");
+                AddLog($"💾 Сохранён пресет ({GetServerLabel(server)}): {displayName}");
+                UpdateStatus($"Сохранён пресет: {displayName}");
             }
             catch (Exception ex)
             {
-                ReportError($"Не удалось сохранить пресет Gmail: {ex.Message}", ex);
+                ReportError($"Не удалось сохранить пресет ({GetServerLabel(server)}): {ex.Message}", ex);
             }
         }
 
         [RelayCommand]
-        private void DeleteGmailPreset()
+        private void DeleteCredentialPreset()
         {
-            var preset = SelectedGmailPreset;
+            var preset = SelectedCredentialPreset;
             if (preset == null)
                 return;
+
+            var serverLabel = GetServerLabel(preset.Server);
 
             try
             {
                 if (SecureCreds.RemovePreset(preset.Id))
                 {
-                    GmailPresets.Remove(preset);
-                    SelectedGmailPreset = null;
-                    AddLog($"🗑️ Удалён пресет Gmail: {preset.DisplayName}");
-                    UpdateStatus($"Удалён пресет Gmail: {preset.DisplayName}");
+                    AddLog($"🗑️ Удалён пресет ({serverLabel}): {preset.DisplayName}");
+                    UpdateStatus($"Удалён пресет: {preset.DisplayName}");
+                    RefreshCredentialPresets();
                 }
                 else
                 {
-                    ReportError($"Не удалось удалить пресет Gmail: {preset.DisplayName}");
+                    ReportError($"Не удалось удалить пресет ({serverLabel}): {preset.DisplayName}");
                 }
             }
             catch (Exception ex)
             {
-                ReportError($"Не удалось удалить пресет Gmail: {ex.Message}", ex);
+                ReportError($"Не удалось удалить пресет ({serverLabel}): {ex.Message}", ex);
             }
         }
 
