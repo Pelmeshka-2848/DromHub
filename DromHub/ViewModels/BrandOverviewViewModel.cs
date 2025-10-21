@@ -1,12 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using DromHub.Data;
-using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Windows.System;
 
@@ -93,12 +91,23 @@ namespace DromHub.ViewModels
             BrandId = id;
 
             var b = await _db.Brands
-                .Include(x => x.Country)
-                .Include(x => x.Aliases)
-                .Include(x => x.Parts)
-                .Include(x => x.Markup)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .Where(x => x.Id == id)
+                .Select(x => new
+                {
+                    x.Name,
+                    x.IsOem,
+                    x.Website,
+                    x.YearFounded,
+                    x.Description,
+                    x.UserNotes,
+                    CountryName = x.Country != null ? x.Country.Name : null,
+                    CountryIso2 = x.Country != null ? x.Country.Iso2 : null,
+                    CountryRegionIcon = x.Country != null ? x.Country.RegionIconName : null,
+                    CountryRegion = x.Country != null ? x.Country.Region : null,
+                    MarkupPct = (decimal?)(x.Markup != null ? x.Markup.MarkupPct : null)
+                })
+                .FirstOrDefaultAsync();
 
             if (b is null) return;
 
@@ -109,21 +118,25 @@ namespace DromHub.ViewModels
             Description = b.Description;
             UserNotes = b.UserNotes;
 
-            PartsCount = b.Parts?.Count ?? 0;
-            AliasesCount = b.Aliases?.Count ?? 0;
+            PartsCount = await _db.Parts.AsNoTracking().CountAsync(p => p.BrandId == id);
 
             // страна
-            CountryName = b.Country?.Name ?? "—";
-            CountryIso2 = string.IsNullOrWhiteSpace(b.Country?.Iso2) ? "—" : b.Country!.Iso2.ToUpperInvariant();
-            CountryWorldIconAsset = BuildRegionIconAssetName(b.Country?.RegionIconName, b.Country?.Region);
+            CountryName = b.CountryName ?? "—";
+            CountryIso2 = string.IsNullOrWhiteSpace(b.CountryIso2) ? "—" : b.CountryIso2!.ToUpperInvariant();
+            CountryWorldIconAsset = BuildRegionIconAssetName(b.CountryRegionIcon, b.CountryRegion);
 
             // маржа
-            MarkupPct = (decimal)(b.Markup?.MarkupPct ?? 0);
+            MarkupPct = b.MarkupPct ?? 0m;
 
             // алиасы -> строка
-            var aliasStrings = (b.Aliases ?? new List<BrandAlias>())
-                .Select(ReadAliasString)
+            var aliasStrings = await _db.BrandAliases
+                .AsNoTracking()
+                .Where(a => a.BrandId == id)
+                .Select(a => a.Alias)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToListAsync();
+
+            aliasStrings = aliasStrings
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -200,19 +213,6 @@ namespace DromHub.ViewModels
 
             OnPropertyChanged(nameof(DescriptionOrPlaceholder));
             OnPropertyChanged(nameof(UserNotesOrPlaceholder));
-        }
-
-        private static string ReadAliasString(object alias)
-        {
-            if (alias is null) return null;
-            var t = alias.GetType();
-            foreach (var prop in new[] { "Name", "Alias", "Value", "Text" })
-            {
-                var pi = t.GetProperty(prop, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
-                if (pi != null && pi.PropertyType == typeof(string))
-                    return (pi.GetValue(alias) as string)?.Trim();
-            }
-            return alias.ToString();
         }
 
         private static string BuildFlagIconAssetName(string? flagIconName, string? iso2)
