@@ -61,6 +61,25 @@
              Text="{Binding EmailAddress, Mode=TwoWay}"
              PlaceholderText="user@example.com"/>
 
+                    <StackPanel Spacing="8"
+                                Visibility="{Binding GmailPresetsVisibility}">
+                        <TextBlock Text="Сохранённые Gmail аккаунты"
+                                   FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding GmailPresets}"
+                                  SelectedItem="{Binding SelectedGmailPreset, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayName"
+                                  PlaceholderText="Выберите аккаунт"/>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button Content="💾 Сохранить пресет"
+                                    Command="{Binding SaveGmailPresetCommand}"
+                                    Padding="12,8"/>
+                            <Button Content="🗑️ Удалить пресет"
+                                    Command="{Binding DeleteGmailPresetCommand}"
+                                    Padding="12,8"
+                                    IsEnabled="{Binding CanDeleteGmailPreset}"/>
+                        </StackPanel>
+                    </StackPanel>
+
                     <PasswordBox Header="Пароль"
                  Password="{Binding Password, Mode=TwoWay}"
                  PlaceholderText="Введите пароль"/>

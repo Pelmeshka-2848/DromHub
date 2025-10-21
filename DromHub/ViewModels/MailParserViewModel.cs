@@ -32,6 +32,8 @@ namespace DromHub.ViewModels
         private readonly DispatcherQueue _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         private readonly UserSettings _userSettings;
         private string _pricesRoot = DefaultPricesRoot;
+        private bool _isApplyingPresetSelection;
+        private bool _isSyncingPresetFromEmail;
 
         private string PricesRoot => _pricesRoot;
 
@@ -59,11 +61,8 @@ namespace DromHub.ViewModels
                 AddLog("🔑 Найдены сохранённые учётные данные");
             }
 
-            PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(SelectedMailServer))
-                    CustomServerVisibility = SelectedMailServer == MailServerType.Custom ? Visibility.Visible : Visibility.Collapsed;
-            };
+            LoadCredentialPresets();
+            UpdateServerSelection(SelectedMailServer);
         }
 
         // ===== ENUM / SERVER CONFIG =====
@@ -88,10 +87,15 @@ namespace DromHub.ViewModels
         [ObservableProperty] private bool isLoading;
         [ObservableProperty] private bool isConnected;
         [ObservableProperty] private Visibility customServerVisibility = Visibility.Collapsed;
+        [ObservableProperty] private Visibility gmailPresetsVisibility = Visibility.Collapsed;
         [ObservableProperty] private ObservableCollection<string> logEntries = new();
 
         // «Запомнить меня» (локально, без БД)
         [ObservableProperty] private bool rememberCredentials = true;
+
+        [ObservableProperty] private ObservableCollection<CredentialPreset> gmailPresets = new();
+        [ObservableProperty] private CredentialPreset? selectedGmailPreset;
+        [ObservableProperty] private bool canDeleteGmailPreset;
 
         // Прогресс парсинга
         [ObservableProperty] private double parsingProgress;          // 0..100
@@ -107,6 +111,20 @@ namespace DromHub.ViewModels
             "Yandex (imap.yandex.ru:993)",
             "Другой сервер"
         };
+
+        public sealed class CredentialPreset
+        {
+            public CredentialPreset(string id, string displayName, string email)
+            {
+                Id = id;
+                DisplayName = displayName;
+                Email = email;
+            }
+
+            public string Id { get; }
+            public string DisplayName { get; }
+            public string Email { get; }
+        }
 
         // поставщики → ищем последнее письмо по From
         private readonly List<(string SupplierName, string FromEmail)> _suppliers = new()
@@ -155,6 +173,102 @@ namespace DromHub.ViewModels
 
             AddLog($"❌ {message}");
             UpdateStatus(message);
+        }
+
+        private void LoadCredentialPresets()
+        {
+            GmailPresets.Clear();
+
+            foreach (var preset in SecureCreds.LoadPresets(MailServerType.Gmail))
+            {
+                GmailPresets.Add(new CredentialPreset(
+                    preset.Id,
+                    string.IsNullOrWhiteSpace(preset.DisplayName) ? preset.Email : preset.DisplayName,
+                    preset.Email));
+            }
+
+            SyncSelectedPresetToEmail();
+        }
+
+        private void UpdateServerSelection(MailServerType server)
+        {
+            CustomServerVisibility = server == MailServerType.Custom ? Visibility.Visible : Visibility.Collapsed;
+            GmailPresetsVisibility = server == MailServerType.Gmail ? Visibility.Visible : Visibility.Collapsed;
+
+            if (server == MailServerType.Gmail)
+            {
+                SyncSelectedPresetToEmail();
+            }
+            else
+            {
+                SelectedGmailPreset = null;
+            }
+        }
+
+        private void SyncSelectedPresetToEmail()
+        {
+            if (_isApplyingPresetSelection)
+                return;
+
+            if (SelectedMailServer != MailServerType.Gmail || GmailPresets.Count == 0)
+            {
+                _isSyncingPresetFromEmail = true;
+                SelectedGmailPreset = null;
+                _isSyncingPresetFromEmail = false;
+                return;
+            }
+
+            var match = GmailPresets.FirstOrDefault(p =>
+                string.Equals(p.Email, EmailAddress, StringComparison.OrdinalIgnoreCase));
+
+            _isSyncingPresetFromEmail = true;
+            SelectedGmailPreset = match;
+            _isSyncingPresetFromEmail = false;
+        }
+
+        partial void OnSelectedMailServerChanged(MailServerType value)
+        {
+            UpdateServerSelection(value);
+        }
+
+        partial void OnEmailAddressChanged(string value)
+        {
+            if (_isApplyingPresetSelection)
+                return;
+
+            if (SelectedMailServer == MailServerType.Gmail)
+                SyncSelectedPresetToEmail();
+        }
+
+        partial void OnSelectedGmailPresetChanged(CredentialPreset? value)
+        {
+            CanDeleteGmailPreset = value != null;
+
+            if (_isSyncingPresetFromEmail || value == null)
+                return;
+
+            try
+            {
+                _isApplyingPresetSelection = true;
+                EmailAddress = value.Email;
+
+                if (SecureCreds.TryLoadPresetPassword(value.Id, out var presetPassword))
+                {
+                    Password = presetPassword;
+                    AddLog($"⭐ Загружен Gmail-пресет: {value.DisplayName}");
+                    UpdateStatus($"Загружен пресет Gmail: {value.DisplayName}");
+                }
+                else
+                {
+                    Password = string.Empty;
+                    AddLog($"⭐ Выбран Gmail-пресет (без пароля): {value.DisplayName}");
+                    UpdateStatus($"Выбран пресет Gmail: {value.DisplayName}");
+                }
+            }
+            finally
+            {
+                _isApplyingPresetSelection = false;
+            }
         }
 
         private string ResolvePricesRoot(UserSettings settings)
@@ -298,7 +412,7 @@ namespace DromHub.ViewModels
                 // Сохраним/удалим креды по флажку
                 if (RememberCredentials)
                 {
-                    SecureCreds.Save(EmailAddress, Password);
+                    SecureCreds.Save(EmailAddress, Password, SelectedMailServer);
                     AddLog("🔐 Учётные данные сохранены локально");
                 }
                 else
@@ -671,6 +785,84 @@ namespace DromHub.ViewModels
         }
 
         [RelayCommand]
+        private void SaveGmailPreset()
+        {
+            if (SelectedMailServer != MailServerType.Gmail)
+            {
+                UpdateStatus("Пресеты доступны только для Gmail");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(EmailAddress))
+            {
+                UpdateStatus("Введите адрес Gmail для сохранения пресета");
+                return;
+            }
+
+            try
+            {
+                var presetInfo = SecureCreds.SavePreset(MailServerType.Gmail, EmailAddress, Password, EmailAddress);
+                var displayName = string.IsNullOrWhiteSpace(presetInfo.DisplayName)
+                    ? presetInfo.Email
+                    : presetInfo.DisplayName;
+
+                var existing = GmailPresets.FirstOrDefault(p =>
+                    string.Equals(p.Id, presetInfo.Id, StringComparison.Ordinal));
+
+                if (existing == null)
+                {
+                    var newPreset = new CredentialPreset(presetInfo.Id, displayName, presetInfo.Email);
+                    GmailPresets.Add(newPreset);
+                    SelectedGmailPreset = newPreset;
+                }
+                else
+                {
+                    var index = GmailPresets.IndexOf(existing);
+                    if (index >= 0)
+                    {
+                        var updated = new CredentialPreset(presetInfo.Id, displayName, presetInfo.Email);
+                        GmailPresets[index] = updated;
+                        SelectedGmailPreset = updated;
+                    }
+                }
+
+                AddLog($"💾 Сохранён пресет Gmail для {presetInfo.Email}");
+                UpdateStatus($"Сохранён пресет Gmail: {displayName}");
+            }
+            catch (Exception ex)
+            {
+                ReportError($"Не удалось сохранить пресет Gmail: {ex.Message}", ex);
+            }
+        }
+
+        [RelayCommand]
+        private void DeleteGmailPreset()
+        {
+            var preset = SelectedGmailPreset;
+            if (preset == null)
+                return;
+
+            try
+            {
+                if (SecureCreds.RemovePreset(preset.Id))
+                {
+                    GmailPresets.Remove(preset);
+                    SelectedGmailPreset = null;
+                    AddLog($"🗑️ Удалён пресет Gmail: {preset.DisplayName}");
+                    UpdateStatus($"Удалён пресет Gmail: {preset.DisplayName}");
+                }
+                else
+                {
+                    ReportError($"Не удалось удалить пресет Gmail: {preset.DisplayName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportError($"Не удалось удалить пресет Gmail: {ex.Message}", ex);
+            }
+        }
+
+        [RelayCommand]
         private void ClearCredentials()
         {
             EmailAddress = "";
@@ -844,26 +1036,54 @@ namespace DromHub.ViewModels
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DromHub");
             private static readonly string FilePath = Path.Combine(Dir, "creds.json");
 
-            private class Model
+            public sealed class CredentialPresetInfo
             {
-                public string Email { get; set; }
-                public string Pwd { get; set; } // base64 от ProtectedData
+                public CredentialPresetInfo(string id, string email, string displayName, MailServerType server)
+                {
+                    Id = id;
+                    Email = email;
+                    DisplayName = displayName;
+                    Server = server;
+                }
+
+                public string Id { get; }
+                public string Email { get; }
+                public string DisplayName { get; }
+                public MailServerType Server { get; }
             }
 
-            public static void Save(string email, string password)
+            private sealed class CredentialData
+            {
+                public string Id { get; set; } = Guid.NewGuid().ToString("N");
+                public string Email { get; set; } = string.Empty;
+                public string? DisplayName { get; set; }
+                public string Pwd { get; set; } = string.Empty;
+                public string Server { get; set; } = MailServerType.Custom.ToString();
+            }
+
+            private sealed class CredentialStore
+            {
+                public CredentialData? Default { get; set; }
+                public List<CredentialData> Presets { get; set; } = new();
+            }
+
+            private sealed class LegacyModel
+            {
+                public string? Email { get; set; }
+                public string? Pwd { get; set; }
+            }
+
+            public static void Save(string email, string password, MailServerType server)
             {
                 try
                 {
-                    Directory.CreateDirectory(Dir);
-                    var pwdBytes = System.Text.Encoding.UTF8.GetBytes(password ?? "");
-                    var protectedBytes = ProtectedData.Protect(pwdBytes, null, DataProtectionScope.CurrentUser);
-                    var model = new Model
-                    {
-                        Email = email ?? "",
-                        Pwd = Convert.ToBase64String(protectedBytes)
-                    };
-                    var json = JsonSerializer.Serialize(model);
-                    File.WriteAllText(FilePath, json);
+                    var store = LoadStore();
+                    store.Default ??= new CredentialData { Id = "default" };
+                    store.Default.Email = email ?? string.Empty;
+                    store.Default.DisplayName = email;
+                    store.Default.Server = server.ToString();
+                    store.Default.Pwd = Protect(password);
+                    SaveOrDelete(store);
                 }
                 catch
                 {
@@ -873,31 +1093,267 @@ namespace DromHub.ViewModels
 
             public static bool TryLoad(out string email, out string password)
             {
-                email = null;
-                password = null;
+                email = string.Empty;
+                password = string.Empty;
+
                 try
                 {
-                    if (!File.Exists(FilePath)) return false;
-                    var json = File.ReadAllText(FilePath);
-                    var model = JsonSerializer.Deserialize<Model>(json);
-                    if (model == null) return false;
+                    var store = LoadStore();
+                    if (store.Default == null || string.IsNullOrEmpty(store.Default.Pwd))
+                        return false;
 
-                    email = model.Email ?? "";
-                    var prot = Convert.FromBase64String(model.Pwd ?? "");
-                    var plain = ProtectedData.Unprotect(prot, null, DataProtectionScope.CurrentUser);
-                    password = System.Text.Encoding.UTF8.GetString(plain);
+                    email = store.Default.Email ?? string.Empty;
+                    password = Unprotect(store.Default.Pwd);
                     return true;
                 }
-                catch { return false; }
+                catch
+                {
+                    email = string.Empty;
+                    password = string.Empty;
+                    return false;
+                }
             }
 
             public static void Clear()
             {
                 try
                 {
-                    if (File.Exists(FilePath)) File.Delete(FilePath);
+                    var store = LoadStore();
+                    store.Default = null;
+                    SaveOrDelete(store);
                 }
-                catch { /* ignore */ }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            public static CredentialPresetInfo SavePreset(MailServerType server, string email, string password, string? displayName)
+            {
+                var store = LoadStore();
+                store.Presets ??= new List<CredentialData>();
+                var serverKey = server.ToString();
+                var existing = store.Presets.FirstOrDefault(p =>
+                    string.Equals(p.Server, serverKey, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(p.Email, email, StringComparison.OrdinalIgnoreCase));
+
+                if (existing == null)
+                {
+                    existing = new CredentialData();
+                    store.Presets.Add(existing);
+                }
+
+                existing.Email = email ?? string.Empty;
+                existing.DisplayName = string.IsNullOrWhiteSpace(displayName) ? email : displayName;
+                existing.Server = serverKey;
+                existing.Pwd = Protect(password);
+
+                SaveOrDelete(store);
+
+                var info = new CredentialPresetInfo(
+                    existing.Id,
+                    existing.Email,
+                    existing.DisplayName ?? existing.Email,
+                    server);
+                return info;
+            }
+
+            public static IReadOnlyList<CredentialPresetInfo> LoadPresets(MailServerType? filter = null)
+            {
+                try
+                {
+                    var store = LoadStore();
+                    var serverFilter = filter?.ToString();
+
+                    var presets = store.Presets
+                        .Where(p => string.IsNullOrEmpty(serverFilter) ||
+                                    string.Equals(p.Server, serverFilter, StringComparison.OrdinalIgnoreCase))
+                        .Select(p => new CredentialPresetInfo(
+                            p.Id,
+                            p.Email ?? string.Empty,
+                            string.IsNullOrWhiteSpace(p.DisplayName) ? (p.Email ?? string.Empty) : p.DisplayName!,
+                            ParseServer(p.Server)))
+                        .ToList();
+
+                    return presets;
+                }
+                catch
+                {
+                    return Array.Empty<CredentialPresetInfo>();
+                }
+            }
+
+            public static bool TryLoadPresetPassword(string id, out string password)
+            {
+                password = string.Empty;
+                try
+                {
+                    var store = LoadStore();
+                    var preset = store.Presets.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.Ordinal));
+                    if (preset == null || string.IsNullOrEmpty(preset.Pwd))
+                        return false;
+
+                    password = Unprotect(preset.Pwd);
+                    return true;
+                }
+                catch
+                {
+                    password = string.Empty;
+                    return false;
+                }
+            }
+
+            public static bool RemovePreset(string id)
+            {
+                try
+                {
+                    var store = LoadStore();
+                    var removed = store.Presets.RemoveAll(p => string.Equals(p.Id, id, StringComparison.Ordinal)) > 0;
+                    if (removed)
+                        SaveOrDelete(store);
+                    return removed;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            private static CredentialStore LoadStore()
+            {
+                try
+                {
+                    if (!File.Exists(FilePath))
+                        return new CredentialStore();
+
+                    var json = File.ReadAllText(FilePath);
+                    if (string.IsNullOrWhiteSpace(json))
+                        return new CredentialStore();
+
+                    var store = JsonSerializer.Deserialize<CredentialStore>(json);
+                    if (store != null)
+                    {
+                        store.Presets ??= new List<CredentialData>();
+                        if (store.Default != null && string.IsNullOrEmpty(store.Default.Id))
+                            store.Default.Id = "default";
+
+                        if (store.Default == null && store.Presets.Count == 0)
+                        {
+                            var legacy = JsonSerializer.Deserialize<LegacyModel>(json);
+                            if (legacy != null && (!string.IsNullOrEmpty(legacy.Email) || !string.IsNullOrEmpty(legacy.Pwd)))
+                            {
+                                store.Default = new CredentialData
+                                {
+                                    Id = "default",
+                                    Email = legacy.Email ?? string.Empty,
+                                    Pwd = legacy.Pwd ?? string.Empty,
+                                    DisplayName = legacy.Email,
+                                    Server = MailServerType.MailRu.ToString(),
+                                };
+                            }
+                        }
+
+                        return store;
+                    }
+
+                    return new CredentialStore();
+                }
+                catch (JsonException)
+                {
+                    try
+                    {
+                        var legacyJson = File.ReadAllText(FilePath);
+                        var legacy = JsonSerializer.Deserialize<LegacyModel>(legacyJson);
+                        if (legacy != null)
+                        {
+                            var store = new CredentialStore
+                            {
+                                Default = new CredentialData
+                                {
+                                    Id = "default",
+                                    Email = legacy.Email ?? string.Empty,
+                                    Pwd = legacy.Pwd ?? string.Empty,
+                                    DisplayName = legacy.Email,
+                                    Server = MailServerType.MailRu.ToString(),
+                                }
+                            };
+                            return store;
+                        }
+                    }
+                    catch
+                    {
+                        // ignore legacy fallback errors
+                    }
+
+                    return new CredentialStore();
+                }
+                catch
+                {
+                    return new CredentialStore();
+                }
+            }
+
+            private static void SaveOrDelete(CredentialStore store)
+            {
+                store.Presets ??= new List<CredentialData>();
+
+                if (store.Default == null && store.Presets.Count == 0)
+                {
+                    if (File.Exists(FilePath))
+                    {
+                        try { File.Delete(FilePath); } catch { /* ignore */ }
+                    }
+                    return;
+                }
+
+                try
+                {
+                    Directory.CreateDirectory(Dir);
+                    var json = JsonSerializer.Serialize(store, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(FilePath, json);
+                }
+                catch
+                {
+                    // ignore save failures
+                }
+            }
+
+            private static string Protect(string password)
+            {
+                try
+                {
+                    var pwdBytes = System.Text.Encoding.UTF8.GetBytes(password ?? string.Empty);
+                    var protectedBytes = ProtectedData.Protect(pwdBytes, null, DataProtectionScope.CurrentUser);
+                    return Convert.ToBase64String(protectedBytes);
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+
+            private static string Unprotect(string protectedBase64)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(protectedBase64))
+                        return string.Empty;
+
+                    var prot = Convert.FromBase64String(protectedBase64);
+                    var plain = ProtectedData.Unprotect(prot, null, DataProtectionScope.CurrentUser);
+                    return System.Text.Encoding.UTF8.GetString(plain);
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+
+            private static MailServerType ParseServer(string? value)
+            {
+                if (Enum.TryParse<MailServerType>(value, out var parsed))
+                    return parsed;
+                return MailServerType.Custom;
             }
         }
     }
