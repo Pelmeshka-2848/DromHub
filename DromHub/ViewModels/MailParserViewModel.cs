@@ -18,6 +18,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using MimeKit;
 using MailKit.Search;
+using Windows.Storage;
 
 namespace DromHub.ViewModels
 {
@@ -213,7 +214,12 @@ namespace DromHub.ViewModels
         {
             try
             {
-                Directory.CreateDirectory(path);
+                var directory = Directory.CreateDirectory(path);
+
+                if (!directory.Exists)
+                    return false;
+
+                TryEnsurePhysicalPath(path);
                 return true;
             }
             catch (Exception ex)
@@ -688,26 +694,98 @@ namespace DromHub.ViewModels
 
             try
             {
-                if (!Directory.Exists(PricesRoot))
+                var shellPath = GetShellAccessiblePath(PricesRoot, ensureExists: true);
+
+                if (!Directory.Exists(shellPath))
                 {
-                    ReportError($"Папка не найдена: {PricesRoot}");
+                    ReportError($"Папка не найдена: {shellPath}");
                     return;
                 }
 
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = PricesRoot,
+                    FileName = shellPath,
                     UseShellExecute = true,
                     Verb = "open"
                 };
                 System.Diagnostics.Process.Start(startInfo);
-                AddLog($"📁 Открыта папка {PricesRoot}");
-                UpdateStatus($"Открыта папка: {PricesRoot}");
+                if (!string.Equals(shellPath, PricesRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddLog($"📁 Открыта папка {shellPath} (логический путь: {PricesRoot})");
+                    UpdateStatus($"Открыта папка: {shellPath}");
+                }
+                else
+                {
+                    AddLog($"📁 Открыта папка {shellPath}");
+                    UpdateStatus($"Открыта папка: {shellPath}");
+                }
             }
             catch (Exception ex)
             {
                 ReportError($"Не удалось открыть папку с прайс-листами: {ex.Message}", ex);
             }
+        }
+
+        private void TryEnsurePhysicalPath(string path)
+        {
+            try
+            {
+                var shellPath = GetShellAccessiblePath(path, ensureExists: true);
+                if (!string.Equals(shellPath, path, StringComparison.OrdinalIgnoreCase) &&
+                    !Directory.Exists(shellPath))
+                {
+                    Directory.CreateDirectory(shellPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Не удалось подготовить физический путь для {Path}", path);
+            }
+        }
+
+        private string GetShellAccessiblePath(string originalPath, bool ensureExists)
+        {
+            if (string.IsNullOrWhiteSpace(originalPath))
+                return originalPath;
+
+            try
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (!string.IsNullOrEmpty(localAppData) &&
+                    originalPath.StartsWith(localAppData, StringComparison.OrdinalIgnoreCase))
+                {
+                    var relative = Path.GetRelativePath(localAppData, originalPath);
+                    if (!relative.StartsWith(".."))
+                    {
+                        var cachePath = ApplicationData.Current?.LocalCacheFolder?.Path;
+                        if (!string.IsNullOrEmpty(cachePath))
+                        {
+                            var candidate = Path.Combine(cachePath, "Local", relative);
+                            if (ensureExists && !Directory.Exists(candidate))
+                            {
+                                Directory.CreateDirectory(candidate);
+                            }
+
+                            if (Directory.Exists(candidate))
+                            {
+                                return candidate;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException ||
+                                       ex is System.Runtime.InteropServices.COMException ||
+                                       ex is UnauthorizedAccessException)
+            {
+                _logger.LogDebug(ex, "Не удалось получить физический путь для {Path}", originalPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Ошибка при попытке определить физический путь для {Path}", originalPath);
+            }
+
+            return originalPath;
         }
 
         [ObservableProperty] private int selectedMailServerIndex = 1; // Mail.ru
