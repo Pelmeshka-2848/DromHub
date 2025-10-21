@@ -61,25 +61,6 @@
              Text="{Binding EmailAddress, Mode=TwoWay}"
              PlaceholderText="user@example.com"/>
 
-                    <StackPanel Spacing="8"
-                                Visibility="{Binding CredentialPresetsVisibility}">
-                        <TextBlock Text="Сохранённые аккаунты"
-                                   FontWeight="SemiBold"/>
-                        <ComboBox ItemsSource="{Binding CredentialPresets}"
-                                  SelectedItem="{Binding SelectedCredentialPreset, Mode=TwoWay}"
-                                  DisplayMemberPath="DisplayName"
-                                  PlaceholderText="Выберите аккаунт"/>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Button Content="💾 Сохранить пресет"
-                                    Command="{Binding SaveCredentialPresetCommand}"
-                                    Padding="12,8"/>
-                            <Button Content="🗑️ Удалить пресет"
-                                    Command="{Binding DeleteCredentialPresetCommand}"
-                                    Padding="12,8"
-                                    IsEnabled="{Binding CanDeleteCredentialPreset}"/>
-                        </StackPanel>
-                    </StackPanel>
-
                     <PasswordBox Header="Пароль"
                  Password="{Binding Password, Mode=TwoWay}"
                  PlaceholderText="Введите пароль"/>
