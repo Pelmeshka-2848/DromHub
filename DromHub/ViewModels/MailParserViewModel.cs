@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices.WindowsRuntime;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MailKit;
@@ -16,6 +17,9 @@ using Microsoft.UI.Xaml;
 using MimeKit;
 using MailKit.Search;
 using OfficeOpenXml;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace DromHub.ViewModels
 {
@@ -633,6 +637,102 @@ namespace DromHub.ViewModels
             if (deleted > 0) AddLog($"🧹 Удалено не-xlsx файлов: {deleted}");
         }
 
+        private async Task<int> ProcessZipFileAsync(string zipPath, string defaultBaseName)
+        {
+            int added = 0;
+            try
+            {
+                using var archive = ZipFile.OpenRead(zipPath);
+                foreach (var entry in archive.Entries)
+                {
+                    if (string.IsNullOrEmpty(entry.Name))
+                        continue;
+
+                    var entryExt = (Path.GetExtension(entry.Name) ?? string.Empty).ToLowerInvariant();
+                    var entryBase = SafeName(Path.GetFileNameWithoutExtension(entry.Name));
+                    if (string.IsNullOrWhiteSpace(entryBase))
+                        entryBase = defaultBaseName;
+
+                    if (entryExt == ".xlsx")
+                    {
+                        var destPath = EnsureUniquePath(Path.Combine(PricesRoot, $"{entryBase}.xlsx"));
+                        entry.ExtractToFile(destPath, true);
+                        AddLog($"✅ ZIP {Path.GetFileName(zipPath)} → {Path.GetFileName(destPath)}");
+                        added++;
+                    }
+                    else if (entryExt == ".csv")
+                    {
+                        var tempCsv = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.csv");
+                        entry.ExtractToFile(tempCsv, true);
+                        try
+                        {
+                            var xlsxTemp = await ConvertCsvFileToXlsxAsync(tempCsv, PricesRoot);
+                            var destPath = EnsureUniquePath(Path.Combine(PricesRoot, $"{entryBase}.xlsx"));
+                            File.Move(xlsxTemp, destPath, true);
+                            AddLog($"✅ ZIP CSV {entry.Name} → {Path.GetFileName(destPath)}");
+                            added++;
+                        }
+                        finally
+                        {
+                            TryDeleteFile(tempCsv);
+                        }
+                    }
+                    else
+                    {
+                        AddLog($"ℹ️ Файл {entry.Name} в архиве пропущен (неподдерживаемый формат)");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportError($"Не удалось обработать архив {Path.GetFileName(zipPath)}: {ex.Message}", ex);
+            }
+
+            return added;
+        }
+
+        private static async Task<string> CopyStorageFileToTempAsync(StorageFile file, string extension)
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}{extension}");
+            await using (var source = await file.OpenStreamForReadAsync())
+            await using (var destination = File.Create(tempPath))
+            {
+                await source.CopyToAsync(destination);
+            }
+
+            return tempPath;
+        }
+
+        private static string EnsureUniquePath(string path)
+        {
+            var directory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
+            var name = Path.GetFileNameWithoutExtension(path);
+            var extension = Path.GetExtension(path);
+            var candidate = path;
+            var counter = 1;
+
+            while (File.Exists(candidate))
+            {
+                candidate = Path.Combine(directory, $"{name}_{counter}{extension}");
+                counter++;
+            }
+
+            return candidate;
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
         [RelayCommand]
         private void ClearCredentials()
         {
@@ -647,6 +747,136 @@ namespace DromHub.ViewModels
         {
             SecureCreds.Clear();
             AddLog("🗑️ Сохранённые учётные данные удалены");
+        }
+
+        [RelayCommand]
+        private async Task ManualAddPricesAsync()
+        {
+            if (!EnsurePricesRoot())
+                return;
+
+            try
+            {
+                var picker = new FileOpenPicker
+                {
+                    ViewMode = PickerViewMode.List,
+                    SuggestedStartLocation = PickerLocationId.Downloads
+                };
+                picker.FileTypeFilter.Add(".xlsx");
+                picker.FileTypeFilter.Add(".csv");
+                picker.FileTypeFilter.Add(".zip");
+
+                var hwnd = App.MainHwnd;
+                if (hwnd == 0 && App.MainWindow is not null)
+                {
+                    hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+                }
+
+                if (hwnd != 0)
+                {
+                    InitializeWithWindow.Initialize(picker, hwnd);
+                }
+
+                var files = await picker.PickMultipleFilesAsync();
+                if (files == null || files.Count == 0)
+                {
+                    UpdateStatus("Файлы не выбраны");
+                    AddLog("ℹ️ Ручное добавление прайсов отменено — файлы не выбраны");
+                    return;
+                }
+
+                StorageFolder targetFolder;
+                try
+                {
+                    targetFolder = await StorageFolder.GetFolderFromPathAsync(PricesRoot);
+                }
+                catch (Exception ex)
+                {
+                    ReportError($"Не удалось получить доступ к папке прайс-листов: {ex.Message}", ex);
+                    return;
+                }
+
+                UpdateStatus("Копирование прайс-листов…");
+                AddLog($"📥 Начато ручное добавление прайс-листов ({files.Count} шт.)");
+
+                int successCount = 0;
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        var extension = (Path.GetExtension(file.Name) ?? string.Empty).ToLowerInvariant();
+                        var safeBase = SafeName(Path.GetFileNameWithoutExtension(file.Name));
+                        if (string.IsNullOrWhiteSpace(safeBase))
+                        {
+                            safeBase = $"Manual_{DateTime.Now:yyyyMMdd_HHmmss}";
+                        }
+
+                        if (extension == ".xlsx")
+                        {
+                            var copied = await file.CopyAsync(targetFolder, $"{safeBase}.xlsx", NameCollisionOption.GenerateUniqueName);
+                            AddLog($"✅ Добавлен прайс {copied.Name}");
+                            successCount++;
+                        }
+                        else if (extension == ".csv")
+                        {
+                            var tempCsv = await CopyStorageFileToTempAsync(file, ".csv");
+                            try
+                            {
+                                var xlsxTemp = await ConvertCsvFileToXlsxAsync(tempCsv, PricesRoot);
+                                var destPath = EnsureUniquePath(Path.Combine(PricesRoot, $"{safeBase}.xlsx"));
+                                File.Move(xlsxTemp, destPath, true);
+                                AddLog($"✅ CSV {file.Name} → {Path.GetFileName(destPath)}");
+                                successCount++;
+                            }
+                            finally
+                            {
+                                TryDeleteFile(tempCsv);
+                            }
+                        }
+                        else if (extension == ".zip")
+                        {
+                            var tempZip = await CopyStorageFileToTempAsync(file, ".zip");
+                            try
+                            {
+                                var addedFromZip = await ProcessZipFileAsync(tempZip, safeBase);
+                                successCount += addedFromZip;
+                                if (addedFromZip == 0)
+                                {
+                                    AddLog($"ℹ️ Архив {file.Name} не содержит поддерживаемых файлов");
+                                }
+                            }
+                            finally
+                            {
+                                TryDeleteFile(tempZip);
+                            }
+                        }
+                        else
+                        {
+                            AddLog($"ℹ️ Файл {file.Name} пропущен (неподдерживаемое расширение)");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ReportError($"Не удалось обработать файл {file.Name}: {ex.Message}", ex);
+                    }
+                }
+
+                if (successCount > 0)
+                {
+                    Cleanup(PricesRoot);
+                    UpdateStatus($"Добавлено файлов: {successCount}");
+                    AddLog($"📦 Ручное добавление завершено. Успешно: {successCount}");
+                }
+                else
+                {
+                    UpdateStatus("Файлы не были добавлены");
+                }
+            }
+            catch (Exception ex)
+            {
+                ReportError($"Ошибка при ручном добавлении прайсов: {ex.Message}", ex);
+            }
         }
 
         [RelayCommand]

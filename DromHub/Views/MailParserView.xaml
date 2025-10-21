@@ -135,6 +135,12 @@
             Command="{Binding OpenPricesFolderCommand}"
             Background="LightGray"
             Padding="15,10"/>
+
+                        <Button Content="➕ Добавить прайс вручную"
+            Command="{Binding ManualAddPricesCommand}"
+            Background="#0078D4"
+            Foreground="White"
+            Padding="15,10"/>
                     </StackPanel>
 
 
