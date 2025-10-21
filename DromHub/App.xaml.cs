@@ -8,7 +8,9 @@ using DromHub.Models;
 using DromHub.ViewModels;
 using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
@@ -30,10 +32,12 @@ namespace DromHub
         private MicaController m_micaController;
         private SystemBackdropConfiguration m_configuration;
         public static IServiceProvider ServiceProvider => _serviceProvider;
+        public static IConfiguration Configuration { get; private set; } = default!;
 
         public App()
         {
             this.InitializeComponent();
+            Configuration = BuildConfiguration();
             ConfigureServices();
             ConfigureEpplusLicense();
         }
@@ -41,6 +45,8 @@ namespace DromHub
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
+
+            services.AddSingleton<IConfiguration>(Configuration);
 
             // Регистрация контекста базы данных
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -62,9 +68,24 @@ namespace DromHub
             services.AddTransient<MainWindow>();
 
             // Добавьте это в конфигурацию сервисов
-            services.AddLogging(); // Добавляет систему логгирования
+            services.AddLogging(builder =>
+            {
+                builder.AddDebug();
+            });
 
             _serviceProvider = services.BuildServiceProvider();
+        }
+
+        private static IConfiguration BuildConfiguration()
+        {
+            var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+
+            return new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables("DROMHUB_")
+                .Build();
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -78,9 +99,13 @@ namespace DromHub
                 using (var scope = ServiceProvider.CreateScope())
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<App>>();
+                    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+                    var forceResetRequested = DatabaseResetGuard.IsResetRequested(configuration, args.Arguments, logger);
 
                     // Инициализация БД
-                    await DatabaseInitializer.InitializeAsync(dbContext, forceReset: true);
+                    await DatabaseInitializer.InitializeAsync(dbContext, forceResetRequested);
 
                     // Дополнительная проверка (на всякий случай)
                     await EnsureTestPartExists(dbContext);
