@@ -69,7 +69,7 @@
                                         <TextBlock FontWeight="SemiBold"
                                                    Foreground="{ThemeResource SystemAccentColor}">
                                             <Run Text="Цена: "/>
-                                            <Run Text="{Binding UnitPrice, StringFormat='${0:F2}', TargetNullValue='—', FallbackValue='—'}"/>
+                                            <Run Text="{Binding UnitPrice, TargetNullValue='—', FallbackValue='—'}"/>
                                         </TextBlock>
                                     </StackPanel>
 
