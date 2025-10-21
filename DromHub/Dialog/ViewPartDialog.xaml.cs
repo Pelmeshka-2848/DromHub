@@ -80,8 +80,16 @@ namespace DromHub.Views
                     var imageUrl = Part.Images.First().Url;
                     System.Diagnostics.Debug.WriteLine($"Loading image from database: {imageUrl}");
 
-                    PartImage.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(
-                        new Uri(imageUrl));
+                    var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage
+                    {
+                        DecodePixelWidth = 400,
+                        DecodePixelHeight = 400,
+                        CreateOptions = Microsoft.UI.Xaml.Media.Imaging.BitmapCreateOptions.IgnoreImageCache
+                    };
+
+                    bitmap.UriSource = new Uri(imageUrl);
+
+                    PartImage.Source = bitmap;
 
                     // Скрываем заглушку
                     NoImagePlaceholder.Visibility = Visibility.Collapsed;

@@ -161,17 +161,6 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Tab2Page.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Tab4Page.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="Tab3Page.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-  </ItemGroup>
-  <ItemGroup>
     <Page Update="View\PartView.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
