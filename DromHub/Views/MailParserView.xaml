@@ -61,9 +61,10 @@
              Text="{Binding EmailAddress, Mode=TwoWay}"
              PlaceholderText="user@example.com"/>
 
-                    <PasswordBox Header="Пароль"
-                 Password="{Binding Password, Mode=TwoWay}"
-                 PlaceholderText="Введите пароль"/>
+                    <PasswordBox x:Name="PasswordBox"
+                                 Header="Пароль"
+                                 PlaceholderText="Введите пароль"
+                                 PasswordChanged="PasswordBox_OnPasswordChanged"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <CheckBox Content="Запомнить меня"

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -83,6 +83,12 @@ namespace DromHub.ViewModels
         [ObservableProperty] private MailServerType selectedMailServer = MailServerType.MailRu; // по умолчанию Mail.ru
         [ObservableProperty] private string emailAddress = "";
         [ObservableProperty] private string password = "";
+
+        public void UpdatePassword(string? password)
+        {
+            Password = password ?? string.Empty;
+        }
+
         [ObservableProperty] private string customServer = "imap.example.com";
         [ObservableProperty] private int customPort = 993;
 
@@ -225,11 +231,11 @@ namespace DromHub.ViewModels
 
             var (server, port, ssl) = GetServer();
 
-            using var client = new ImapClient();
+            using var client = CreateImapClient();
             try
             {
-                await client.ConnectAsync(server, port, ssl);
-                await client.AuthenticateAsync(EmailAddress, Password);
+                await ConnectAsync(client, server, port, ssl);
+                await AuthenticateAsync(client, EmailAddress, Password);
 
                 IsConnected = true;
                 AddLog("✅ Подключение успешно");
@@ -261,12 +267,29 @@ namespace DromHub.ViewModels
             finally
             {
                 if (client.IsConnected)
-                    await client.DisconnectAsync(true);
+                    await DisconnectAsync(client);
 
                 IsConnected = false;
                 IsLoading = false;
                 AddLog("📨 Сессия завершена");
             }
+        }
+
+        protected virtual ImapClient CreateImapClient() => new ImapClient();
+
+        protected virtual Task ConnectAsync(ImapClient client, string server, int port, SecureSocketOptions options)
+        {
+            return client.ConnectAsync(server, port, options);
+        }
+
+        protected virtual Task AuthenticateAsync(ImapClient client, string email, string password)
+        {
+            return client.AuthenticateAsync(email, password);
+        }
+
+        protected virtual Task DisconnectAsync(ImapClient client)
+        {
+            return client.DisconnectAsync(true);
         }
 
         private (string, int, SecureSocketOptions) GetServer()
@@ -277,7 +300,7 @@ namespace DromHub.ViewModels
         }
 
         // ===== MAIN MAIL PROCESSOR =====
-        private async Task ProcessInboxAsync(ImapClient client)
+        protected virtual async Task ProcessInboxAsync(ImapClient client)
         {
             var inbox = client.Inbox;
             await inbox.OpenAsync(FolderAccess.ReadOnly);
