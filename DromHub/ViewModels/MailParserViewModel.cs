@@ -696,9 +696,9 @@ namespace DromHub.ViewModels
 
                 var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "explorer.exe",
-                    Arguments = PricesRoot,
-                    UseShellExecute = true
+                    FileName = PricesRoot,
+                    UseShellExecute = true,
+                    Verb = "open"
                 };
                 System.Diagnostics.Process.Start(startInfo);
                 AddLog($"📁 Открыта папка {PricesRoot}");
