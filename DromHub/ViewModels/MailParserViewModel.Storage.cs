@@ -201,8 +201,7 @@ namespace DromHub.ViewModels
 
         private static class SecureCreds
         {
-            private static readonly string Dir =
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DromHub");
+            private static readonly string Dir = AppDataRoot;
             private static readonly string FilePath = Path.Combine(Dir, "creds.json");
 
             private sealed class CredentialData
@@ -243,10 +242,11 @@ namespace DromHub.ViewModels
                 }
             }
 
-            public static bool TryLoad(out string email, out string password)
+            public static bool TryLoad(out string email, out string password, out MailServerType server)
             {
                 email = string.Empty;
                 password = string.Empty;
+                server = MailServerType.MailRu;
 
                 try
                 {
@@ -256,12 +256,17 @@ namespace DromHub.ViewModels
 
                     email = store.Default.Email ?? string.Empty;
                     password = Unprotect(store.Default.Pwd);
+                    if (!Enum.TryParse(store.Default.Server, ignoreCase: true, out server))
+                    {
+                        server = MailServerType.MailRu;
+                    }
                     return true;
                 }
                 catch
                 {
                     email = string.Empty;
                     password = string.Empty;
+                    server = MailServerType.MailRu;
                     return false;
                 }
             }

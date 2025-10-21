@@ -104,7 +104,7 @@
 
                     <!-- Прогресс парсинга -->
                     <StackPanel Spacing="6">
-                        <TextBlock Text="{Binding ParsingStage}" />
+                        <TextBlock Text="{Binding ProgressDetails}" />
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <ProgressBar Minimum="0" Maximum="100" Height="8"
                      Value="{Binding ParsingProgress}" Width="300"/>
@@ -133,13 +133,6 @@
                         <Button Content="📁 Открыть папку Prices"
             Command="{Binding OpenPricesFolderCommand}"
             Background="LightGray"
-            Padding="15,10"/>
-
-                        <!-- Новая кнопка -->
-                        <Button Content="➕ Добавить прайс-лист"
-            Command="{Binding AddPriceListCommand}"
-            Background="#0078D4"
-            Foreground="White"
             Padding="15,10"/>
                     </StackPanel>
 

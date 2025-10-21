@@ -15,6 +15,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using MimeKit;
 using MailKit.Search;
+using OfficeOpenXml;
 
 namespace DromHub.ViewModels
 {
@@ -40,12 +41,14 @@ namespace DromHub.ViewModels
             EnsurePricesRoot(logOnSuccess: true);
 
             // загрузим сохранённые учётные данные при старте
-            if (SecureCreds.TryLoad(out var savedEmail, out var savedPassword))
+            if (SecureCreds.TryLoad(out var savedEmail, out var savedPassword, out var savedServer))
             {
                 EmailAddress = savedEmail ?? "";
                 Password = savedPassword ?? "";
                 RememberCredentials = true;
                 AddLog("🔑 Найдены сохранённые учётные данные");
+                SelectedMailServer = savedServer;
+                SelectedMailServerIndex = (int)savedServer;
             }
 
             UpdateServerSelection(SelectedMailServer);
@@ -99,7 +102,7 @@ namespace DromHub.ViewModels
         [ObservableProperty] private int processedSuppliers;          // сколько обработали
         [ObservableProperty] private int totalSuppliers;              // всего в списке
 
-        public List<string> MailServerTypes => new()
+        public IReadOnlyList<string> MailServerTypes { get; } = new[]
         {
             "Gmail (imap.gmail.com:993)",
             "Mail.ru (imap.mail.ru:993)",
