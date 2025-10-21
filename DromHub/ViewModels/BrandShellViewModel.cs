@@ -11,8 +11,8 @@ namespace DromHub.ViewModels
 
     public class BrandShellViewModel : ObservableObject
     {
-        private readonly ApplicationDbContext _db;
-        public BrandShellViewModel(ApplicationDbContext db) => _db = db;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        public BrandShellViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
 
         public XamlRoot XamlRoot { get; private set; }
 
@@ -84,11 +84,13 @@ namespace DromHub.ViewModels
             XamlRoot = xr;
             BrandId = id;
 
-            var b = await _db.Brands.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var b = await db.Brands.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             BrandNameUpper = (b?.Name ?? string.Empty).ToUpperInvariant();
 
             // вычисляем соседей в алфавитном порядке
-            var sorted = await _db.Brands
+            var sorted = await db.Brands
                                   .OrderBy(x => x.Name)
                                   .Select(x => new { x.Id, x.Name })
                                   .AsNoTracking()

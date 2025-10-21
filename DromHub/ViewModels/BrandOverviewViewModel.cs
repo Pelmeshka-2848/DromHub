@@ -12,8 +12,8 @@ namespace DromHub.ViewModels
 {
     public partial class BrandOverviewViewModel : ObservableObject
     {
-        private readonly ApplicationDbContext _db;
-        public BrandOverviewViewModel(ApplicationDbContext db) => _db = db;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        public BrandOverviewViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
 
         private XamlRoot _xr;
         public Guid BrandId { get; private set; }
@@ -90,7 +90,9 @@ namespace DromHub.ViewModels
             _xr = xr;
             BrandId = id;
 
-            var b = await _db.Brands
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var b = await db.Brands
                 .AsNoTracking()
                 .Where(x => x.Id == id)
                 .Select(x => new
@@ -118,7 +120,7 @@ namespace DromHub.ViewModels
             Description = b.Description;
             UserNotes = b.UserNotes;
 
-            PartsCount = await _db.Parts.AsNoTracking().CountAsync(p => p.BrandId == id);
+            PartsCount = await db.Parts.AsNoTracking().CountAsync(p => p.BrandId == id);
 
             // страна
             CountryName = b.CountryName ?? "—";
@@ -129,7 +131,7 @@ namespace DromHub.ViewModels
             MarkupPct = b.MarkupPct ?? 0m;
 
             // алиасы -> строка
-            var aliasStrings = await _db.BrandAliases
+            var aliasStrings = await db.BrandAliases
                 .AsNoTracking()
                 .Where(a => a.BrandId == id)
                 .Select(a => a.Alias)
@@ -146,12 +148,12 @@ namespace DromHub.ViewModels
                 : "—";
 
             // ===== расчёты: перцентили и «правые» бары =====
-            var stats = await _db.Brands
+            var stats = await db.Brands
                 .Select(x => new BrandStat(
                     x.Id,
-                    _db.Parts.Count(p => p.BrandId == x.Id),
-                    _db.BrandAliases.Count(a => a.BrandId == x.Id),
-                    (double?)_db.BrandMarkups.Where(m => m.BrandId == x.Id).Select(m => m.MarkupPct).FirstOrDefault(),
+                    db.Parts.Count(p => p.BrandId == x.Id),
+                    db.BrandAliases.Count(a => a.BrandId == x.Id),
+                    (double?)db.BrandMarkups.Where(m => m.BrandId == x.Id).Select(m => m.MarkupPct).FirstOrDefault(),
                     x.Website,
                     x.Description,
                     x.UserNotes,

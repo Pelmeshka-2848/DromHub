@@ -12,7 +12,7 @@ namespace DromHub.ViewModels
 {
     public partial class BrandsIndexViewModel : ObservableObject
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
 
         public ObservableCollection<Brand> Brands { get; } = new();
         public ObservableCollection<AlphaKeyGroup<Brand>> GroupedBrands { get; } = new();
@@ -27,7 +27,7 @@ namespace DromHub.ViewModels
         // Для кнопок/состояния
         [ObservableProperty] private Brand selectedBrand;
 
-        public BrandsIndexViewModel(ApplicationDbContext db) => _db = db;
+        public BrandsIndexViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
 
         public async Task LoadAsync()
         {
@@ -37,7 +37,8 @@ namespace DromHub.ViewModels
 
         public async Task ReloadList()
         {
-            var query = _db.Brands.AsQueryable();
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            var query = db.Brands.AsQueryable();
 
             var list = await query
                 .Select(b => new Brand
@@ -45,13 +46,13 @@ namespace DromHub.ViewModels
                     Id = b.Id,
                     Name = b.Name,
                     IsOem = b.IsOem,
-                    PartsCount = _db.Parts.Count(p => p.BrandId == b.Id),
-                    MarkupPercent = _db.BrandMarkups
+                    PartsCount = db.Parts.Count(p => p.BrandId == b.Id),
+                    MarkupPercent = db.BrandMarkups
                         .Where(m => m.BrandId == b.Id)
                         .Select(m => (decimal?)m.MarkupPct)
                         .FirstOrDefault() ?? 0m,
-                    AliasesCount = _db.BrandAliases.Count(a => a.BrandId == b.Id),
-                    NonPrimaryAliasesCount = _db.BrandAliases.Count(a => a.BrandId == b.Id && !a.IsPrimary)
+                    AliasesCount = db.BrandAliases.Count(a => a.BrandId == b.Id),
+                    NonPrimaryAliasesCount = db.BrandAliases.Count(a => a.BrandId == b.Id && !a.IsPrimary)
                 })
                 .OrderBy(b => b.Name)
                 .AsNoTracking()

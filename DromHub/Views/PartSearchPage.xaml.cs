@@ -1,25 +1,26 @@
 ﻿using Microsoft.UI.Xaml.Controls;
 using DromHub.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml;
 using System;
 using DromHub.Models;
+using DromHub.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace DromHub.Views
 {
     public sealed partial class PartSearchPage : Page
     {
         public PartViewModel ViewModel { get; }
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
 
         public PartSearchPage()
         {
             this.InitializeComponent();
             ViewModel = App.ServiceProvider.GetRequiredService<PartViewModel>();
             this.DataContext = ViewModel;
+            _dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         }
 
         private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
@@ -72,7 +73,7 @@ namespace DromHub.Views
             if (sender is Button btn && btn.DataContext is Part part)
             {
                 // Передаём ваш ApplicationDbContext (в вашем коде он называется ViewModel.Context)
-                var dialog = new ViewPartDialog(part, ViewModel.Context)
+                var dialog = new ViewPartDialog(part, _dbFactory)
                 {
                     XamlRoot = this.XamlRoot
                 };
@@ -88,14 +89,8 @@ namespace DromHub.Views
         {
             if (sender is Button btn && btn.DataContext is Part part)
             {
-                var logger = App.ServiceProvider.GetRequiredService<ILogger<PartViewModel>>();
-                var partVm = new PartViewModel(ViewModel.Context, logger)
-                {
-                    Id = part.Id,
-                    CatalogNumber = part.CatalogNumber,
-                    Name = part.Name,
-                    SelectedBrand = part.Brand
-                };
+                var partVm = App.ServiceProvider.GetRequiredService<PartViewModel>();
+                partVm.LoadFromPart(part);
 
                 await partVm.LoadBrandsCommand.ExecuteAsync(null);
 
@@ -129,13 +124,14 @@ namespace DromHub.Views
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
                 {
-                    var partToDelete = await ViewModel.Context.Parts
+                    await using var context = await _dbFactory.CreateDbContextAsync();
+                    var partToDelete = await context.Parts
                         .FirstOrDefaultAsync(p => p.Id == part.Id);
 
                     if (partToDelete != null)
                     {
-                        ViewModel.Context.Parts.Remove(partToDelete);
-                        await ViewModel.Context.SaveChangesAsync();
+                        context.Parts.Remove(partToDelete);
+                        await context.SaveChangesAsync();
                         await ViewModel.SearchPartsCommand.ExecuteAsync(null);
                     }
                 }
