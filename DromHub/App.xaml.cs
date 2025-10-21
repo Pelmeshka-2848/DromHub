@@ -27,7 +27,7 @@ namespace DromHub
         public static ApplicationDbContext DbContext { get; private set; }
         public static Window MainWindow { get; private set; }
         private Window m_window;
-        public static nint MainHwnd { get;  private set; }
+        public static nint MainHwnd { get; private set; }
         private WindowsSystemDispatcherQueueHelper m_wsdqHelper;
         private MicaController m_micaController;
         private SystemBackdropConfiguration m_configuration;
@@ -49,16 +49,19 @@ namespace DromHub
             services.AddSingleton<IConfiguration>(Configuration);
 
             var connectionString = Configuration.GetConnectionString("DromHub");
-            if (string.IsNullOrWhiteSpace(connectionString))
+            if (string.IsNullOrWhiteSpace(connectionString) ||
+                connectionString.IndexOf("CHANGE_ME", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 throw new InvalidOperationException(
-                    "The required database connection string 'ConnectionStrings:DromHub' is missing. " +
-                    "Provide a valid Npgsql connection string via appsettings.json, environment variables, or user secrets.");
+                    "The required database connection string 'ConnectionStrings:DromHub' is missing or still uses the " +
+                    "placeholder value. Provide a valid Npgsql connection string via appsettings.json, environment variables, " +
+                    "or user secrets. See README.md for configuration options.");
             }
 
             // Регистрация контекста базы данных
             services.AddDbContextFactory<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString));
+
             // Регистрация ViewModels
             services.AddTransient<PartViewModel>();
             services.AddTransient<BrandOverviewViewModel>();
@@ -87,10 +90,18 @@ namespace DromHub
         {
             var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
 
-            return new ConfigurationBuilder()
+            var builder = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
+
+            if (string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                builder.AddUserSecrets<App>(optional: true);
+            }
+
+            return builder
+                .AddEnvironmentVariables()
                 .AddEnvironmentVariables("DROMHUB_")
                 .Build();
         }
