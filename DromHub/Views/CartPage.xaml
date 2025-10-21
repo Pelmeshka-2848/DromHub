@@ -68,8 +68,8 @@
                                         </StackPanel>
                                         <TextBlock FontWeight="SemiBold"
                                                    Foreground="{ThemeResource SystemAccentColor}">
-                                            <Run Text="Цена: $"/>
-                                            <Run Text="{Binding Part.LocalStocks[0].Price}"/>
+                                            <Run Text="Цена: "/>
+                                            <Run Text="{Binding UnitPrice, StringFormat='${0:F2}', TargetNullValue='—', FallbackValue='—'}"/>
                                         </TextBlock>
                                     </StackPanel>
 

@@ -7,6 +7,7 @@ namespace DromHub.Models
     public class CartItem : INotifyPropertyChanged
     {
         private int _quantity;
+        private Part _part;
 
         public Guid Id { get; set; } = Guid.NewGuid();
         public Guid CartId { get; set; }
@@ -24,9 +25,21 @@ namespace DromHub.Models
         }
 
         public DateTime AddedAt { get; set; } = DateTime.UtcNow;
-        public Part Part { get; set; }
+        public Part Part
+        {
+            get => _part;
+            set
+            {
+                _part = value;
+                OnPropertyChanged(nameof(Part));
+                OnPropertyChanged(nameof(UnitPrice));
+                OnPropertyChanged(nameof(TotalPrice));
+            }
+        }
 
-        public decimal TotalPrice => (Part?.LocalStocks?.FirstOrDefault()?.Price ?? 0) * Quantity;
+        public decimal? UnitPrice => Part?.LocalStocks?.FirstOrDefault()?.Price;
+
+        public decimal TotalPrice => (UnitPrice ?? 0) * Quantity;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
