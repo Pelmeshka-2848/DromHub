@@ -248,6 +248,33 @@ namespace DromHub.Views
             }
         }
 
+        private void ViewPartDialog_Closed(ContentDialog sender, ContentDialogClosedEventArgs args)
+        {
+            try
+            {
+                this.Loaded -= ViewPartDialog_Loaded;
+
+                if (MessageTip != null)
+                {
+                    MessageTip.IsOpen = false;
+                }
+
+                Crosses.Clear();
+
+                if (PartImage != null)
+                {
+                    PartImage.Source = null;
+                }
+
+                Part = null;
+                DataContext = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR in ViewPartDialog_Closed: {ex.Message}");
+            }
+        }
+
         private void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

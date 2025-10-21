@@ -9,7 +9,8 @@
     Height="900"
     DefaultButton="Primary"
     PrimaryButtonText="Закрыть"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Closed="ViewPartDialog_Closed">
 
     <Grid>
         <Grid.RowDefinitions>
