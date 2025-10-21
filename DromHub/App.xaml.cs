@@ -48,10 +48,17 @@ namespace DromHub
 
             services.AddSingleton<IConfiguration>(Configuration);
 
+            var connectionString = Configuration.GetConnectionString("DromHub");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "The required database connection string 'ConnectionStrings:DromHub' is missing. " +
+                    "Provide a valid Npgsql connection string via appsettings.json, environment variables, or user secrets.");
+            }
+
             // Регистрация контекста базы данных
             services.AddDbContextFactory<ApplicationDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=plane2004"));
-
+                options.UseNpgsql(connectionString));
             // Регистрация ViewModels
             services.AddTransient<PartViewModel>();
             services.AddTransient<BrandOverviewViewModel>();
