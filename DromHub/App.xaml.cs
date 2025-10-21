@@ -160,13 +160,31 @@ namespace DromHub
                         : "Деталь не найдена!");
                 }
             }
+            catch (PostgresException postgresEx) when (string.Equals(postgresEx.SqlState, "28P01", StringComparison.Ordinal))
+            {
+                HandleInitializationError(
+                    "Не удалось подключиться к базе данных: проверьте имя пользователя и пароль в строке подключения.",
+                    postgresEx);
+            }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка инициализации: {ex.Message}");
+                HandleInitializationError("Ошибка инициализации: " + ex.Message, ex);
             }
 
             TrySetMicaBackdrop();
             m_window.Activate();
+        }
+
+        private void HandleInitializationError(string message, Exception ex)
+        {
+            Debug.WriteLine(message);
+            Debug.WriteLine(ex);
+
+            var logger = ServiceProvider.GetService<ILogger<App>>();
+            logger?.LogError(ex, message);
+
+            var errorWindow = new MessageWindow(message);
+            errorWindow.Activate();
         }
 
         private static void ConfigureEpplusLicense()
