@@ -15,10 +15,7 @@ namespace DromHub.Data
             {
                 await context.Database.EnsureCreatedAsync();
 
-                if (forceReset)
-                {
-                    await ClearDatabase(context);
-                }
+                await ClearDatabase(context, forceReset);
 
                 // Убрал внешнюю транзакцию, так как она уже есть в SeedBrands
                 await SeedBrands(context);
@@ -260,26 +257,38 @@ namespace DromHub.Data
             }
         }
 
-        private static async Task ClearDatabase(ApplicationDbContext context)
+        private static async Task ClearDatabase(ApplicationDbContext context, bool forceReset)
         {
-            try
+            if (!forceReset)
             {
-                var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
-                foreach (var table in tables)
-                {
-                    var tableExists = await context.Database.ExecuteSqlRawAsync(
-                        $"SELECT 1 FROM information_schema.tables WHERE table_name = '{table}'");
+                Debug.WriteLine("Принудительное очищение БД не запрошено. Операция TRUNCATE пропущена.");
+                return;
+            }
 
-                    if (tableExists == 1)
-                    {
-                        await context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} CASCADE");
-                        Debug.WriteLine($"Таблица {table} очищена");
-                    }
+            var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
+            var allSucceeded = true;
+
+            foreach (var table in tables)
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE IF EXISTS \"{table}\" RESTART IDENTITY CASCADE");
+                    Debug.WriteLine($"Таблица {table} успешно очищена");
+                }
+                catch (Exception ex)
+                {
+                    allSucceeded = false;
+                    Debug.WriteLine($"Не удалось очистить таблицу {table}: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+
+            if (allSucceeded)
             {
-                Debug.WriteLine($"Ошибка очистки БД: {ex.Message}");
+                Debug.WriteLine("Очистка базы данных успешно завершена.");
+            }
+            else
+            {
+                Debug.WriteLine("Очистка базы данных завершена с ошибками. См. сообщения выше.");
             }
         }
     }
