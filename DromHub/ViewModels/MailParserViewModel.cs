@@ -6,6 +6,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,12 +23,31 @@ namespace DromHub.ViewModels
 {
     public partial class MailParserViewModel : ObservableObject
     {
+        private static readonly string AppDataRoot =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DromHub");
+        private static readonly string DefaultPricesRoot = Path.Combine(AppDataRoot, "Prices");
+
         private readonly ILogger<MailParserViewModel> _logger;
         private readonly DispatcherQueue _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        private readonly UserSettings _userSettings;
+        private string _pricesRoot = DefaultPricesRoot;
+
+        private string PricesRoot => _pricesRoot;
 
         public MailParserViewModel(ILogger<MailParserViewModel> logger)
         {
             _logger = logger;
+
+            _userSettings = UserSettings.Load(_logger);
+            _pricesRoot = ResolvePricesRoot(_userSettings);
+
+            if (!string.Equals(_userSettings.PricesDirectory, _pricesRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                _userSettings.PricesDirectory = _pricesRoot;
+                _userSettings.TrySave(_logger);
+            }
+
+            EnsurePricesRoot(logOnSuccess: true);
 
             // загрузим сохранённые учётные данные при старте
             if (SecureCreds.TryLoad(out var savedEmail, out var savedPassword))
@@ -36,10 +56,6 @@ namespace DromHub.ViewModels
                 Password = savedPassword ?? "";
                 RememberCredentials = true;
                 AddLog("🔑 Найдены сохранённые учётные данные");
-                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DromHub");
-                var file = Path.Combine(dir, "creds.json");
-                AddLog($"Creds at: {file}");
-
             }
 
             PropertyChanged += (s, e) =>
@@ -59,8 +75,6 @@ namespace DromHub.ViewModels
             { MailServerType.Yandex, ("imap.yandex.ru", 993, SecureSocketOptions.SslOnConnect) },
             { MailServerType.Custom, ("imap.example.com", 993, SecureSocketOptions.Auto) }
         };
-
-        private const string PricesRoot = @"E:\CSharp\DromHub\DromHub\Prices";
 
         // ===== PROPERTIES =====
         [ObservableProperty] private MailServerType selectedMailServer = MailServerType.MailRu; // по умолчанию Mail.ru
@@ -126,6 +140,89 @@ namespace DromHub.ViewModels
             });
         }
 
+        private void UpdateStatus(string message)
+        {
+            _dispatcherQueue.TryEnqueue(() => StatusMessage = message);
+        }
+
+        private void ReportError(string message, Exception? ex = null)
+        {
+            if (ex != null)
+                _logger.LogError(ex, "{Message}", message);
+            else
+                _logger.LogError("{Message}", message);
+
+            AddLog($"❌ {message}");
+            UpdateStatus(message);
+        }
+
+        private string ResolvePricesRoot(UserSettings settings)
+        {
+            if (!string.IsNullOrWhiteSpace(settings.PricesDirectory))
+            {
+                try
+                {
+                    var expanded = Environment.ExpandEnvironmentVariables(settings.PricesDirectory);
+                    return Path.GetFullPath(expanded);
+                }
+                catch (Exception ex)
+                {
+                    var message = $"Некорректный путь к папке прайс-листов в настройках: {ex.Message}";
+                    _logger.LogWarning(ex, "{Message}", message);
+                    AddLog($"⚠️ {message}");
+                }
+            }
+
+            return DefaultPricesRoot;
+        }
+
+        private bool EnsurePricesRoot(bool logOnSuccess = false)
+        {
+            if (TryEnsureDirectory(PricesRoot, "для прайс-листов"))
+            {
+                if (logOnSuccess)
+                    AddLog($"📁 Папка для прайс-листов: {PricesRoot}");
+                return true;
+            }
+
+            if (!string.Equals(PricesRoot, DefaultPricesRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                var previous = PricesRoot;
+                _pricesRoot = DefaultPricesRoot;
+                AddLog($"⚠️ Возврат к стандартной папке прайс-листов: {DefaultPricesRoot}");
+
+                if (!string.Equals(_userSettings.PricesDirectory, DefaultPricesRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    _userSettings.PricesDirectory = DefaultPricesRoot;
+                    _userSettings.TrySave(_logger);
+                }
+
+                if (TryEnsureDirectory(PricesRoot, "для прайс-листов"))
+                {
+                    _logger.LogWarning("Не удалось использовать пользовательскую папку прайс-листов ({Previous}); использована папка по умолчанию ({Fallback}).", previous, DefaultPricesRoot);
+                    if (logOnSuccess)
+                        AddLog($"📁 Папка для прайс-листов: {PricesRoot}");
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryEnsureDirectory(string path, string purposeDescription)
+        {
+            try
+            {
+                Directory.CreateDirectory(path);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ReportError($"Не удалось подготовить папку {purposeDescription} ({path}): {ex.Message}", ex);
+                return false;
+            }
+        }
+
         // перегрузка, если захочешь пользоваться стадиями
         private void SetProgress(double value, MailParseStage stage, string? supplier = null, string? details = null)
         {
@@ -172,6 +269,13 @@ namespace DromHub.ViewModels
 
             IsLoading = true;
             AddLog($"Подключение к {SelectedMailServer}…");
+
+            if (!EnsurePricesRoot())
+            {
+                IsLoading = false;
+                SetProgress(0, details: "Ошибка доступа к папке прайс-листов");
+                return;
+            }
 
             var (server, port, ssl) = GetServer();
 
@@ -275,7 +379,13 @@ namespace DromHub.ViewModels
 
                     var date = msg.Date.LocalDateTime;
                     var dateDir = Path.Combine(PricesRoot, date.ToString("dd-MM-yyyy"));
-                    Directory.CreateDirectory(dateDir);
+                    if (!TryEnsureDirectory(dateDir, $"для даты {date:dd-MM-yyyy} ({supplierName})"))
+                    {
+                        SetProgress(baseEnd, supplierName, "Ошибка доступа к папке");
+                        ProcessedSuppliers++;
+                        await Task.Yield();
+                        continue;
+                    }
 
                     AddLog($"✉️ Последнее письмо от {supplierName} ({fromEmail}) → {date:dd-MM-yyyy}");
 
@@ -573,24 +683,81 @@ namespace DromHub.ViewModels
         [RelayCommand]
         private void OpenPricesFolder()
         {
+            if (!EnsurePricesRoot())
+                return;
+
             try
             {
-                if (Directory.Exists(PricesRoot))
+                if (!Directory.Exists(PricesRoot))
                 {
-                    System.Diagnostics.Process.Start("explorer.exe", PricesRoot);
-                    AddLog($"📁 Открыта папка {PricesRoot}");
+                    ReportError($"Папка не найдена: {PricesRoot}");
+                    return;
                 }
-                else AddLog($"❌ Папка не найдена: {PricesRoot}");
+
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = PricesRoot,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(startInfo);
+                AddLog($"📁 Открыта папка {PricesRoot}");
+                UpdateStatus($"Открыта папка: {PricesRoot}");
             }
             catch (Exception ex)
             {
-                AddLog($"Ошибка открытия папки: {ex.Message}");
+                ReportError($"Не удалось открыть папку с прайс-листами: {ex.Message}", ex);
             }
         }
 
         [ObservableProperty] private int selectedMailServerIndex = 1; // Mail.ru
         partial void OnSelectedMailServerIndexChanged(int value)
             => SelectedMailServer = (MailServerType)value;
+
+        // ===== НАСТРОЙКИ ПОЛЬЗОВАТЕЛЯ =====
+        private sealed class UserSettings
+        {
+            private static readonly string SettingsFilePathInternal = Path.Combine(AppDataRoot, "settings.json");
+
+            public string? PricesDirectory { get; set; }
+
+            [JsonIgnore]
+            public bool LoadedFromFile { get; set; }
+
+            public static UserSettings Load(ILogger logger)
+            {
+                try
+                {
+                    if (!File.Exists(SettingsFilePathInternal))
+                        return new UserSettings { LoadedFromFile = false };
+
+                    var json = File.ReadAllText(SettingsFilePathInternal);
+                    var settings = JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
+                    settings.LoadedFromFile = true;
+                    return settings;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Не удалось загрузить настройки пользователя из {Path}", SettingsFilePathInternal);
+                    return new UserSettings { LoadedFromFile = false };
+                }
+            }
+
+            public void TrySave(ILogger logger)
+            {
+                try
+                {
+                    Directory.CreateDirectory(AppDataRoot);
+                    var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(SettingsFilePathInternal, json);
+                    LoadedFromFile = true;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Не удалось сохранить настройки пользователя в {Path}", SettingsFilePathInternal);
+                }
+            }
+        }
 
         // ===== ЛОКАЛЬНОЕ ХРАНИЛИЩЕ КРЕДОВ (без БД) =====
         private static class SecureCreds
