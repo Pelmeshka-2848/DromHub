@@ -16,6 +16,7 @@ using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OfficeOpenXml;
+using Npgsql;
 using WinRT;
 using WinRT.Interop;
 
@@ -56,6 +57,26 @@ namespace DromHub
                     "The required database connection string 'ConnectionStrings:DromHub' is missing or still uses the " +
                     "placeholder value. Provide a valid Npgsql connection string via appsettings.json, environment variables, " +
                     "or user secrets. See README.md for configuration options.");
+            }
+
+            NpgsqlConnectionStringBuilder connectionStringBuilder;
+            try
+            {
+                connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "The database connection string 'ConnectionStrings:DromHub' is invalid. " +
+                    "Ensure it contains a valid Npgsql connection string.",
+                    ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(connectionStringBuilder.Password))
+            {
+                throw new InvalidOperationException(
+                    "The database connection string 'ConnectionStrings:DromHub' must include a password. " +
+                    "Provide credentials through appsettings.json, environment variables, or user secrets before launching the application.");
             }
 
             // Регистрация контекста базы данных
