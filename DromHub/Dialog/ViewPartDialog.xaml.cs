@@ -21,12 +21,12 @@ namespace DromHub.Views
 
         public bool HasImage => Part?.Images?.Any() == true;
 
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-        public ViewPartDialog(Part part, ApplicationDbContext context)
+        public ViewPartDialog(Part part, IDbContextFactory<ApplicationDbContext> contextFactory)
         {
             this.InitializeComponent();
-            _context = context;
+            _contextFactory = contextFactory;
             Part = part ?? throw new ArgumentNullException(nameof(part));
 
             this.DataContext = this;
@@ -46,7 +46,8 @@ namespace DromHub.Views
             {
                 if (Part?.Id == null) return;
 
-                var partWithData = await _context.Parts
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var partWithData = await context.Parts
                     .Include(p => p.Brand)
                     .Include(p => p.Images)
                     .FirstOrDefaultAsync(p => p.Id == Part.Id);
@@ -75,20 +76,20 @@ namespace DromHub.Views
             {
                 if (HasImage)
                 {
-                    // Есть изображение в базе - показываем его и скрываем заглушку
+                    // Р•СЃС‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ РІ Р±Р°Р·Рµ - РїРѕРєР°Р·С‹РІР°РµРј РµРіРѕ Рё СЃРєСЂС‹РІР°РµРј Р·Р°РіР»СѓС€РєСѓ
                     var imageUrl = Part.Images.First().Url;
                     System.Diagnostics.Debug.WriteLine($"Loading image from database: {imageUrl}");
 
                     PartImage.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(
                         new Uri(imageUrl));
 
-                    // Скрываем заглушку
+                    // РЎРєСЂС‹РІР°РµРј Р·Р°РіР»СѓС€РєСѓ
                     NoImagePlaceholder.Visibility = Visibility.Collapsed;
                     PartImage.Visibility = Visibility.Visible;
                 }
                 else
                 {
-                    // Нет изображения в базе - показываем заглушку и скрываем картинку
+                    // РќРµС‚ РёР·РѕР±СЂР°Р¶РµРЅРёСЏ РІ Р±Р°Р·Рµ - РїРѕРєР°Р·С‹РІР°РµРј Р·Р°РіР»СѓС€РєСѓ Рё СЃРєСЂС‹РІР°РµРј РєР°СЂС‚РёРЅРєСѓ
                     System.Diagnostics.Debug.WriteLine("No image in database - showing placeholder");
 
                     PartImage.Source = null;
@@ -99,7 +100,7 @@ namespace DromHub.Views
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading image: {ex.Message}");
-                // При ошибке показываем заглушку
+                // РџСЂРё РѕС€РёР±РєРµ РїРѕРєР°Р·С‹РІР°РµРј Р·Р°РіР»СѓС€РєСѓ
                 ShowNoImagePlaceholder();
             }
         }
@@ -107,7 +108,7 @@ namespace DromHub.Views
         private void PartImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine($"Image failed: {e.ErrorMessage}");
-            // При ошибке загрузки показываем заглушку
+            // РџСЂРё РѕС€РёР±РєРµ Р·Р°РіСЂСѓР·РєРё РїРѕРєР°Р·С‹РІР°РµРј Р·Р°РіР»СѓС€РєСѓ
             ShowNoImagePlaceholder();
         }
 
@@ -130,12 +131,14 @@ namespace DromHub.Views
         {
             try
             {
-                if (_context == null || Part?.Id == null) return;
+                if (Part?.Id == null) return;
+
+                await using var context = await _contextFactory.CreateDbContextAsync();
 
                 var partId = Part.Id;
-                var crosses = await _context.OemCrosses
+                var crosses = await context.OemCrosses
                     .Where(c => c.AftermarketPartId == partId)
-                    .Join(_context.Parts.Include(p => p.Brand),
+                    .Join(context.Parts.Include(p => p.Brand),
                         cross => cross.OemPartId,
                         part => part.Id,
                         (cross, oemPart) => new
@@ -172,7 +175,7 @@ namespace DromHub.Views
                     return;
                 }
 
-                // Используем статический экземпляр
+                // РСЃРїРѕР»СЊР·СѓРµРј СЃС‚Р°С‚РёС‡РµСЃРєРёР№ СЌРєР·РµРјРїР»СЏСЂ
                 var cartViewModel = CartViewModel.Instance;
                 System.Diagnostics.Debug.WriteLine("Using CartViewModel singleton instance");
 
@@ -198,7 +201,7 @@ namespace DromHub.Views
             {
                 System.Diagnostics.Debug.WriteLine($"Showing success message: {message}");
 
-                // Если используете TeachingTip
+                // Р•СЃР»Рё РёСЃРїРѕР»СЊР·СѓРµС‚Рµ TeachingTip
                 if (MessageTip != null)
                 {
                     MessageTip.Title = "Success";
@@ -209,7 +212,7 @@ namespace DromHub.Views
                 else
                 {
                     System.Diagnostics.Debug.WriteLine("MessageTip is null, using fallback");
-                    // Fallback - просто логируем
+                    // Fallback - РїСЂРѕСЃС‚Рѕ Р»РѕРіРёСЂСѓРµРј
                 }
             }
             catch (Exception ex)

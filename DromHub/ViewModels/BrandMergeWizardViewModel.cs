@@ -15,7 +15,7 @@ namespace DromHub.ViewModels
 {
     public class BrandMergeWizardViewModel
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
         private readonly ILogger<BrandMergeWizardViewModel> _log;
 
         public XamlRoot XamlRoot { get; set; }
@@ -44,9 +44,9 @@ namespace DromHub.ViewModels
 
         public IAsyncRelayCommand MergeCommand { get; }
 
-        public BrandMergeWizardViewModel(ApplicationDbContext db, ILogger<BrandMergeWizardViewModel> log)
+        public BrandMergeWizardViewModel(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<BrandMergeWizardViewModel> log)
         {
-            _db = db;
+            _dbFactory = dbFactory;
             _log = log;
             MergeCommand = new AsyncRelayCommand(MergeAsync, () => CanMerge);
             SelectedSources.CollectionChanged += (_, __) =>
@@ -59,15 +59,17 @@ namespace DromHub.ViewModels
         public async Task LoadAsync()
         {
             AllBrands.Clear();
-            var items = await _db.Brands
+            await using var db = await _dbFactory.CreateDbContextAsync();
+
+            var items = await db.Brands
                 .Select(b => new Brand
                 {
                     Id = b.Id,
                     Name = b.Name,
                     IsOem = b.IsOem,
-                    PartsCount = _db.Parts.Count(p => p.BrandId == b.Id),
-                    AliasesCount = _db.BrandAliases.Count(a => a.BrandId == b.Id),
-                    MarkupPercent = _db.BrandMarkups
+                    PartsCount = db.Parts.Count(p => p.BrandId == b.Id),
+                    AliasesCount = db.BrandAliases.Count(a => a.BrandId == b.Id),
+                    MarkupPercent = db.BrandMarkups
                         .Where(m => m.BrandId == b.Id)
                         .Select(m => (decimal?)m.MarkupPct)
                         .FirstOrDefault()
@@ -152,15 +154,17 @@ namespace DromHub.ViewModels
             try
             {
                 var sourceIds = SelectedSources.Select(s => s.Id).ToList();
-                var parts = await _db.Parts.Where(p => sourceIds.Contains(p.BrandId)).CountAsync();
+                await using var db = await _dbFactory.CreateDbContextAsync();
+
+                var parts = await db.Parts.Where(p => sourceIds.Contains(p.BrandId)).CountAsync();
 
                 // алиасы источников (кроме primary), потенциальные дубликаты с целевым
-                var targetAliases = await _db.BrandAliases
+                var targetAliases = await db.BrandAliases
                     .Where(a => a.BrandId == SelectedTarget.Id)
                     .Select(a => a.Alias.ToLower())
                     .ToListAsync();
 
-                var sourceAliases = await _db.BrandAliases
+                var sourceAliases = await db.BrandAliases
                     .Where(a => sourceIds.Contains(a.BrandId) && !a.IsPrimary)
                     .Select(a => a.Alias.ToLower())
                     .ToListAsync();
@@ -172,11 +176,11 @@ namespace DromHub.ViewModels
                 AliasesConflictsText = dup > 0 ? $"Конфликты по синонимам: {dup} (будут пропущены)." : "Конфликтов по синонимам нет.";
 
                 // Наценка: если у целевого нет, но у какого-то источника есть — сообщим
-                var targetMarkup = await _db.BrandMarkups.Where(m => m.BrandId == SelectedTarget.Id)
+                var targetMarkup = await db.BrandMarkups.Where(m => m.BrandId == SelectedTarget.Id)
                                                          .Select(m => (decimal?)m.MarkupPct)
                                                          .FirstOrDefaultAsync();
 
-                var anySourceMarkup = await _db.BrandMarkups.Where(m => sourceIds.Contains(m.BrandId))
+                var anySourceMarkup = await db.BrandMarkups.Where(m => sourceIds.Contains(m.BrandId))
                                                             .Select(m => (decimal?)m.MarkupPct)
                                                             .FirstOrDefaultAsync();
 
@@ -222,24 +226,25 @@ namespace DromHub.ViewModels
             };
             if (await cd.ShowAsync() != ContentDialogResult.Primary) return;
 
-            using var tx = await _db.Database.BeginTransactionAsync();
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            await using var tx = await db.Database.BeginTransactionAsync();
             try
             {
                 var targetId = SelectedTarget.Id;
                 var sourceIds = SelectedSources.Select(s => s.Id).ToList();
 
                 // 1) Перенос запчастей
-                await _db.Parts.Where(p => sourceIds.Contains(p.BrandId))
+                await db.Parts.Where(p => sourceIds.Contains(p.BrandId))
                                .ExecuteUpdateAsync(s => s.SetProperty(p => p.BrandId, targetId));
 
                 // 2) Перенос алиасов (кроме primary). Дубликаты — пропускаем
-                var targetAliases = await _db.BrandAliases
+                var targetAliases = await db.BrandAliases
                     .Where(a => a.BrandId == targetId)
                     .Select(a => a.Alias.ToLower())
                     .ToListAsync();
                 var targetAliasSet = new HashSet<string>(targetAliases);
 
-                var sourceAliases = await _db.BrandAliases
+                var sourceAliases = await db.BrandAliases
                     .Where(a => sourceIds.Contains(a.BrandId) && !a.IsPrimary)
                     .ToListAsync();
 
@@ -247,7 +252,7 @@ namespace DromHub.ViewModels
                 {
                     if (!targetAliasSet.Contains(a.Alias.ToLower()))
                     {
-                        _db.BrandAliases.Add(new BrandAlias
+                        db.BrandAliases.Add(new BrandAlias
                         {
                             Id = Guid.NewGuid(),
                             BrandId = targetId,
@@ -260,17 +265,17 @@ namespace DromHub.ViewModels
                 }
 
                 // 3) Наценка: если у целевого нет — возьмём первую попавшуюся из источников
-                var targetMarkup = await _db.BrandMarkups.FirstOrDefaultAsync(m => m.BrandId == targetId);
+                var targetMarkup = await db.BrandMarkups.FirstOrDefaultAsync(m => m.BrandId == targetId);
                 if (targetMarkup == null)
                 {
-                    var srcMarkup = await _db.BrandMarkups
+                    var srcMarkup = await db.BrandMarkups
                         .Where(m => sourceIds.Contains(m.BrandId))
                         .OrderByDescending(m => m.UpdatedAt)
                         .FirstOrDefaultAsync();
 
                     if (srcMarkup != null)
                     {
-                        _db.BrandMarkups.Add(new BrandMarkup
+                        db.BrandMarkups.Add(new BrandMarkup
                         {
                             Id = Guid.NewGuid(),
                             BrandId = targetId,
@@ -279,13 +284,13 @@ namespace DromHub.ViewModels
                     }
                 }
 
-                await _db.SaveChangesAsync();
+                await db.SaveChangesAsync();
 
                 // 4) Удаляем бренды-источники (их primary-алиасы удалятся каскадом)
-                var toDelete = await _db.Brands.Where(b => sourceIds.Contains(b.Id)).ToListAsync();
-                _db.Brands.RemoveRange(toDelete);
+                var toDelete = await db.Brands.Where(b => sourceIds.Contains(b.Id)).ToListAsync();
+                db.Brands.RemoveRange(toDelete);
 
-                await _db.SaveChangesAsync();
+                await db.SaveChangesAsync();
                 await tx.CommitAsync();
 
                 await new ContentDialog

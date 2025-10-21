@@ -49,7 +49,7 @@ namespace DromHub
             services.AddSingleton<IConfiguration>(Configuration);
 
             // Регистрация контекста базы данных
-            services.AddDbContext<ApplicationDbContext>(options =>
+            services.AddDbContextFactory<ApplicationDbContext>(options =>
                 options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=plane2004"));
 
             // Регистрация ViewModels
@@ -98,7 +98,8 @@ namespace DromHub
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+                    await using var dbContext = await dbFactory.CreateDbContextAsync();
                     var logger = scope.ServiceProvider.GetRequiredService<ILogger<App>>();
                     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
@@ -185,7 +186,8 @@ namespace DromHub
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+                    await using var dbContext = await dbFactory.CreateDbContextAsync();
                     await DatabaseInitializer.InitializeAsync(dbContext);
                 }
             }

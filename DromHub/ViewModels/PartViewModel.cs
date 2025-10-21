@@ -16,7 +16,7 @@ namespace DromHub.ViewModels
 {
     public class PartViewModel : INotifyPropertyChanged
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly ILogger<PartViewModel> _logger;
         private Part _part;
         private Brand _selectedBrand;
@@ -24,11 +24,9 @@ namespace DromHub.ViewModels
         private Brand _selectedBrandFilter;
         private bool _isBusy;
 
-        public ApplicationDbContext Context => _context;
-
-        public PartViewModel(ApplicationDbContext context, ILogger<PartViewModel> logger)
+        public PartViewModel(IDbContextFactory<ApplicationDbContext> contextFactory, ILogger<PartViewModel> logger)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _logger = logger;
             _part = new Part();
 
@@ -39,11 +37,6 @@ namespace DromHub.ViewModels
             SavePartCommand = new AsyncRelayCommand(SavePartAsync);
             SearchPartsCommand = new AsyncRelayCommand(SearchPartsAsync);
             ClearSearchCommand = new RelayCommand(ClearSearch);
-        }
-
-        public PartViewModel(ApplicationDbContext context, ILogger<PartViewModel> logger, Part part) : this(context, logger)
-        {
-            _part = part ?? new Part();
         }
 
         // Properties for Part management
@@ -180,7 +173,8 @@ namespace DromHub.ViewModels
             try
             {
                 IsBusy = true;
-                var brands = await _context.Brands
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var brands = await context.Brands
                     .OrderBy(b => b.Name)
                     .AsNoTracking()
                     .ToListAsync();
@@ -215,6 +209,18 @@ namespace DromHub.ViewModels
             OnPropertyChanged(nameof(UpdatedAt));
         }
 
+        public void LoadFromPart(Part part)
+        {
+            _part = part ?? new Part();
+            _selectedBrand = part?.Brand;
+            OnPropertyChanged(nameof(SelectedBrand));
+            OnPropertyChanged(nameof(CatalogNumber));
+            OnPropertyChanged(nameof(Article));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(CreatedAt));
+            OnPropertyChanged(nameof(UpdatedAt));
+        }
+
         public async Task SavePartAsync()
         {
             try
@@ -227,10 +233,12 @@ namespace DromHub.ViewModels
                     return;
                 }
 
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
                 if (_part.Id == Guid.Empty)
                 {
                     // Проверка на существование дубликата
-                    var exists = await _context.Parts
+                    var exists = await context.Parts
                         .AnyAsync(p => p.BrandId == _part.BrandId &&
                                       p.CatalogNumber == _part.CatalogNumber);
 
@@ -249,8 +257,8 @@ namespace DromHub.ViewModels
                         Name = _part.Name
                     };
 
-                    await _context.Parts.AddAsync(entity);
-                    await _context.SaveChangesAsync();
+                    await context.Parts.AddAsync(entity);
+                    await context.SaveChangesAsync();
 
                     // Сбрасываем состояние только после успешного сохранения
                     ResetPart();
@@ -260,11 +268,11 @@ namespace DromHub.ViewModels
                 else
                 {
                     // Редактирование существующей детали
-                    var entity = await _context.Parts.FindAsync(_part.Id);
+                    var entity = await context.Parts.FindAsync(_part.Id);
                     if (entity != null)
                     {
                         // Проверка на конфликт с другими записями
-                        var conflict = await _context.Parts
+                        var conflict = await context.Parts
                             .AnyAsync(p => p.Id != _part.Id &&
                                           p.BrandId == _part.BrandId &&
                                           p.CatalogNumber == _part.CatalogNumber);
@@ -279,7 +287,7 @@ namespace DromHub.ViewModels
                         entity.CatalogNumber = _part.CatalogNumber;
                         entity.Name = _part.Name;
 
-                        await _context.SaveChangesAsync();
+                        await context.SaveChangesAsync();
                         Debug.WriteLine("Запчасть успешно обновлена.");
                     }
                 }
@@ -309,7 +317,8 @@ namespace DromHub.ViewModels
 
                 var searchText = SearchText.Trim().ToLower();
 
-                var query = _context.Parts
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var query = context.Parts
                     .Include(p => p.Brand)
                     .AsQueryable();
 
