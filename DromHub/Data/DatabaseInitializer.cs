@@ -7,8 +7,14 @@ using System.Threading.Tasks;
 
 namespace DromHub.Data
 {
+    /// <summary>
+    /// Класс DatabaseInitializer отвечает за логику компонента DatabaseInitializer.
+    /// </summary>
     public static class DatabaseInitializer
     {
+        /// <summary>
+        /// Метод InitializeAsync выполняет основную операцию класса.
+        /// </summary>
         public static async Task InitializeAsync(ApplicationDbContext context, bool forceReset = false)
         {
             try
@@ -31,6 +37,9 @@ namespace DromHub.Data
                 throw;
             }
         }
+        /// <summary>
+        /// Метод SeedBrands выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedBrands(ApplicationDbContext context)
         {
@@ -85,6 +94,9 @@ namespace DromHub.Data
                 }
             });
         }
+        /// <summary>
+        /// Метод SeedParts выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedParts(ApplicationDbContext context)
         {
@@ -139,6 +151,9 @@ namespace DromHub.Data
                 throw;
             }
         }
+        /// <summary>
+        /// Метод GetOrCreateBrand выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task<Brand> GetOrCreateBrand(ApplicationDbContext context, string brandName)
         {
@@ -159,6 +174,9 @@ namespace DromHub.Data
 
             return brand;
         }
+        /// <summary>
+        /// Метод SeedSuppliers выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedSuppliers(ApplicationDbContext context)
         {
@@ -213,6 +231,9 @@ namespace DromHub.Data
                 await context.SaveChangesAsync();
             }
         }
+        /// <summary>
+        /// Метод SeedLocalStock выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedLocalStock(ApplicationDbContext context)
         {
@@ -256,6 +277,9 @@ namespace DromHub.Data
                 await context.SaveChangesAsync();
             }
         }
+        /// <summary>
+        /// Метод ClearDatabase выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task ClearDatabase(ApplicationDbContext context, bool forceReset)
         {

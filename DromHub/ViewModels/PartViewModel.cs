@@ -14,6 +14,9 @@ using Microsoft.Extensions.Logging;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс PartViewModel отвечает за логику компонента PartViewModel.
+    /// </summary>
     public class PartViewModel : INotifyPropertyChanged
     {
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
@@ -23,6 +26,9 @@ namespace DromHub.ViewModels
         private string _searchText = string.Empty;
         private Brand _selectedBrandFilter;
         private bool _isBusy;
+        /// <summary>
+        /// Конструктор PartViewModel инициализирует экземпляр класса.
+        /// </summary>
 
         public PartViewModel(IDbContextFactory<ApplicationDbContext> contextFactory, ILogger<PartViewModel> logger)
         {
@@ -79,6 +85,9 @@ namespace DromHub.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Свойство Article предоставляет доступ к данным Article.
+        /// </summary>
 
         public string Article => _part.Article;
 
@@ -94,8 +103,14 @@ namespace DromHub.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Свойство CreatedAt предоставляет доступ к данным CreatedAt.
+        /// </summary>
 
         public DateTime CreatedAt => _part.CreatedAt;
+        /// <summary>
+        /// Свойство UpdatedAt предоставляет доступ к данным UpdatedAt.
+        /// </summary>
         public DateTime UpdatedAt => _part.UpdatedAt;
 
         public Brand SelectedBrand
@@ -125,6 +140,9 @@ namespace DromHub.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Свойство SelectedPart предоставляет доступ к данным SelectedPart.
+        /// </summary>
 
         public Part? SelectedPart { get; set; }
 
@@ -153,18 +171,42 @@ namespace DromHub.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Свойство IsEmpty предоставляет доступ к данным IsEmpty.
+        /// </summary>
 
         public bool IsEmpty => Parts.Count == 0;
 
         // Collections
+        /// <summary>
+        /// Свойство Brands предоставляет доступ к данным Brands.
+        /// </summary>
         public ObservableCollection<Brand> Brands { get; }
+        /// <summary>
+        /// Свойство Parts предоставляет доступ к данным Parts.
+        /// </summary>
         public ObservableCollection<Part> Parts { get; }
 
         // Commands
+        /// <summary>
+        /// Свойство LoadBrandsCommand предоставляет доступ к данным LoadBrandsCommand.
+        /// </summary>
         public IAsyncRelayCommand LoadBrandsCommand { get; }
+        /// <summary>
+        /// Свойство SavePartCommand предоставляет доступ к данным SavePartCommand.
+        /// </summary>
         public IAsyncRelayCommand SavePartCommand { get; }
+        /// <summary>
+        /// Свойство SearchPartsCommand предоставляет доступ к данным SearchPartsCommand.
+        /// </summary>
         public IAsyncRelayCommand SearchPartsCommand { get; }
+        /// <summary>
+        /// Свойство ClearSearchCommand предоставляет доступ к данным ClearSearchCommand.
+        /// </summary>
         public IRelayCommand ClearSearchCommand { get; }
+        /// <summary>
+        /// Метод LoadBrandsAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task LoadBrandsAsync()
         {
@@ -196,6 +238,9 @@ namespace DromHub.ViewModels
                 IsBusy = false;
             }
         }
+        /// <summary>
+        /// Метод ResetPart выполняет основную операцию класса.
+        /// </summary>
 
         public void ResetPart()
         {
@@ -208,6 +253,9 @@ namespace DromHub.ViewModels
             OnPropertyChanged(nameof(CreatedAt));
             OnPropertyChanged(nameof(UpdatedAt));
         }
+        /// <summary>
+        /// Метод LoadFromPart выполняет основную операцию класса.
+        /// </summary>
 
         public void LoadFromPart(Part part)
         {
@@ -220,6 +268,9 @@ namespace DromHub.ViewModels
             OnPropertyChanged(nameof(CreatedAt));
             OnPropertyChanged(nameof(UpdatedAt));
         }
+        /// <summary>
+        /// Метод SavePartAsync выполняет основную операцию класса.
+        /// </summary>
 
         public async Task SavePartAsync()
         {
@@ -302,6 +353,9 @@ namespace DromHub.ViewModels
                 Debug.WriteLine($"Неожиданная ошибка: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод SearchPartsAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task SearchPartsAsync()
         {
@@ -342,6 +396,9 @@ namespace DromHub.ViewModels
                 OnPropertyChanged(nameof(IsEmpty));
             }
         }
+        /// <summary>
+        /// Метод ClearSearch выполняет основную операцию класса.
+        /// </summary>
 
         private void ClearSearch()
         {
@@ -351,6 +408,9 @@ namespace DromHub.ViewModels
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+        /// <summary>
+        /// Метод OnPropertyChanged выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {

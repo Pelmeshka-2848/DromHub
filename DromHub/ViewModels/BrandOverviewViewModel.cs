@@ -10,27 +10,66 @@ using Windows.System;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс BrandOverviewViewModel отвечает за логику компонента BrandOverviewViewModel.
+    /// </summary>
     public partial class BrandOverviewViewModel : ObservableObject
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        /// <summary>
+        /// Конструктор BrandOverviewViewModel инициализирует экземпляр класса.
+        /// </summary>
         public BrandOverviewViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
 
         private XamlRoot _xr;
+        /// <summary>
+        /// Свойство BrandId предоставляет доступ к данным BrandId.
+        /// </summary>
         public Guid BrandId { get; private set; }
 
         // ===== БАЗОВЫЕ ПОЛЯ / ЧИПСЫ =====
+        /// <summary>
+        /// Свойство BrandNameUpper предоставляет доступ к данным BrandNameUpper.
+        /// </summary>
         [ObservableProperty] private string brandName = "";
+        /// <summary>
+        /// Свойство BrandNameUpper предоставляет доступ к данным BrandNameUpper.
+        /// </summary>
         public string BrandNameUpper => BrandName.ToUpperInvariant();
+        /// <summary>
+        /// Свойство Monogram предоставляет доступ к данным Monogram.
+        /// </summary>
         public string Monogram => string.IsNullOrWhiteSpace(BrandName) ? "?" : BrandName.Trim()[0].ToString().ToUpperInvariant();
+        /// <summary>
+        /// Свойство OemAnalogText предоставляет доступ к данным OemAnalogText.
+        /// </summary>
 
         [ObservableProperty] private bool isOem;
+        /// <summary>
+        /// Свойство OemAnalogText предоставляет доступ к данным OemAnalogText.
+        /// </summary>
         public string OemAnalogText => IsOem ? "OEM" : "Аналог";
+        /// <summary>
+        /// Свойство HasWebsite предоставляет доступ к данным HasWebsite.
+        /// </summary>
 
         [ObservableProperty] private string? website;
+        /// <summary>
+        /// Свойство HasWebsite предоставляет доступ к данным HasWebsite.
+        /// </summary>
         public bool HasWebsite => Uri.TryCreate(Website, UriKind.Absolute, out _);
+        /// <summary>
+        /// Свойство WebsiteHost предоставляет доступ к данным WebsiteHost.
+        /// </summary>
         public string WebsiteHost => HasWebsite ? new Uri(Website!).Host : "—";
+        /// <summary>
+        /// Свойство AgeYears предоставляет доступ к данным AgeYears.
+        /// </summary>
 
         [ObservableProperty] private int? yearFounded;
+        /// <summary>
+        /// Свойство AgeYears предоставляет доступ к данным AgeYears.
+        /// </summary>
         public int? AgeYears => YearFounded is int y && y > 1800 ? Math.Max(0, DateTime.UtcNow.Year - y) : null;
 
         // страна
@@ -39,16 +78,40 @@ namespace DromHub.ViewModels
         [ObservableProperty] private string countryWorldIconAsset = "/Assets/globe.svg";
 
         // чипсы — значения
+        /// <summary>
+        /// Свойство ChipYearText предоставляет доступ к данным ChipYearText.
+        /// </summary>
         public string ChipYearText => YearFounded?.ToString() ?? "—";
+        /// <summary>
+        /// Свойство ChipMarkupText предоставляет доступ к данным ChipMarkupText.
+        /// </summary>
         public string ChipMarkupText => $"{MarkupPct:F1}";
+        /// <summary>
+        /// Свойство ChipCountryText предоставляет доступ к данным ChipCountryText.
+        /// </summary>
         public string ChipCountryText => CountryIso2;
+        /// <summary>
+        /// Свойство ChipPartsText предоставляет доступ к данным ChipPartsText.
+        /// </summary>
         public string ChipPartsText => PartsCount.ToString();
+        /// <summary>
+        /// Свойство ChipAgeText предоставляет доступ к данным ChipAgeText.
+        /// </summary>
         public string ChipAgeText => AgeYears?.ToString() ?? "—";
 
         // описание / заметки
+        /// <summary>
+        /// Свойство DescriptionOrPlaceholder предоставляет доступ к данным DescriptionOrPlaceholder.
+        /// </summary>
         [ObservableProperty] private string? description;
         [ObservableProperty] private string? userNotes;
+        /// <summary>
+        /// Свойство DescriptionOrPlaceholder предоставляет доступ к данным DescriptionOrPlaceholder.
+        /// </summary>
         public string DescriptionOrPlaceholder => string.IsNullOrWhiteSpace(Description) ? "—" : Description!;
+        /// <summary>
+        /// Свойство UserNotesOrPlaceholder предоставляет доступ к данным UserNotesOrPlaceholder.
+        /// </summary>
         public string UserNotesOrPlaceholder => string.IsNullOrWhiteSpace(UserNotes) ? "—" : UserNotes!;
 
         // счётчики
@@ -62,15 +125,27 @@ namespace DromHub.ViewModels
         [ObservableProperty] private bool isFavorite;
 
         // ===== МЕТРИКИ (перцентили) слева =====
+        /// <summary>
+        /// Свойство AssortmentDisplay предоставляет доступ к данным AssortmentDisplay.
+        /// </summary>
         [ObservableProperty] private double assortmentValue; // 0..100
         [ObservableProperty] private double assortmentDelta; // п.п. к медианному перцентилю (50)
         [ObservableProperty] private double awarenessValue;  // 0..100
         [ObservableProperty] private double awarenessDelta;  // п.п. к медианному перцентилю (50)
         [ObservableProperty] private double marginValue;     // 0..100 (перцентиль реальной маржи)
         [ObservableProperty] private double marginDelta;     // п.п. к медиане реальной маржи
+        /// <summary>
+        /// Свойство AssortmentDisplay предоставляет доступ к данным AssortmentDisplay.
+        /// </summary>
 
         public string AssortmentDisplay => $"{AssortmentValue:F0}% {(AssortmentDelta >= 0 ? "+" : "−")}{Math.Abs(AssortmentDelta):F1}";
+        /// <summary>
+        /// Свойство AwarenessDisplay предоставляет доступ к данным AwarenessDisplay.
+        /// </summary>
         public string AwarenessDisplay => $"{AwarenessValue:F0}% {(AwarenessDelta >= 0 ? "+" : "−")}{Math.Abs(AwarenessDelta):F1}";
+        /// <summary>
+        /// Свойство MarginDisplay предоставляет доступ к данным MarginDisplay.
+        /// </summary>
         public string MarginDisplay => $"{MarkupPct:F0}% {(MarginDelta >= 0 ? "+" : "−")}{Math.Abs(MarginDelta):F1}";
 
         // ===== ПРАВЫЕ БАРЫ: полнота/актуальность =====
@@ -85,6 +160,9 @@ namespace DromHub.ViewModels
         [ObservableProperty] private decimal markupPct;
 
         // ===== INIT =====
+        /// <summary>
+        /// Метод InitializeAsync выполняет основную операцию класса.
+        /// </summary>
         public async Task InitializeAsync(Guid id, XamlRoot xr)
         {
             _xr = xr;
@@ -216,6 +294,9 @@ namespace DromHub.ViewModels
             OnPropertyChanged(nameof(DescriptionOrPlaceholder));
             OnPropertyChanged(nameof(UserNotesOrPlaceholder));
         }
+        /// <summary>
+        /// Метод BuildFlagIconAssetName выполняет основную операцию класса.
+        /// </summary>
 
         private static string BuildFlagIconAssetName(string? flagIconName, string? iso2)
             => !string.IsNullOrWhiteSpace(flagIconName)
@@ -223,6 +304,9 @@ namespace DromHub.ViewModels
                 : !string.IsNullOrWhiteSpace(iso2)
                     ? $"/Assets/flags/{iso2.ToLowerInvariant()}.svg"
                     : "/Assets/flag.slash.circle.svg";
+        /// <summary>
+        /// Метод BuildRegionIconAssetName выполняет основную операцию класса.
+        /// </summary>
 
         private static string BuildRegionIconAssetName(string? regionIconName, string? region)
         {
@@ -239,6 +323,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== helpers: перцентили / медиана / полнота / актуальность =====
+        /// <summary>
+        /// Метод PercentileRank выполняет основную операцию класса.
+        /// </summary>
 
         private static double PercentileRank(List<double> sortedAsc, double value)
         {
@@ -252,6 +339,9 @@ namespace DromHub.ViewModels
             }
             return 100.0 * lo / sortedAsc.Count;
         }
+        /// <summary>
+        /// Метод Median выполняет основную операцию класса.
+        /// </summary>
 
         private static double Median(List<double> sortedAsc)
         {
@@ -260,6 +350,9 @@ namespace DromHub.ViewModels
             if (n % 2 == 1) return sortedAsc[n / 2];
             return (sortedAsc[n / 2 - 1] + sortedAsc[n / 2]) / 2.0;
         }
+        /// <summary>
+        /// Метод ComputeCompleteness выполняет основную операцию класса.
+        /// </summary>
 
         private static double ComputeCompleteness(BrandStat s)
         {
@@ -278,6 +371,9 @@ namespace DromHub.ViewModels
 
             return score;
         }
+        /// <summary>
+        /// Метод FreshnessScore выполняет основную операцию класса.
+        /// </summary>
 
         private static double FreshnessScore(DateTime updatedAtUtc)
         {
@@ -289,6 +385,9 @@ namespace DromHub.ViewModels
             double t = (days - freshMax) / (staleMax - freshMax); // 0..1
             return 100.0 * (1.0 - t);
         }
+        /// <summary>
+        /// Метод BrandStat выполняет основную операцию класса.
+        /// </summary>
 
         private sealed record BrandStat(
             Guid Id,
@@ -304,6 +403,9 @@ namespace DromHub.ViewModels
         );
 
         // ---- ОТКРЫТИЕ САЙТА ----
+        /// <summary>
+        /// Метод OpenWebsiteAsync выполняет основную операцию класса.
+        /// </summary>
         public async Task OpenWebsiteAsync()
         {
             if (!HasWebsite) return;

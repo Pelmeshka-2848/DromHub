@@ -7,10 +7,16 @@ using Microsoft.Extensions.Logging;
 
 namespace DromHub.Data
 {
+    /// <summary>
+    /// Класс DatabaseResetGuard отвечает за логику компонента DatabaseResetGuard.
+    /// </summary>
     public static class DatabaseResetGuard
     {
         public const string CommandLineToken = "--reset-db";
         public const string EnvironmentVariableName = "DROMHUB_FORCE_RESET";
+        /// <summary>
+        /// Метод IsResetRequested выполняет основную операцию класса.
+        /// </summary>
 
         public static bool IsResetRequested(IConfiguration? configuration, string? launchArguments, ILogger logger)
         {
@@ -36,6 +42,9 @@ namespace DromHub.Data
 
             return requested;
         }
+        /// <summary>
+        /// Метод ParseArguments выполняет основную операцию класса.
+        /// </summary>
 
         private static IEnumerable<string> ParseArguments(string? launchArguments)
         {
@@ -77,6 +86,9 @@ namespace DromHub.Data
 
             return tokens;
         }
+        /// <summary>
+        /// Метод TryReadEnvironmentFlag выполняет основную операцию класса.
+        /// </summary>
 
         private static bool TryReadEnvironmentFlag(out bool value)
         {

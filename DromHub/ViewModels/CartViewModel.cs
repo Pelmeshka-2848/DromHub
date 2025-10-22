@@ -9,15 +9,24 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс CartViewModel отвечает за логику компонента CartViewModel.
+    /// </summary>
     public class CartViewModel : INotifyPropertyChanged
     {
         // Статический экземпляр для глобального доступа
         private static CartViewModel _instance;
+        /// <summary>
+        /// Свойство Instance предоставляет доступ к данным Instance.
+        /// </summary>
         public static CartViewModel Instance => _instance ??= new CartViewModel();
 
         private readonly Cart _cart;
 
         public event PropertyChangedEventHandler PropertyChanged;
+        /// <summary>
+        /// Свойство CartItems предоставляет доступ к данным CartItems.
+        /// </summary>
 
         public ObservableCollection<CartItem> CartItems { get; } = new ObservableCollection<CartItem>();
 
@@ -31,14 +40,29 @@ namespace DromHub.ViewModels
                 PlaceOrderCommand?.RaiseCanExecuteChanged();
             }
         }
+        /// <summary>
+        /// Свойство TotalItems предоставляет доступ к данным TotalItems.
+        /// </summary>
 
         public int TotalItems => _cart.TotalItems;
+        /// <summary>
+        /// Свойство TotalPrice предоставляет доступ к данным TotalPrice.
+        /// </summary>
         public decimal TotalPrice => _cart.TotalPrice;
+        /// <summary>
+        /// Свойство ClearCartCommand предоставляет доступ к данным ClearCartCommand.
+        /// </summary>
 
         public RelayCommand ClearCartCommand { get; }
+        /// <summary>
+        /// Свойство PlaceOrderCommand предоставляет доступ к данным PlaceOrderCommand.
+        /// </summary>
         public RelayCommand PlaceOrderCommand { get; }
 
         // Приватный конструктор для singleton
+        /// <summary>
+        /// Конструктор CartViewModel инициализирует экземпляр класса.
+        /// </summary>
         private CartViewModel()
         {
             _cart = new Cart();
@@ -50,6 +74,9 @@ namespace DromHub.ViewModels
             PlaceOrderCommand = new RelayCommand(PlaceOrder,
                 () => !string.IsNullOrEmpty(PhoneNumber) && CartItems.Count > 0);
         }
+        /// <summary>
+        /// Метод LoadCartAsync выполняет основную операцию класса.
+        /// </summary>
 
         public Task LoadCartAsync()
         {
@@ -71,6 +98,9 @@ namespace DromHub.ViewModels
 
             return Task.CompletedTask;
         }
+        /// <summary>
+        /// Метод AddToCartAsync выполняет основную операцию класса.
+        /// </summary>
 
         public Task AddToCartAsync(Part part, int quantity = 1)
         {
@@ -92,17 +122,26 @@ namespace DromHub.ViewModels
 
             return Task.CompletedTask;
         }
+        /// <summary>
+        /// Метод RemoveFromCartAsync выполняет основную операцию класса.
+        /// </summary>
 
         public Task RemoveFromCartAsync(CartItem item)
         {
             _cart.RemoveItem(item);
             return Task.CompletedTask;
         }
+        /// <summary>
+        /// Метод ClearCart выполняет основную операцию класса.
+        /// </summary>
 
         private void ClearCart()
         {
             _cart.Clear();
         }
+        /// <summary>
+        /// Метод PlaceOrder выполняет основную операцию класса.
+        /// </summary>
 
         private async void PlaceOrder()
         {
@@ -147,6 +186,9 @@ namespace DromHub.ViewModels
                 await ShowMessageAsync($"Error placing order: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод OnCartPropertyChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void OnCartPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -180,6 +222,9 @@ namespace DromHub.ViewModels
                     break;
             }
         }
+        /// <summary>
+        /// Метод UpdateCommands выполняет основную операцию класса.
+        /// </summary>
 
         private void UpdateCommands()
         {
@@ -187,12 +232,18 @@ namespace DromHub.ViewModels
             PlaceOrderCommand?.RaiseCanExecuteChanged();
             System.Diagnostics.Debug.WriteLine("Commands updated");
         }
+        /// <summary>
+        /// Метод ShowMessageAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task ShowMessageAsync(string message)
         {
             System.Diagnostics.Debug.WriteLine($"Cart message: {message}");
             // Ваша реализация показа сообщения
         }
+        /// <summary>
+        /// Метод OnPropertyChanged выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

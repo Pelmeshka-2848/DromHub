@@ -15,8 +15,14 @@ using Windows.Foundation.Collections;
 
 namespace DromHub
 {
+    /// <summary>
+    /// Класс MessageWindow отвечает за логику компонента MessageWindow.
+    /// </summary>
     public sealed partial class MessageWindow : Window
     {
+        /// <summary>
+        /// Конструктор MessageWindow инициализирует экземпляр класса.
+        /// </summary>
         public MessageWindow(string message)
         {
             this.InitializeComponent();

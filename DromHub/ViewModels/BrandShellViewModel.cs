@@ -8,11 +8,20 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс BrandShellViewModel отвечает за логику компонента BrandShellViewModel.
+    /// </summary>
 
     public class BrandShellViewModel : ObservableObject
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        /// <summary>
+        /// Конструктор BrandShellViewModel инициализирует экземпляр класса.
+        /// </summary>
         public BrandShellViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
+        /// <summary>
+        /// Свойство XamlRoot предоставляет доступ к данным XamlRoot.
+        /// </summary>
 
         public XamlRoot XamlRoot { get; private set; }
 
@@ -75,9 +84,18 @@ namespace DromHub.ViewModels
             get => _nextBrandNameUpper;
             private set => SetProperty(ref _nextBrandNameUpper, value);
         }
+        /// <summary>
+        /// Свойство HasPrev предоставляет доступ к данным HasPrev.
+        /// </summary>
 
         public bool HasPrev => PrevBrandId.HasValue;
+        /// <summary>
+        /// Свойство HasNext предоставляет доступ к данным HasNext.
+        /// </summary>
         public bool HasNext => NextBrandId.HasValue;
+        /// <summary>
+        /// Метод InitializeAsync выполняет основную операцию класса.
+        /// </summary>
 
         public async Task InitializeAsync(Guid id, XamlRoot xr)
         {

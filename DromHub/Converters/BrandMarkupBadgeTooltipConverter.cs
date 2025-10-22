@@ -5,8 +5,14 @@ using System;
 namespace DromHub.Converters
 {
     // Подсказка: "Наценка бренда: N%"
+    /// <summary>
+    /// Класс BrandMarkupBadgeTooltipConverter отвечает за логику компонента BrandMarkupBadgeTooltipConverter.
+    /// </summary>
     public sealed class BrandMarkupBadgeTooltipConverter : IValueConverter
     {
+        /// <summary>
+        /// Метод Convert выполняет основную операцию класса.
+        /// </summary>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is Brand b)
@@ -26,6 +32,9 @@ namespace DromHub.Converters
             }
             return "Наценка бренда: 0%";
         }
+        /// <summary>
+        /// Метод ConvertBack выполняет основную операцию класса.
+        /// </summary>
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
             => throw new NotSupportedException();

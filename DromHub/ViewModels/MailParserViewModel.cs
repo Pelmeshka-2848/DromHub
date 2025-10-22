@@ -23,11 +23,17 @@ using WinRT.Interop;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс MailParserViewModel отвечает за логику компонента MailParserViewModel.
+    /// </summary>
     public partial class MailParserViewModel : ObservableObject
     {
         private readonly ILogger<MailParserViewModel> _logger;
         private readonly DispatcherQueue _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         private readonly UserSettings _userSettings;
+        /// <summary>
+        /// Конструктор MailParserViewModel инициализирует экземпляр класса.
+        /// </summary>
 
         public MailParserViewModel(ILogger<MailParserViewModel> logger)
         {
@@ -59,6 +65,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== ENUM / SERVER CONFIG =====
+        /// <summary>
+        /// Перечисление MailServerType отвечает за логику компонента MailServerType.
+        /// </summary>
         public enum MailServerType { Gmail, MailRu, Yandex, Custom }
 
         private readonly Dictionary<MailServerType, (string Server, int Port, SecureSocketOptions Ssl)> _servers = new()
@@ -68,6 +77,9 @@ namespace DromHub.ViewModels
             { MailServerType.Yandex, ("imap.yandex.ru", 993, SecureSocketOptions.SslOnConnect) },
             { MailServerType.Custom, ("imap.example.com", 993, SecureSocketOptions.Auto) }
         };
+        /// <summary>
+        /// Метод GetServerLabel выполняет основную операцию класса.
+        /// </summary>
 
         private string GetServerLabel(MailServerType server)
         {
@@ -84,6 +96,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== PROPERTIES =====
+        /// <summary>
+        /// Метод UpdatePassword выполняет основную операцию класса.
+        /// </summary>
         [ObservableProperty] private MailServerType selectedMailServer = MailServerType.MailRu; // по умолчанию Mail.ru
         [ObservableProperty] private string emailAddress = "";
         [ObservableProperty] private string password = "";
@@ -106,11 +121,17 @@ namespace DromHub.ViewModels
         [ObservableProperty] private bool rememberCredentials = true;
 
         // Прогресс парсинга
+        /// <summary>
+        /// Свойство MailServerTypes предоставляет доступ к данным MailServerTypes.
+        /// </summary>
         [ObservableProperty] private double parsingProgress;          // 0..100
         [ObservableProperty] private string progressDetails = "";     // текст под прогрессом
         [ObservableProperty] private string currentSupplier = "";     // имя текущего поставщика
         [ObservableProperty] private int processedSuppliers;          // сколько обработали
         [ObservableProperty] private int totalSuppliers;              // всего в списке
+        /// <summary>
+        /// Свойство MailServerTypes предоставляет доступ к данным MailServerTypes.
+        /// </summary>
 
         public IReadOnlyList<string> MailServerTypes { get; } = new[]
         {
@@ -132,6 +153,9 @@ namespace DromHub.ViewModels
         };
 
         // просто оставляю enum на будущее, сейчас не обязателен
+        /// <summary>
+        /// Перечисление MailParseStage отвечает за логику компонента MailParseStage.
+        /// </summary>
         private enum MailParseStage
         {
             Search,
@@ -145,6 +169,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== LOGGING =====
+        /// <summary>
+        /// Метод AddLog выполняет основную операцию класса.
+        /// </summary>
         private void AddLog(string message)
         {
             _dispatcherQueue.TryEnqueue(() =>
@@ -152,11 +179,17 @@ namespace DromHub.ViewModels
                 LogEntries.Add($"{DateTime.Now:HH:mm:ss} — {message}");
             });
         }
+        /// <summary>
+        /// Метод UpdateStatus выполняет основную операцию класса.
+        /// </summary>
 
         private void UpdateStatus(string message)
         {
             _dispatcherQueue.TryEnqueue(() => StatusMessage = message);
         }
+        /// <summary>
+        /// Метод ReportError выполняет основную операцию класса.
+        /// </summary>
 
         private void ReportError(string message, Exception? ex = null)
         {
@@ -168,6 +201,9 @@ namespace DromHub.ViewModels
             AddLog($"❌ {message}");
             UpdateStatus(message);
         }
+        /// <summary>
+        /// Метод UpdateServerSelection выполняет основную операцию класса.
+        /// </summary>
 
         private void UpdateServerSelection(MailServerType server)
         {
@@ -180,6 +216,9 @@ namespace DromHub.ViewModels
         }
 
         // перегрузка, если захочешь пользоваться стадиями
+        /// <summary>
+        /// Метод SetProgress выполняет основную операцию класса.
+        /// </summary>
         private void SetProgress(double value, MailParseStage stage, string? supplier = null, string? details = null)
         {
             details ??= stage switch
@@ -198,6 +237,9 @@ namespace DromHub.ViewModels
         }
 
         // базовая перегрузка — обновляет прогресс/подпись/текущего поставщика
+        /// <summary>
+        /// Метод SetProgress выполняет основную операцию класса.
+        /// </summary>
         private void SetProgress(double value, string? supplier = null, string? details = null)
         {
             _dispatcherQueue.TryEnqueue(() =>
@@ -209,6 +251,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== CONNECT + DOWNLOAD =====
+        /// <summary>
+        /// Метод ConnectAndDownloadAsync выполняет основную операцию класса.
+        /// </summary>
         [RelayCommand]
         private async Task ConnectAndDownloadAsync()
         {
@@ -278,18 +323,30 @@ namespace DromHub.ViewModels
                 AddLog("📨 Сессия завершена");
             }
         }
+        /// <summary>
+        /// Метод CreateImapClient выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual ImapClient CreateImapClient() => new ImapClient();
+        /// <summary>
+        /// Метод ConnectAsync выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual Task ConnectAsync(ImapClient client, string server, int port, SecureSocketOptions options)
         {
             return client.ConnectAsync(server, port, options);
         }
+        /// <summary>
+        /// Метод AuthenticateAsync выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual Task AuthenticateAsync(ImapClient client, string email, string password)
         {
             return client.AuthenticateAsync(email, password);
         }
+        /// <summary>
+        /// Метод DisconnectAsync выполняет основную операцию класса.
+        /// </summary>
 
         protected virtual Task DisconnectAsync(ImapClient client)
         {
@@ -304,6 +361,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== MAIN MAIL PROCESSOR =====
+        /// <summary>
+        /// Метод ProcessInboxAsync выполняет основную операцию класса.
+        /// </summary>
         protected virtual async Task ProcessInboxAsync(ImapClient client)
         {
             var inbox = client.Inbox;
@@ -437,6 +497,9 @@ namespace DromHub.ViewModels
             AddLog($"✅ Обработано поставщиков: {ProcessedSuppliers}/{TotalSuppliers}");
             StatusMessage = $"Обработано: {ProcessedSuppliers}";
         }
+        /// <summary>
+        /// Метод SafeName выполняет основную операцию класса.
+        /// </summary>
 
         private static string SafeName(string name)
         {
@@ -446,6 +509,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== ZIP: поддерживаем .xlsx и .csv внутри архива =====
+        /// <summary>
+        /// Метод ExtractZipAsync выполняет основную операцию класса.
+        /// </summary>
         private async Task ExtractZipAsync(MimePart zip, string dir, string supplier, DateTime date)
         {
             try
@@ -486,6 +552,9 @@ namespace DromHub.ViewModels
         }
 
         // ===== CSV helpers (общие для MIME и файлов из ZIP) =====
+        /// <summary>
+        /// Метод DetectDelimiter выполняет основную операцию класса.
+        /// </summary>
         private static char DetectDelimiter(string line)
         {
             if (string.IsNullOrEmpty(line)) return ';';
@@ -493,6 +562,9 @@ namespace DromHub.ViewModels
             int cc = line.Count(c => c == ',');
             return sc >= cc ? ';' : ',';
         }
+        /// <summary>
+        /// Метод ParseCsvLine выполняет основную операцию класса.
+        /// </summary>
 
         private static List<string> ParseCsvLine(string line, char delim)
         {
@@ -534,6 +606,9 @@ namespace DromHub.ViewModels
         }
 
         // CSV пришёл как вложение (MimePart)
+        /// <summary>
+        /// Метод ConvertCsvMimeToXlsxAsync выполняет основную операцию класса.
+        /// </summary>
         private async Task<string> ConvertCsvMimeToXlsxAsync(MimePart csvPart, string targetDir)
         {
             var tempCsv = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.csv");
@@ -551,6 +626,9 @@ namespace DromHub.ViewModels
         }
 
         // CSV уже лежит на диске (например, из ZIP)
+        /// <summary>
+        /// Метод ConvertCsvFileToXlsxAsync выполняет основную операцию класса.
+        /// </summary>
         private async Task<string> ConvertCsvFileToXlsxAsync(string csvPath, string targetDir)
         {
             try
@@ -581,6 +659,9 @@ namespace DromHub.ViewModels
                 throw;
             }
         }
+        /// <summary>
+        /// Метод SaveXlsxAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task SaveXlsxAsync(MimePart xlsx, string dir, string supplier, DateTime date)
         {
@@ -598,6 +679,9 @@ namespace DromHub.ViewModels
                 AddLog($"Ошибка сохранения {xlsx.FileName}: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод RenameFileAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task RenameFileAsync(string path, string dir, string supplier, DateTime date)
         {
@@ -622,6 +706,9 @@ namespace DromHub.ViewModels
                 AddLog($"Ошибка переименования: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод Cleanup выполняет основную операцию класса.
+        /// </summary>
 
         private void Cleanup(string dir)
         {
@@ -636,6 +723,9 @@ namespace DromHub.ViewModels
             }
             if (deleted > 0) AddLog($"🧹 Удалено не-xlsx файлов: {deleted}");
         }
+        /// <summary>
+        /// Метод ProcessZipFileAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task<int> ProcessZipFileAsync(string zipPath, string defaultBaseName)
         {
@@ -690,6 +780,9 @@ namespace DromHub.ViewModels
 
             return added;
         }
+        /// <summary>
+        /// Метод CopyStorageFileToTempAsync выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task<string> CopyStorageFileToTempAsync(StorageFile file, string extension)
         {
@@ -702,6 +795,9 @@ namespace DromHub.ViewModels
 
             return tempPath;
         }
+        /// <summary>
+        /// Метод EnsureUniquePath выполняет основную операцию класса.
+        /// </summary>
 
         private static string EnsureUniquePath(string path)
         {
@@ -719,6 +815,9 @@ namespace DromHub.ViewModels
 
             return candidate;
         }
+        /// <summary>
+        /// Метод TryDeleteFile выполняет основную операцию класса.
+        /// </summary>
 
         private static void TryDeleteFile(string path)
         {
@@ -732,6 +831,9 @@ namespace DromHub.ViewModels
                 // ignored
             }
         }
+        /// <summary>
+        /// Метод ClearCredentials выполняет основную операцию класса.
+        /// </summary>
 
         [RelayCommand]
         private void ClearCredentials()
@@ -741,6 +843,9 @@ namespace DromHub.ViewModels
             StatusMessage = "Данные очищены";
             AddLog("🧹 Данные очищены (поля ввода)");
         }
+        /// <summary>
+        /// Метод ForgetSavedCredentials выполняет основную операцию класса.
+        /// </summary>
 
         [RelayCommand]
         private void ForgetSavedCredentials()
@@ -748,6 +853,9 @@ namespace DromHub.ViewModels
             SecureCreds.Clear();
             AddLog("🗑️ Сохранённые учётные данные удалены");
         }
+        /// <summary>
+        /// Метод ManualAddPricesAsync выполняет основную операцию класса.
+        /// </summary>
 
         [RelayCommand]
         private async Task ManualAddPricesAsync()
@@ -878,6 +986,9 @@ namespace DromHub.ViewModels
                 ReportError($"Ошибка при ручном добавлении прайсов: {ex.Message}", ex);
             }
         }
+        /// <summary>
+        /// Метод OpenPricesFolder выполняет основную операцию класса.
+        /// </summary>
 
         [RelayCommand]
         private void OpenPricesFolder()

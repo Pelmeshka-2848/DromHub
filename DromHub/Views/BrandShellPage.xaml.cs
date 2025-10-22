@@ -9,9 +9,18 @@ using System;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс BrandShellPage отвечает за логику компонента BrandShellPage.
+    /// </summary>
     public sealed partial class BrandShellPage : Page
     {
+        /// <summary>
+        /// Свойство ViewModel предоставляет доступ к данным ViewModel.
+        /// </summary>
         public BrandShellViewModel ViewModel { get; }
+        /// <summary>
+        /// Конструктор BrandShellPage инициализирует экземпляр класса.
+        /// </summary>
 
         public BrandShellPage()
         {
@@ -32,6 +41,9 @@ namespace DromHub.Views
                     fe.DataContext = ViewModel; // единый VM для подпейджей
             };
         }
+        /// <summary>
+        /// Метод OnNavigatedTo выполняет основную операцию класса.
+        /// </summary>
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
@@ -50,6 +62,9 @@ namespace DromHub.Views
                     new SuppressNavigationTransitionInfo());
             }
         }
+        /// <summary>
+        /// Метод NavigateToSection выполняет основную операцию класса.
+        /// </summary>
 
         private void NavigateToSection(BrandDetailsSection section)
         {
@@ -72,6 +87,9 @@ namespace DromHub.Views
                     new SuppressNavigationTransitionInfo());
             }
         }
+        /// <summary>
+        /// Метод SectionButton_Checked выполняет основную операцию класса.
+        /// </summary>
 
         private void SectionButton_Checked(object sender, RoutedEventArgs e)
         {
@@ -83,6 +101,9 @@ namespace DromHub.Views
         }
 
         // ===== Навигация между брендами (слайд) =====
+        /// <summary>
+        /// Метод NavigateToBrand выполняет основную операцию класса.
+        /// </summary>
         private void NavigateToBrand(Guid id, SlideNavigationTransitionEffect effect)
         {
             Frame?.Navigate(
@@ -90,6 +111,9 @@ namespace DromHub.Views
                 id,
                 new SlideNavigationTransitionInfo { Effect = effect });
         }
+        /// <summary>
+        /// Метод Prev_KeyboardAccelerator_Invoked выполняет основную операцию класса.
+        /// </summary>
 
         private void Prev_KeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
         {
@@ -99,6 +123,9 @@ namespace DromHub.Views
                 args.Handled = true;
             }
         }
+        /// <summary>
+        /// Метод Next_KeyboardAccelerator_Invoked выполняет основную операцию класса.
+        /// </summary>
 
         private void Next_KeyboardAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
         {
@@ -110,11 +137,17 @@ namespace DromHub.Views
         }
 
         // Обновим кнопки, чтобы тоже использовали общий helper
+        /// <summary>
+        /// Метод GoPrev_Click выполняет основную операцию класса.
+        /// </summary>
         private void GoPrev_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.HasPrev && ViewModel.PrevBrandId is Guid id)
                 NavigateToBrand(id, SlideNavigationTransitionEffect.FromLeft);
         }
+        /// <summary>
+        /// Метод GoNext_Click выполняет основную операцию класса.
+        /// </summary>
 
         private void GoNext_Click(object sender, RoutedEventArgs e)
         {
