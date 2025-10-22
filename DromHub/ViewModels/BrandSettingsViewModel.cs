@@ -105,6 +105,42 @@ namespace DromHub.ViewModels
             AddAliasCommand.NotifyCanExecuteChanged();
         }
 
+        partial void OnNameChanged(string value)
+        {
+            var trimmedName = (value ?? string.Empty).Trim();
+
+            var primaryEntry = Aliases
+                .Select((alias, index) => (alias, index))
+                .FirstOrDefault(tuple => tuple.alias is not null && tuple.alias.IsPrimary);
+
+            if (primaryEntry.alias is not null)
+            {
+                if (!string.Equals(primaryEntry.alias.Alias, trimmedName, StringComparison.Ordinal))
+                {
+                    var updatedAlias = new BrandAlias
+                    {
+                        Id = primaryEntry.alias.Id,
+                        BrandId = primaryEntry.alias.BrandId,
+                        Alias = trimmedName,
+                        IsPrimary = true,
+                        Note = primaryEntry.alias.Note
+                    };
+
+                    Aliases[primaryEntry.index] = updatedAlias;
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(trimmedName))
+            {
+                Aliases.Insert(0, new BrandAlias
+                {
+                    Id = Guid.Empty,
+                    BrandId = BrandId,
+                    Alias = trimmedName,
+                    IsPrimary = true
+                });
+            }
+        }
+
         /// <summary>
         /// Loads the brand data for editing.
         /// </summary>
@@ -250,13 +286,20 @@ namespace DromHub.ViewModels
                     return;
                 }
 
-                brand.Name = (Name ?? string.Empty).Trim();
+                var trimmedName = (Name ?? string.Empty).Trim();
+                brand.Name = trimmedName;
                 brand.IsOem = IsOem;
                 brand.Website = string.IsNullOrWhiteSpace(Website) ? null : Website.Trim();
                 brand.YearFounded = YearFounded;
                 brand.Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim();
                 brand.UserNotes = string.IsNullOrWhiteSpace(UserNotes) ? null : UserNotes.Trim();
                 brand.CountryId = SelectedCountry?.Id;
+
+                var primaryAlias = Aliases.FirstOrDefault(a => a.IsPrimary);
+                if (primaryAlias is not null)
+                {
+                    primaryAlias.Alias = trimmedName;
+                }
 
                 var markupValue = MarkupPercent.HasValue ? (decimal)Math.Round(MarkupPercent.Value, 2) : (decimal?)null;
                 if (markupValue.HasValue)
