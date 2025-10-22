@@ -9,10 +9,16 @@ using WinRT.Interop;
 
 namespace DromHub
 {
+    /// <summary>
+    /// Класс MainWindow отвечает за логику компонента MainWindow.
+    /// </summary>
     public sealed partial class MainWindow : Window
     {
         private const double CinemaAspect = 21.0 / 9.0;
         private bool _isAdjusting;
+        /// <summary>
+        /// Конструктор MainWindow инициализирует экземпляр класса.
+        /// </summary>
 
         public MainWindow()
         {
@@ -30,6 +36,9 @@ namespace DromHub
             contentFrame.Navigate(typeof(MainPage));
             nvSample.SelectedItem = MainPageItem;
         }
+        /// <summary>
+        /// Метод NavigationView_SelectionChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
         {
@@ -53,6 +62,9 @@ namespace DromHub
                 }
             }
         }
+        /// <summary>
+        /// Метод NavigationView_ItemInvoked выполняет основную операцию класса.
+        /// </summary>
 
         private void NavigationView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
         {
@@ -61,6 +73,9 @@ namespace DromHub
             if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string tag)
                 NavigateByTag(tag);
         }
+        /// <summary>
+        /// Метод NavigateByTag выполняет основную операцию класса.
+        /// </summary>
 
         private void NavigateByTag(string tag, object parameter = null)
         {
@@ -96,6 +111,9 @@ namespace DromHub
                 System.Diagnostics.Debug.WriteLine($"Navigation error for tag '{tag}': {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод AppWindow_Changed выполняет основную операцию класса.
+        /// </summary>
 
         private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
         {
@@ -145,6 +163,9 @@ namespace DromHub
                 _isAdjusting = false;
             }
         }
+        /// <summary>
+        /// Метод ResizeCinemaToWorkArea выполняет основную операцию класса.
+        /// </summary>
 
         private void ResizeCinemaToWorkArea()
         {
@@ -167,6 +188,9 @@ namespace DromHub
 
             appWindow.Resize(new SizeInt32(targetW, targetH));
         }
+        /// <summary>
+        /// Метод GetAppWindow выполняет основную операцию класса.
+        /// </summary>
 
         private AppWindow GetAppWindow()
         {
@@ -174,6 +198,9 @@ namespace DromHub
             var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
             return AppWindow.GetFromWindowId(windowId);
         }
+        /// <summary>
+        /// Метод CenterOnScreen выполняет основную операцию класса.
+        /// </summary>
 
         private void CenterOnScreen()
         {
@@ -189,6 +216,9 @@ namespace DromHub
         }
 
         // Добавьте свойство для доступа к Frame извне (если нужно)
+        /// <summary>
+        /// Свойство ContentFrame предоставляет доступ к данным ContentFrame.
+        /// </summary>
         public Frame ContentFrame => contentFrame;
     }
 }

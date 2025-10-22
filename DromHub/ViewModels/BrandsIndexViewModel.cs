@@ -10,11 +10,20 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс BrandsIndexViewModel отвечает за логику компонента BrandsIndexViewModel.
+    /// </summary>
     public partial class BrandsIndexViewModel : ObservableObject
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        /// <summary>
+        /// Свойство Brands предоставляет доступ к данным Brands.
+        /// </summary>
 
         public ObservableCollection<Brand> Brands { get; } = new();
+        /// <summary>
+        /// Свойство GroupedBrands предоставляет доступ к данным GroupedBrands.
+        /// </summary>
         public ObservableCollection<AlphaKeyGroup<Brand>> GroupedBrands { get; } = new();
 
         // Поиск/фильтры
@@ -25,15 +34,24 @@ namespace DromHub.ViewModels
         [ObservableProperty] private bool filterNoAliases;
 
         // Для кнопок/состояния
+        /// <summary>
+        /// Конструктор BrandsIndexViewModel инициализирует экземпляр класса.
+        /// </summary>
         [ObservableProperty] private Brand selectedBrand;
 
         public BrandsIndexViewModel(IDbContextFactory<ApplicationDbContext> dbFactory) => _dbFactory = dbFactory;
+        /// <summary>
+        /// Метод LoadAsync выполняет основную операцию класса.
+        /// </summary>
 
         public async Task LoadAsync()
         {
             await ReloadList();
             ApplyFilters();
         }
+        /// <summary>
+        /// Метод ReloadList выполняет основную операцию класса.
+        /// </summary>
 
         public async Task ReloadList()
         {
@@ -61,6 +79,9 @@ namespace DromHub.ViewModels
             Brands.Clear();
             foreach (var b in list) Brands.Add(b);
         }
+        /// <summary>
+        /// Метод ApplyFilters выполняет основную операцию класса.
+        /// </summary>
 
         public void ApplyFilters()
         {
@@ -79,6 +100,9 @@ namespace DromHub.ViewModels
 
             UpdateGrouped(filtered);
         }
+        /// <summary>
+        /// Метод UpdateGrouped выполняет основную операцию класса.
+        /// </summary>
 
         private void UpdateGrouped(IEnumerable<Brand> items)
         {

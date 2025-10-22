@@ -8,6 +8,9 @@ using Windows.Storage;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс MailParserViewModel отвечает за логику компонента MailParserViewModel.
+    /// </summary>
     public partial class MailParserViewModel
     {
         private static readonly string AppDataRoot =
@@ -15,8 +18,14 @@ namespace DromHub.ViewModels
         private static readonly string DefaultPricesRoot = Path.Combine(AppDataRoot, "Prices");
 
         private string _pricesRoot = DefaultPricesRoot;
+        /// <summary>
+        /// Свойство PricesRoot предоставляет доступ к данным PricesRoot.
+        /// </summary>
 
         private string PricesRoot => _pricesRoot;
+        /// <summary>
+        /// Метод ResolvePricesRoot выполняет основную операцию класса.
+        /// </summary>
 
         private string ResolvePricesRoot(UserSettings settings)
         {
@@ -37,6 +46,9 @@ namespace DromHub.ViewModels
 
             return DefaultPricesRoot;
         }
+        /// <summary>
+        /// Метод EnsurePricesRoot выполняет основную операцию класса.
+        /// </summary>
 
         private bool EnsurePricesRoot(bool logOnSuccess = false)
         {
@@ -73,6 +85,9 @@ namespace DromHub.ViewModels
 
             return false;
         }
+        /// <summary>
+        /// Метод TryEnsureDirectory выполняет основную операцию класса.
+        /// </summary>
 
         private bool TryEnsureDirectory(string path, string purposeDescription)
         {
@@ -92,6 +107,9 @@ namespace DromHub.ViewModels
                 return false;
             }
         }
+        /// <summary>
+        /// Метод TryEnsurePhysicalPath выполняет основную операцию класса.
+        /// </summary>
 
         private void TryEnsurePhysicalPath(string path)
         {
@@ -109,6 +127,9 @@ namespace DromHub.ViewModels
                 _logger.LogDebug(ex, "Не удалось подготовить физический путь для {Path}", path);
             }
         }
+        /// <summary>
+        /// Метод GetShellAccessiblePath выполняет основную операцию класса.
+        /// </summary>
 
         private string GetShellAccessiblePath(string originalPath, bool ensureExists)
         {
@@ -154,15 +175,27 @@ namespace DromHub.ViewModels
 
             return originalPath;
         }
+        /// <summary>
+        /// Класс UserSettings отвечает за логику компонента UserSettings.
+        /// </summary>
 
         private sealed class UserSettings
         {
             private static readonly string SettingsFilePathInternal = Path.Combine(AppDataRoot, "settings.json");
+            /// <summary>
+            /// Свойство PricesDirectory предоставляет доступ к данным PricesDirectory.
+            /// </summary>
 
             public string? PricesDirectory { get; set; }
+            /// <summary>
+            /// Свойство LoadedFromFile предоставляет доступ к данным LoadedFromFile.
+            /// </summary>
 
             [JsonIgnore]
             public bool LoadedFromFile { get; set; }
+            /// <summary>
+            /// Метод Load выполняет основную операцию класса.
+            /// </summary>
 
             public static UserSettings Load(ILogger logger)
             {
@@ -182,6 +215,9 @@ namespace DromHub.ViewModels
                     return new UserSettings { LoadedFromFile = false };
                 }
             }
+            /// <summary>
+            /// Метод TrySave выполняет основную операцию класса.
+            /// </summary>
 
             public void TrySave(ILogger logger)
             {
@@ -198,31 +234,70 @@ namespace DromHub.ViewModels
                 }
             }
         }
+        /// <summary>
+        /// Класс SecureCreds отвечает за логику компонента SecureCreds.
+        /// </summary>
 
         private static class SecureCreds
         {
             private static readonly string Dir = AppDataRoot;
             private static readonly string FilePath = Path.Combine(Dir, "creds.json");
+            /// <summary>
+            /// Класс CredentialData отвечает за логику компонента CredentialData.
+            /// </summary>
 
             private sealed class CredentialData
             {
+                /// <summary>
+                /// Свойство Id предоставляет доступ к данным Id.
+                /// </summary>
                 public string Id { get; set; } = Guid.NewGuid().ToString("N");
+                /// <summary>
+                /// Свойство Email предоставляет доступ к данным Email.
+                /// </summary>
                 public string Email { get; set; } = string.Empty;
+                /// <summary>
+                /// Свойство DisplayName предоставляет доступ к данным DisplayName.
+                /// </summary>
                 public string? DisplayName { get; set; }
+                /// <summary>
+                /// Свойство Pwd предоставляет доступ к данным Pwd.
+                /// </summary>
                 public string Pwd { get; set; } = string.Empty;
+                /// <summary>
+                /// Свойство Server предоставляет доступ к данным Server.
+                /// </summary>
                 public string Server { get; set; } = MailServerType.Custom.ToString();
             }
+            /// <summary>
+            /// Класс CredentialStore отвечает за логику компонента CredentialStore.
+            /// </summary>
 
             private sealed class CredentialStore
             {
+                /// <summary>
+                /// Свойство Default предоставляет доступ к данным Default.
+                /// </summary>
                 public CredentialData? Default { get; set; }
             }
+            /// <summary>
+            /// Класс LegacyModel отвечает за логику компонента LegacyModel.
+            /// </summary>
 
             private sealed class LegacyModel
             {
+                /// <summary>
+                /// Свойство Email предоставляет доступ к данным Email.
+                /// </summary>
                 public string? Email { get; set; }
+                /// <summary>
+                /// Свойство Pwd предоставляет доступ к данным Pwd.
+                /// </summary>
                 public string? Pwd { get; set; }
             }
+            /// <summary>
+            /// Метод Save выполняет основную операцию класса.
+            /// </summary>
 
             public static void Save(string email, string password, MailServerType server)
             {
@@ -241,6 +316,9 @@ namespace DromHub.ViewModels
                     // молча — не критично
                 }
             }
+            /// <summary>
+            /// Метод TryLoad выполняет основную операцию класса.
+            /// </summary>
 
             public static bool TryLoad(out string email, out string password, out MailServerType server)
             {
@@ -270,6 +348,9 @@ namespace DromHub.ViewModels
                     return false;
                 }
             }
+            /// <summary>
+            /// Метод Clear выполняет основную операцию класса.
+            /// </summary>
 
             public static void Clear()
             {
@@ -284,6 +365,9 @@ namespace DromHub.ViewModels
                     // ignore
                 }
             }
+            /// <summary>
+            /// Метод LoadStore выполняет основную операцию класса.
+            /// </summary>
 
             private static CredentialStore LoadStore()
             {
@@ -356,6 +440,9 @@ namespace DromHub.ViewModels
                     return new CredentialStore();
                 }
             }
+            /// <summary>
+            /// Метод SaveOrDelete выполняет основную операцию класса.
+            /// </summary>
 
             private static void SaveOrDelete(CredentialStore store)
             {
@@ -379,6 +466,9 @@ namespace DromHub.ViewModels
                     // ignore save failures
                 }
             }
+            /// <summary>
+            /// Метод Protect выполняет основную операцию класса.
+            /// </summary>
 
             private static string Protect(string password)
             {
@@ -393,6 +483,9 @@ namespace DromHub.ViewModels
                     return password ?? string.Empty;
                 }
             }
+            /// <summary>
+            /// Метод Unprotect выполняет основную операцию класса.
+            /// </summary>
 
             private static string Unprotect(string protectedPassword)
             {

@@ -23,6 +23,9 @@ namespace DromHub.Views
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        /// <summary>
+        /// Конструктор MainPage инициализирует экземпляр класса.
+        /// </summary>
         public MainPage()
         {
             InitializeComponent();

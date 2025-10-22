@@ -13,16 +13,34 @@ using System.Threading.Tasks;
 
 namespace DromHub.ViewModels
 {
+    /// <summary>
+    /// Класс BrandMergeWizardViewModel отвечает за логику компонента BrandMergeWizardViewModel.
+    /// </summary>
     public class BrandMergeWizardViewModel
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
         private readonly ILogger<BrandMergeWizardViewModel> _log;
+        /// <summary>
+        /// Свойство XamlRoot предоставляет доступ к данным XamlRoot.
+        /// </summary>
 
         public XamlRoot XamlRoot { get; set; }
+        /// <summary>
+        /// Свойство AllBrands предоставляет доступ к данным AllBrands.
+        /// </summary>
 
         public ObservableCollection<Brand> AllBrands { get; } = new();
+        /// <summary>
+        /// Свойство FilteredSources предоставляет доступ к данным FilteredSources.
+        /// </summary>
         public ObservableCollection<Brand> FilteredSources { get; } = new();
+        /// <summary>
+        /// Свойство FilteredTargets предоставляет доступ к данным FilteredTargets.
+        /// </summary>
         public ObservableCollection<Brand> FilteredTargets { get; } = new();
+        /// <summary>
+        /// Свойство SelectedSources предоставляет доступ к данным SelectedSources.
+        /// </summary>
 
         public ObservableCollection<Brand> SelectedSources { get; } = new();
         private Brand _selectedTarget;
@@ -31,18 +49,42 @@ namespace DromHub.ViewModels
             get => _selectedTarget;
             set { _selectedTarget = value; RecalcSummary(); }
         }
+        /// <summary>
+        /// Свойство SearchSources предоставляет доступ к данным SearchSources.
+        /// </summary>
 
         public string SearchSources { get; set; } = string.Empty;
+        /// <summary>
+        /// Свойство SearchTarget предоставляет доступ к данным SearchTarget.
+        /// </summary>
         public string SearchTarget { get; set; } = string.Empty;
 
         // summary
+        /// <summary>
+        /// Свойство SummaryText предоставляет доступ к данным SummaryText.
+        /// </summary>
         public string SummaryText { get; private set; } = "—";
+        /// <summary>
+        /// Свойство AliasesConflictsText предоставляет доступ к данным AliasesConflictsText.
+        /// </summary>
         public string AliasesConflictsText { get; private set; } = "—";
+        /// <summary>
+        /// Свойство MarkupSummaryText предоставляет доступ к данным MarkupSummaryText.
+        /// </summary>
         public string MarkupSummaryText { get; private set; } = "—";
+        /// <summary>
+        /// Свойство CanMerge предоставляет доступ к данным CanMerge.
+        /// </summary>
 
         public bool CanMerge => SelectedSources.Count > 0 && SelectedTarget != null;
+        /// <summary>
+        /// Свойство MergeCommand предоставляет доступ к данным MergeCommand.
+        /// </summary>
 
         public IAsyncRelayCommand MergeCommand { get; }
+        /// <summary>
+        /// Конструктор BrandMergeWizardViewModel инициализирует экземпляр класса.
+        /// </summary>
 
         public BrandMergeWizardViewModel(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<BrandMergeWizardViewModel> log)
         {
@@ -55,6 +97,9 @@ namespace DromHub.ViewModels
                 (MergeCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
             };
         }
+        /// <summary>
+        /// Метод LoadAsync выполняет основную операцию класса.
+        /// </summary>
 
         public async Task LoadAsync()
         {
@@ -83,6 +128,9 @@ namespace DromHub.ViewModels
             ApplySourcesFilter();
             ApplyTargetFilter();
         }
+        /// <summary>
+        /// Метод ApplySourcesFilter выполняет основную операцию класса.
+        /// </summary>
 
         public void ApplySourcesFilter()
         {
@@ -94,6 +142,9 @@ namespace DromHub.ViewModels
             FilteredSources.Clear();
             foreach (var b in q) FilteredSources.Add(b);
         }
+        /// <summary>
+        /// Метод ApplyTargetFilter выполняет основную операцию класса.
+        /// </summary>
 
         public void ApplyTargetFilter()
         {
@@ -109,6 +160,9 @@ namespace DromHub.ViewModels
             FilteredTargets.Clear();
             foreach (var b in q) FilteredTargets.Add(b);
         }
+        /// <summary>
+        /// Метод AddSource выполняет основную операцию класса.
+        /// </summary>
 
         public void AddSource(Guid id)
         {
@@ -122,6 +176,9 @@ namespace DromHub.ViewModels
                 ApplyTargetFilter();
             }
         }
+        /// <summary>
+        /// Метод RemoveSource выполняет основную операцию класса.
+        /// </summary>
 
         public void RemoveSource(Guid id)
         {
@@ -132,6 +189,9 @@ namespace DromHub.ViewModels
                 ApplyTargetFilter();
             }
         }
+        /// <summary>
+        /// Метод SetTarget выполняет основную операцию класса.
+        /// </summary>
 
         public void SetTarget(Guid id)
         {
@@ -139,6 +199,9 @@ namespace DromHub.ViewModels
             SelectedTarget = AllBrands.FirstOrDefault(x => x.Id == id);
             (MergeCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
         }
+        /// <summary>
+        /// Метод RecalcSummary выполняет основную операцию класса.
+        /// </summary>
 
         private async void RecalcSummary()
         {
@@ -202,12 +265,18 @@ namespace DromHub.ViewModels
                 OnSummaryChanged();
             }
         }
+        /// <summary>
+        /// Метод OnSummaryChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void OnSummaryChanged()
         {
             // упростим: дернём обновление через «пересоздание» свойств
             // (если используете ObservableObject — замените на SetProperty/OnPropertyChanged)
         }
+        /// <summary>
+        /// Метод MergeAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task MergeAsync()
         {

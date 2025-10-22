@@ -12,16 +12,31 @@ using System.Threading.Tasks;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс ViewPartDialog отвечает за логику компонента ViewPartDialog.
+    /// </summary>
     public sealed partial class ViewPartDialog : ContentDialog, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
+        /// <summary>
+        /// Свойство Part предоставляет доступ к данным Part.
+        /// </summary>
 
         public Part Part { get; private set; }
+        /// <summary>
+        /// Свойство Crosses предоставляет доступ к данным Crosses.
+        /// </summary>
         public ObservableCollection<object> Crosses { get; } = new();
+        /// <summary>
+        /// Свойство HasImage предоставляет доступ к данным HasImage.
+        /// </summary>
 
         public bool HasImage => Part?.Images?.Any() == true;
 
         private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        /// <summary>
+        /// Конструктор ViewPartDialog инициализирует экземпляр класса.
+        /// </summary>
 
         public ViewPartDialog(Part part, IDbContextFactory<ApplicationDbContext> contextFactory)
         {
@@ -32,6 +47,9 @@ namespace DromHub.Views
             this.DataContext = this;
             this.Loaded += ViewPartDialog_Loaded;
         }
+        /// <summary>
+        /// Метод ViewPartDialog_Loaded выполняет основную операцию класса.
+        /// </summary>
 
         private async void ViewPartDialog_Loaded(object sender, RoutedEventArgs e)
         {
@@ -39,6 +57,9 @@ namespace DromHub.Views
             await LoadCrossesAsync();
             LoadImage();
         }
+        /// <summary>
+        /// Метод LoadPartDataAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task LoadPartDataAsync()
         {
@@ -69,6 +90,9 @@ namespace DromHub.Views
                 System.Diagnostics.Debug.WriteLine($"Error loading part data: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод LoadImage выполняет основную операцию класса.
+        /// </summary>
 
         private void LoadImage()
         {
@@ -112,6 +136,9 @@ namespace DromHub.Views
                 ShowNoImagePlaceholder();
             }
         }
+        /// <summary>
+        /// Метод PartImage_ImageFailed выполняет основную операцию класса.
+        /// </summary>
 
         private void PartImage_ImageFailed(object sender, ExceptionRoutedEventArgs e)
         {
@@ -119,6 +146,9 @@ namespace DromHub.Views
             // При ошибке загрузки показываем заглушку
             ShowNoImagePlaceholder();
         }
+        /// <summary>
+        /// Метод ShowNoImagePlaceholder выполняет основную операцию класса.
+        /// </summary>
 
         private void ShowNoImagePlaceholder()
         {
@@ -134,6 +164,9 @@ namespace DromHub.Views
                 System.Diagnostics.Debug.WriteLine($"Error showing placeholder: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод LoadCrossesAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async Task LoadCrossesAsync()
         {
@@ -170,6 +203,9 @@ namespace DromHub.Views
                 Crosses.Clear();
             }
         }
+        /// <summary>
+        /// Метод AddToCartButton_Click выполняет основную операцию класса.
+        /// </summary>
 
         private async void AddToCartButton_Click(object sender, RoutedEventArgs e)
         {
@@ -201,6 +237,9 @@ namespace DromHub.Views
                 ShowErrorMessage($"Failed to add part to cart: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод ShowSuccessMessage выполняет основную операцию класса.
+        /// </summary>
 
 
         private void ShowSuccessMessage(string message)
@@ -228,6 +267,9 @@ namespace DromHub.Views
                 System.Diagnostics.Debug.WriteLine($"ERROR in ShowSuccessMessage: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод ShowErrorMessage выполняет основную операцию класса.
+        /// </summary>
 
         private void ShowErrorMessage(string message)
         {
@@ -247,6 +289,9 @@ namespace DromHub.Views
                 System.Diagnostics.Debug.WriteLine($"ERROR in ShowErrorMessage: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод ViewPartDialog_Closed выполняет основную операцию класса.
+        /// </summary>
 
         private void ViewPartDialog_Closed(ContentDialog sender, ContentDialogClosedEventArgs args)
         {
@@ -274,6 +319,9 @@ namespace DromHub.Views
                 System.Diagnostics.Debug.WriteLine($"ERROR in ViewPartDialog_Closed: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод OnPropertyChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void OnPropertyChanged(string propertyName)
         {

@@ -4,8 +4,14 @@ using System;
 
 namespace DromHub.Converters
 {
+    /// <summary>
+    /// Класс SectionToVisibilityConverter отвечает за логику компонента SectionToVisibilityConverter.
+    /// </summary>
     public class SectionToVisibilityConverter : IValueConverter
     {
+        /// <summary>
+        /// Метод Convert выполняет основную операцию класса.
+        /// </summary>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value == null || parameter == null) return Visibility.Collapsed;
@@ -14,6 +20,9 @@ namespace DromHub.Converters
             return string.Equals(current, sectionName, StringComparison.OrdinalIgnoreCase)
                 ? Visibility.Visible : Visibility.Collapsed;
         }
+        /// <summary>
+        /// Метод ConvertBack выполняет основную операцию класса.
+        /// </summary>
 
         public object ConvertBack(object value, Type targetType, object parameter, string language) =>
             throw new NotSupportedException();

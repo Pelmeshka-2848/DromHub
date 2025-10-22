@@ -10,29 +10,74 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DromHub.Data
 {
+    /// <summary>
+    /// Класс ApplicationDbContext отвечает за логику компонента ApplicationDbContext.
+    /// </summary>
     public class ApplicationDbContext : DbContext
     {
+        /// <summary>
+        /// Конструктор ApplicationDbContext инициализирует экземпляр класса.
+        /// </summary>
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
 
         // DbSets для всех таблиц (УДАЛИТЬ Cart и CartItem)
+        /// <summary>
+        /// Свойство Brands предоставляет доступ к данным Brands.
+        /// </summary>
         public DbSet<Brand> Brands { get; set; }
+        /// <summary>
+        /// Свойство BrandAliases предоставляет доступ к данным BrandAliases.
+        /// </summary>
         public DbSet<BrandAlias> BrandAliases { get; set; }
+        /// <summary>
+        /// Свойство BrandMarkups предоставляет доступ к данным BrandMarkups.
+        /// </summary>
         public DbSet<BrandMarkup> BrandMarkups { get; set; }
+        /// <summary>
+        /// Свойство Parts предоставляет доступ к данным Parts.
+        /// </summary>
         public DbSet<Part> Parts { get; set; }
+        /// <summary>
+        /// Свойство PartImages предоставляет доступ к данным PartImages.
+        /// </summary>
         public DbSet<PartImage> PartImages { get; set; }
+        /// <summary>
+        /// Свойство LocalStocks предоставляет доступ к данным LocalStocks.
+        /// </summary>
         public DbSet<LocalStock> LocalStocks { get; set; }
+        /// <summary>
+        /// Свойство OemCrosses предоставляет доступ к данным OemCrosses.
+        /// </summary>
         public DbSet<OemCross> OemCrosses { get; set; }
+        /// <summary>
+        /// Свойство Suppliers предоставляет доступ к данным Suppliers.
+        /// </summary>
         public DbSet<Supplier> Suppliers { get; set; }
+        /// <summary>
+        /// Свойство SupplierLocalities предоставляет доступ к данным SupplierLocalities.
+        /// </summary>
         public DbSet<SupplierLocality> SupplierLocalities { get; set; }
+        /// <summary>
+        /// Свойство SupplierMarkups предоставляет доступ к данным SupplierMarkups.
+        /// </summary>
         public DbSet<SupplierMarkup> SupplierMarkups { get; set; }
+        /// <summary>
+        /// Свойство SupplierPricelistLayouts предоставляет доступ к данным SupplierPricelistLayouts.
+        /// </summary>
         public DbSet<SupplierPricelistLayout> SupplierPricelistLayouts { get; set; }
+        /// <summary>
+        /// Свойство PriceMarkups предоставляет доступ к данным PriceMarkups.
+        /// </summary>
         public DbSet<PriceMarkup> PriceMarkups { get; set; }
         // УДАЛИТЬ эти строки:
         // public DbSet<Cart> Carts { get; set; }
         // public DbSet<CartItem> CartItems { get; set; }
+        /// <summary>
+        /// Метод OnModelCreating выполняет основную операцию класса.
+        /// </summary>
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -189,18 +234,27 @@ namespace DromHub.Data
                     .ValueGeneratedOnAddOrUpdate();
             });
         }
+        /// <summary>
+        /// Метод SaveChanges выполняет основную операцию класса.
+        /// </summary>
 
         public override int SaveChanges()
         {
             AddTimestamps();
             return base.SaveChanges();
         }
+        /// <summary>
+        /// Метод SaveChangesAsync выполняет основную операцию класса.
+        /// </summary>
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             AddTimestamps();
             return base.SaveChangesAsync(cancellationToken);
         }
+        /// <summary>
+        /// Метод AddTimestamps выполняет основную операцию класса.
+        /// </summary>
 
         private void AddTimestamps()
         {
@@ -220,10 +274,19 @@ namespace DromHub.Data
             }
         }
     }
+    /// <summary>
+    /// Класс BaseEntity отвечает за логику компонента BaseEntity.
+    /// </summary>
 
     public abstract class BaseEntity
     {
+        /// <summary>
+        /// Свойство CreatedAt предоставляет доступ к данным CreatedAt.
+        /// </summary>
         public DateTime CreatedAt { get; set; }
+        /// <summary>
+        /// Свойство UpdatedAt предоставляет доступ к данным UpdatedAt.
+        /// </summary>
         public DateTime UpdatedAt { get; set; }
     }
 }

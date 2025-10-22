@@ -7,9 +7,18 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс MailParserView отвечает за логику компонента MailParserView.
+    /// </summary>
     public sealed partial class MailParserView : Page
     {
+        /// <summary>
+        /// Свойство ViewModel предоставляет доступ к данным ViewModel.
+        /// </summary>
         public MailParserViewModel ViewModel { get; }
+        /// <summary>
+        /// Конструктор MailParserView инициализирует экземпляр класса.
+        /// </summary>
 
         public MailParserView()
         {
@@ -23,6 +32,9 @@ namespace DromHub.Views
                 PasswordBox.Password = vm.Password ?? string.Empty;
             }
         }
+        /// <summary>
+        /// Метод ViewModelOnPropertyChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -35,6 +47,9 @@ namespace DromHub.Views
                 }
             }
         }
+        /// <summary>
+        /// Метод PasswordBox_OnPasswordChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void PasswordBox_OnPasswordChanged(object sender, RoutedEventArgs e)
         {
@@ -47,6 +62,9 @@ namespace DromHub.Views
                 }
             }
         }
+        /// <summary>
+        /// Метод LogEntries_CollectionChanged выполняет основную операцию класса.
+        /// </summary>
 
         private void LogEntries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {

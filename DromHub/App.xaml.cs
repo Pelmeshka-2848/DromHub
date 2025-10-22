@@ -22,18 +22,39 @@ using WinRT.Interop;
 
 namespace DromHub
 {
+    /// <summary>
+    /// Класс App отвечает за логику компонента App.
+    /// </summary>
     public partial class App : Application
     {
         private static IServiceProvider _serviceProvider;
+        /// <summary>
+        /// Свойство DbContext предоставляет доступ к данным DbContext.
+        /// </summary>
         public static ApplicationDbContext DbContext { get; private set; }
+        /// <summary>
+        /// Свойство MainWindow предоставляет доступ к данным MainWindow.
+        /// </summary>
         public static Window MainWindow { get; private set; }
         private Window m_window;
+        /// <summary>
+        /// Свойство MainHwnd предоставляет доступ к данным MainHwnd.
+        /// </summary>
         public static nint MainHwnd { get; private set; }
         private WindowsSystemDispatcherQueueHelper m_wsdqHelper;
         private MicaController m_micaController;
         private SystemBackdropConfiguration m_configuration;
+        /// <summary>
+        /// Свойство ServiceProvider предоставляет доступ к данным ServiceProvider.
+        /// </summary>
         public static IServiceProvider ServiceProvider => _serviceProvider;
+        /// <summary>
+        /// Свойство Configuration предоставляет доступ к данным Configuration.
+        /// </summary>
         public static IConfiguration Configuration { get; private set; } = default!;
+        /// <summary>
+        /// Конструктор App инициализирует экземпляр класса.
+        /// </summary>
 
         public App()
         {
@@ -42,6 +63,9 @@ namespace DromHub
             ConfigureServices();
             ConfigureEpplusLicense();
         }
+        /// <summary>
+        /// Метод ConfigureServices выполняет основную операцию класса.
+        /// </summary>
 
         private void ConfigureServices()
         {
@@ -106,6 +130,9 @@ namespace DromHub
 
             _serviceProvider = services.BuildServiceProvider();
         }
+        /// <summary>
+        /// Метод BuildConfiguration выполняет основную операцию класса.
+        /// </summary>
 
         private static IConfiguration BuildConfiguration()
         {
@@ -126,6 +153,9 @@ namespace DromHub
                 .AddEnvironmentVariables("DROMHUB_")
                 .Build();
         }
+        /// <summary>
+        /// Метод OnLaunched выполняет основную операцию класса.
+        /// </summary>
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
         {
@@ -174,6 +204,9 @@ namespace DromHub
             TrySetMicaBackdrop();
             m_window.Activate();
         }
+        /// <summary>
+        /// Метод HandleInitializationError выполняет основную операцию класса.
+        /// </summary>
 
         private void HandleInitializationError(string message, Exception ex)
         {
@@ -186,6 +219,9 @@ namespace DromHub
             var errorWindow = new MessageWindow(message);
             errorWindow.Activate();
         }
+        /// <summary>
+        /// Метод ConfigureEpplusLicense выполняет основную операцию класса.
+        /// </summary>
 
         private static void ConfigureEpplusLicense()
         {
@@ -202,6 +238,9 @@ namespace DromHub
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             }
         }
+        /// <summary>
+        /// Метод EnsureTestPartExists выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task EnsureTestPartExists(ApplicationDbContext context)
         {
@@ -236,6 +275,9 @@ namespace DromHub
                 Debug.WriteLine($"Ошибка при проверке детали: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод InitializeDatabaseAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async void InitializeDatabaseAsync()
         {
@@ -254,6 +296,9 @@ namespace DromHub
                 Debug.WriteLine($"Ошибка инициализации БД: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод TrySetMicaBackdrop выполняет основную операцию класса.
+        /// </summary>
 
         private void TrySetMicaBackdrop()
         {
@@ -281,6 +326,9 @@ namespace DromHub
                 m_window.Closed += Window_Closed;
             }
         }
+        /// <summary>
+        /// Метод Window_Activated выполняет основную операцию класса.
+        /// </summary>
 
         private void Window_Activated(object sender, WindowActivatedEventArgs args)
         {
@@ -289,6 +337,9 @@ namespace DromHub
                 m_configuration.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
             }
         }
+        /// <summary>
+        /// Метод Window_Closed выполняет основную операцию класса.
+        /// </summary>
 
         private void Window_Closed(object sender, WindowEventArgs args)
         {
@@ -308,8 +359,14 @@ namespace DromHub
     }
 
     // Класс для работы с DispatcherQueue
+    /// <summary>
+    /// Класс WindowsSystemDispatcherQueueHelper отвечает за логику компонента WindowsSystemDispatcherQueueHelper.
+    /// </summary>
     class WindowsSystemDispatcherQueueHelper
     {
+        /// <summary>
+        /// Структура DispatcherQueueOptions отвечает за логику компонента DispatcherQueueOptions.
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         struct DispatcherQueueOptions
         {
@@ -317,11 +374,17 @@ namespace DromHub
             internal int threadType;
             internal int apartmentType;
         }
+        /// <summary>
+        /// Метод CreateDispatcherQueueController выполняет основную операцию класса.
+        /// </summary>
 
         [DllImport("CoreMessaging.dll")]
         private static extern int CreateDispatcherQueueController([In] DispatcherQueueOptions options, [In, Out, MarshalAs(UnmanagedType.IUnknown)] ref object dispatcherQueueController);
 
         private object m_dispatcherQueueController = null;
+        /// <summary>
+        /// Метод EnsureWindowsSystemDispatcherQueueController выполняет основную операцию класса.
+        /// </summary>
 
         public void EnsureWindowsSystemDispatcherQueueController()
         {

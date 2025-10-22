@@ -4,9 +4,15 @@ using System.Collections.Generic;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс BrandSettingsPage отвечает за логику компонента BrandSettingsPage.
+    /// </summary>
     public sealed partial class BrandSettingsPage : Page
     {
         private readonly IReadOnlyList<Expander> _accordion;
+        /// <summary>
+        /// Конструктор BrandSettingsPage инициализирует экземпляр класса.
+        /// </summary>
 
         public BrandSettingsPage()
         {
@@ -25,6 +31,9 @@ namespace DromHub.Views
                     _accordion[i].IsExpanded = false;
             };
         }
+        /// <summary>
+        /// Метод Accordion_Expanding выполняет основную операцию класса.
+        /// </summary>
 
         private void Accordion_Expanding(Expander sender, ExpanderExpandingEventArgs args)
         {

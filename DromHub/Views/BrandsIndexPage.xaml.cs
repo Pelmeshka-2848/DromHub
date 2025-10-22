@@ -10,9 +10,18 @@ using System.Linq;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс BrandsIndexPage отвечает за логику компонента BrandsIndexPage.
+    /// </summary>
     public sealed partial class BrandsIndexPage : Page
     {
+        /// <summary>
+        /// Свойство ViewModel предоставляет доступ к данным ViewModel.
+        /// </summary>
         public BrandsIndexViewModel ViewModel { get; }
+        /// <summary>
+        /// Конструктор BrandsIndexPage инициализирует экземпляр класса.
+        /// </summary>
 
         public BrandsIndexPage()
         {
@@ -29,16 +38,25 @@ namespace DromHub.Views
                 BuildIndexBar();
             };
         }
+        /// <summary>
+        /// Метод OnSearchKeyDown выполняет основную операцию класса.
+        /// </summary>
 
         private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key.ToString() == "Enter")
                 ViewModel.ApplyFilters();
         }
+        /// <summary>
+        /// Метод Refresh_Click выполняет основную операцию класса.
+        /// </summary>
 
         private void Refresh_Click(object sender, RoutedEventArgs e) => ViewModel.ApplyFilters();
 
         // ===== A–Z индекс, растянутый по высоте
+        /// <summary>
+        /// Метод BuildIndexBar выполняет основную операцию класса.
+        /// </summary>
         private void BuildIndexBar()
         {
             if (IndexHost == null || BrandsList == null) return;
@@ -82,12 +100,18 @@ namespace DromHub.Views
                 IndexHost.Children.Add(btn);
             }
         }
+        /// <summary>
+        /// Метод OpenBrand_Click выполняет основную операцию класса.
+        /// </summary>
 
         private void OpenBrand_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.SelectedBrand is Brand b)
                 Frame?.Navigate(typeof(BrandShellPage), b.Id);
         }
+        /// <summary>
+        /// Метод CreatePart_Click выполняет основную операцию класса.
+        /// </summary>
 
         private void CreatePart_Click(object sender, RoutedEventArgs e)
         {
@@ -99,6 +123,9 @@ namespace DromHub.Views
                 XamlRoot = this.XamlRoot
             }.ShowAsync();
         }
+        /// <summary>
+        /// Метод OpenMergeWizard_Click выполняет основную операцию класса.
+        /// </summary>
 
         private void OpenMergeWizard_Click(object sender, RoutedEventArgs e)
         {

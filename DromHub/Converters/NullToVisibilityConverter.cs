@@ -4,8 +4,14 @@ using System;
 
 namespace DromHub.Converters
 {
+    /// <summary>
+    /// Класс NullToVisibilityConverter отвечает за логику компонента NullToVisibilityConverter.
+    /// </summary>
     public class NullToVisibilityConverter : IValueConverter
     {
+        /// <summary>
+        /// Метод Convert выполняет основную операцию класса.
+        /// </summary>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             bool isInverted = parameter?.ToString() == "invert";
@@ -16,6 +22,9 @@ namespace DromHub.Converters
 
             return isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
+        /// <summary>
+        /// Метод ConvertBack выполняет основную операцию класса.
+        /// </summary>
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {

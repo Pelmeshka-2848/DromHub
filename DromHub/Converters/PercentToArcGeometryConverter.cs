@@ -5,8 +5,14 @@ using System;
 namespace DromHub.Converters
 {
     // 0..100 -> дуга круга (PathGeometry) для тонкого кольца
+    /// <summary>
+    /// Класс PercentToArcGeometryConverter отвечает за логику компонента PercentToArcGeometryConverter.
+    /// </summary>
     public sealed class PercentToArcGeometryConverter : IValueConverter
     {
+        /// <summary>
+        /// Метод Convert выполняет основную операцию класса.
+        /// </summary>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             double val = 0;
@@ -42,6 +48,9 @@ namespace DromHub.Converters
             geom.Figures.Add(fig);
             return geom;
         }
+        /// <summary>
+        /// Метод ConvertBack выполняет основную операцию класса.
+        /// </summary>
 
         public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotImplementedException();
     }

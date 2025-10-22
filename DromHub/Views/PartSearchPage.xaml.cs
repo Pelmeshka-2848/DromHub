@@ -10,10 +10,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DromHub.Views
 {
+    /// <summary>
+    /// Класс PartSearchPage отвечает за логику компонента PartSearchPage.
+    /// </summary>
     public sealed partial class PartSearchPage : Page
     {
+        /// <summary>
+        /// Свойство ViewModel предоставляет доступ к данным ViewModel.
+        /// </summary>
         public PartViewModel ViewModel { get; }
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+        /// <summary>
+        /// Конструктор PartSearchPage инициализирует экземпляр класса.
+        /// </summary>
 
         public PartSearchPage()
         {
@@ -22,6 +31,9 @@ namespace DromHub.Views
             this.DataContext = ViewModel;
             _dbFactory = App.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         }
+        /// <summary>
+        /// Метод SearchTextBox_KeyDown выполняет основную операцию класса.
+        /// </summary>
 
         private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
@@ -30,6 +42,9 @@ namespace DromHub.Views
                 _ = ViewModel.SearchPartsCommand.ExecuteAsync(null);
             }
         }
+        /// <summary>
+        /// Метод AddPart_Click выполняет основную операцию класса.
+        /// </summary>
 
         private async void AddPart_Click(object sender, RoutedEventArgs e)
         {
@@ -67,6 +82,9 @@ namespace DromHub.Views
                 }
             }
         }
+        /// <summary>
+        /// Метод ViewPart_Click выполняет основную операцию класса.
+        /// </summary>
 
         private async void ViewPart_Click(object sender, RoutedEventArgs e)
         {
@@ -81,6 +99,9 @@ namespace DromHub.Views
                 await dialog.ShowAsync();
             }
         }
+        /// <summary>
+        /// Метод EditPart_Click выполняет основную операцию класса.
+        /// </summary>
 
 
 
@@ -107,6 +128,9 @@ namespace DromHub.Views
                 }
             }
         }
+        /// <summary>
+        /// Метод DeletePart_Click выполняет основную операцию класса.
+        /// </summary>
 
         private async void DeletePart_Click(object sender, RoutedEventArgs e)
         {
