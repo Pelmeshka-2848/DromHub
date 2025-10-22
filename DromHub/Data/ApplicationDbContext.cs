@@ -72,6 +72,10 @@ namespace DromHub.Data
         /// Свойство PriceMarkups предоставляет доступ к данным PriceMarkups.
         /// </summary>
         public DbSet<PriceMarkup> PriceMarkups { get; set; }
+        /// <summary>
+        /// Свойство Countries предоставляет доступ к данным Countries.
+        /// </summary>
+        public DbSet<Country> Countries { get; set; }
         // УДАЛИТЬ эти строки:
         // public DbSet<Cart> Carts { get; set; }
         // public DbSet<CartItem> CartItems { get; set; }

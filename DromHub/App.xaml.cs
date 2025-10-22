@@ -115,6 +115,7 @@ namespace DromHub
             services.AddTransient<BrandsHomeViewModel>();
             services.AddTransient<BrandShellViewModel>();
             services.AddTransient<MailParserViewModel>();
+            services.AddTransient<BrandSettingsViewModel>();
 
             // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
             services.AddTransient<CartViewModel>();
