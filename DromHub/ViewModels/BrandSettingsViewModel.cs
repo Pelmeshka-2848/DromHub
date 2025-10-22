@@ -19,6 +19,7 @@ namespace DromHub.ViewModels
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
 
         private Guid? _markupId;
+        private bool _suspendPrimaryAliasSync;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BrandSettingsViewModel"/> class.
@@ -107,6 +108,16 @@ namespace DromHub.ViewModels
 
         partial void OnNameChanged(string value)
         {
+            if (_suspendPrimaryAliasSync)
+            {
+                return;
+            }
+
+            SyncPrimaryAliasWithName(value);
+        }
+
+        private void SyncPrimaryAliasWithName(string value)
+        {
             var trimmedName = (value ?? string.Empty).Trim();
 
             var primaryEntry = Aliases
@@ -131,6 +142,29 @@ namespace DromHub.ViewModels
             }
             else if (!string.IsNullOrWhiteSpace(trimmedName))
             {
+                var existingEntry = Aliases
+                    .Select((alias, index) => (alias, index))
+                    .FirstOrDefault(tuple => string.Equals(tuple.alias?.Alias, trimmedName, StringComparison.OrdinalIgnoreCase));
+
+                if (existingEntry.alias is not null)
+                {
+                    if (!existingEntry.alias.IsPrimary || !string.Equals(existingEntry.alias.Alias, trimmedName, StringComparison.Ordinal))
+                    {
+                        var promotedAlias = new BrandAlias
+                        {
+                            Id = existingEntry.alias.Id,
+                            BrandId = existingEntry.alias.BrandId == Guid.Empty ? BrandId : existingEntry.alias.BrandId,
+                            Alias = trimmedName,
+                            IsPrimary = true,
+                            Note = existingEntry.alias.Note
+                        };
+
+                        Aliases[existingEntry.index] = promotedAlias;
+                    }
+
+                    return;
+                }
+
                 Aliases.Insert(0, new BrandAlias
                 {
                     Id = Guid.Empty,
@@ -178,6 +212,8 @@ namespace DromHub.ViewModels
                     return;
                 }
 
+                _suspendPrimaryAliasSync = true;
+
                 Name = brand.Name;
                 IsOem = brand.IsOem;
                 Website = brand.Website;
@@ -205,6 +241,10 @@ namespace DromHub.ViewModels
                         });
                     }
                 }
+
+                _suspendPrimaryAliasSync = false;
+
+                SyncPrimaryAliasWithName(Name);
             }
             finally
             {
