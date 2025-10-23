@@ -19,6 +19,7 @@ using OfficeOpenXml;
 using Npgsql;
 using WinRT;
 using WinRT.Interop;
+using Windows.System.Profile;
 
 namespace DromHub
 {
@@ -315,8 +316,9 @@ namespace DromHub
 
                 m_micaController = new MicaController();
 
-                // Указываем тип Mica
-                m_micaController.Kind = MicaKind.BaseAlt; // или MicaKind.Base
+                m_micaController.Kind = IsMicaBaseAltSupported()
+                    ? MicaKind.BaseAlt
+                    : MicaKind.Base;
 
                 // Включаем Mica для окна
                 m_micaController.AddSystemBackdropTarget(m_window.As<ICompositionSupportsSystemBackdrop>());
@@ -351,6 +353,23 @@ namespace DromHub
             }
             m_window.Activated -= Window_Activated;
             m_configuration = null;
+        }
+
+        private static bool IsMicaBaseAltSupported()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
+            {
+                return true;
+            }
+
+            var deviceFamilyVersion = AnalyticsInfo.VersionInfo.DeviceFamilyVersion;
+            if (ulong.TryParse(deviceFamilyVersion, out var versionValue))
+            {
+                var build = (versionValue & 0x00000000FFFF0000UL) >> 16;
+                return build >= 22621;
+            }
+
+            return false;
         }
 
         public static T GetService<T>() where T : class
