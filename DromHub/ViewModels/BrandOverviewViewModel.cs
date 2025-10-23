@@ -330,14 +330,33 @@ namespace DromHub.ViewModels
         private static double PercentileRank(List<double> sortedAsc, double value)
         {
             if (sortedAsc == null || sortedAsc.Count == 0) return 0.0;
-            int lo = 0, hi = sortedAsc.Count;
+
+            int n = sortedAsc.Count;
+
+            int lo = 0, hi = n;
+            while (lo < hi)
+            {
+                int mid = (lo + hi) / 2;
+                if (sortedAsc[mid] < value) lo = mid + 1;
+                else hi = mid;
+            }
+            int countLess = lo;
+
+            lo = 0;
+            hi = n;
             while (lo < hi)
             {
                 int mid = (lo + hi) / 2;
                 if (sortedAsc[mid] <= value) lo = mid + 1;
                 else hi = mid;
             }
-            return 100.0 * lo / sortedAsc.Count;
+            int countLessOrEqual = lo;
+
+            double rankLess = countLess / (double)n;
+            double rankLessOrEqual = countLessOrEqual / (double)n;
+            double percentile = (rankLess + rankLessOrEqual) / 2.0 * 100.0;
+
+            return Math.Clamp(percentile, 0.0, 100.0);
         }
         /// <summary>
         /// Метод Median выполняет основную операцию класса.
