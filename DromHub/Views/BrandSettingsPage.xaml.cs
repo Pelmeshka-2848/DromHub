@@ -51,6 +51,8 @@ namespace DromHub.Views
             ViewModel = App.ServiceProvider.GetRequiredService<BrandSettingsViewModel>();
             DataContext = ViewModel;
 
+            NavigationCacheMode = NavigationCacheMode.Required;
+
             _accordion = new[] { ExpCore, ExpAliases, ExpPricing, ExpUser };
 
             foreach (var ex in _accordion)
