@@ -98,7 +98,8 @@
                         </StackPanel>
                         <ComboBox Grid.Row="2" Grid.Column="2" MinWidth="200"
                                   ItemsSource="{Binding Countries}"
-                                  SelectedItem="{Binding SelectedCountry, Mode=TwoWay}"
+                                  SelectedValuePath="Id"
+                                  SelectedValue="{Binding SelectedCountryId, Mode=TwoWay}"
                                   DisplayMemberPath="Name"/>
 
                         <!-- Website -->
@@ -287,6 +288,7 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
                 Margin="20,10,20,10"
-                Command="{Binding SaveCommand}"/>
+                Command="{Binding SaveCommand}"
+                IsEnabled="{Binding HasChanges}"/>
     </Grid>
 </Page>

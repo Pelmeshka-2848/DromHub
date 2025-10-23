@@ -33,7 +33,7 @@ namespace DromHub.ViewModels
             nameof(YearFounded),
             nameof(Description),
             nameof(UserNotes),
-            nameof(SelectedCountry),
+            nameof(SelectedCountryId),
             nameof(MarkupPercent)
         };
 
@@ -50,7 +50,7 @@ namespace DromHub.ViewModels
             InitializeCommand = new AsyncRelayCommand<(Guid brandId, XamlRoot xr)>(args => InitializeAsync(args.brandId, args.xr));
             AddAliasCommand = new AsyncRelayCommand(AddAliasAsync, () => !IsBusy);
             RemoveAliasCommand = new AsyncRelayCommand<BrandAlias?>(RemoveAliasAsync);
-            SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsBusy);
+            SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsBusy && HasChanges);
 
             PropertyChanged += OnViewModelPropertyChanged;
             Aliases.CollectionChanged += OnAliasesCollectionChanged;
@@ -111,7 +111,7 @@ namespace DromHub.ViewModels
         private string? userNotes;
 
         [ObservableProperty]
-        private Country? selectedCountry;
+        private Guid? selectedCountryId;
 
         [ObservableProperty]
         private double? markupPercent;
@@ -129,6 +129,11 @@ namespace DromHub.ViewModels
         {
             SaveCommand.NotifyCanExecuteChanged();
             AddAliasCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnHasChangesChanged(bool value)
+        {
+            SaveCommand.NotifyCanExecuteChanged();
         }
 
         partial void OnNameChanged(string value)
@@ -252,7 +257,7 @@ namespace DromHub.ViewModels
                 YearFounded = brand.YearFounded;
                 Description = brand.Description;
                 UserNotes = brand.UserNotes;
-                SelectedCountry = Countries.FirstOrDefault(c => c.Id == brand.CountryId);
+                SelectedCountryId = brand.CountryId;
                 MarkupPercent = brand.Markup?.MarkupPct is decimal markup
                     ? (double)markup
                     : null;
@@ -294,7 +299,7 @@ namespace DromHub.ViewModels
             YearFounded = null;
             Description = null;
             UserNotes = null;
-            SelectedCountry = null;
+            SelectedCountryId = null;
             MarkupPercent = null;
             _markupId = null;
             NewAliasText = string.Empty;
@@ -369,7 +374,7 @@ namespace DromHub.ViewModels
                 brand.YearFounded = YearFounded;
                 brand.Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim();
                 brand.UserNotes = string.IsNullOrWhiteSpace(UserNotes) ? null : UserNotes.Trim();
-                brand.CountryId = SelectedCountry?.Id;
+                brand.CountryId = SelectedCountryId;
 
                 var primaryAlias = Aliases.FirstOrDefault(a => a.IsPrimary);
                 if (primaryAlias is not null)
