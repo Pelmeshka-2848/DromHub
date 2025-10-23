@@ -1,5 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +23,19 @@ namespace DromHub.ViewModels
 
         private Guid? _markupId;
         private bool _suspendPrimaryAliasSync;
+        private bool _suspendChangeTracking;
+
+        private static readonly HashSet<string> _trackedPropertyNames = new(StringComparer.Ordinal)
+        {
+            nameof(Name),
+            nameof(IsOem),
+            nameof(Website),
+            nameof(YearFounded),
+            nameof(Description),
+            nameof(UserNotes),
+            nameof(SelectedCountry),
+            nameof(MarkupPercent)
+        };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BrandSettingsViewModel"/> class.
@@ -35,6 +51,9 @@ namespace DromHub.ViewModels
             AddAliasCommand = new AsyncRelayCommand(AddAliasAsync, () => !IsBusy);
             RemoveAliasCommand = new AsyncRelayCommand<BrandAlias?>(RemoveAliasAsync);
             SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsBusy);
+
+            PropertyChanged += OnViewModelPropertyChanged;
+            Aliases.CollectionChanged += OnAliasesCollectionChanged;
         }
 
         /// <summary>
@@ -99,6 +118,9 @@ namespace DromHub.ViewModels
 
         [ObservableProperty]
         private string newAliasText = string.Empty;
+
+        [ObservableProperty]
+        private bool hasChanges;
 
         partial void OnIsBusyChanged(bool value)
         {
@@ -184,6 +206,7 @@ namespace DromHub.ViewModels
             _ = xr;
 
             IsBusy = true;
+            _suspendChangeTracking = true;
             try
             {
                 Countries.Clear();
@@ -248,6 +271,8 @@ namespace DromHub.ViewModels
             }
             finally
             {
+                _suspendChangeTracking = false;
+                HasChanges = false;
                 IsBusy = false;
             }
         }
@@ -416,10 +441,44 @@ namespace DromHub.ViewModels
                 }
 
                 await db.SaveChangesAsync();
+
+                HasChanges = false;
             }
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_suspendChangeTracking)
+            {
+                return;
+            }
+
+            if (e.PropertyName is null)
+            {
+                HasChanges = true;
+                return;
+            }
+
+            if (_trackedPropertyNames.Contains(e.PropertyName))
+            {
+                HasChanges = true;
+            }
+        }
+
+        private void OnAliasesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (_suspendChangeTracking)
+            {
+                return;
+            }
+
+            if (e.Action != NotifyCollectionChangedAction.Move)
+            {
+                HasChanges = true;
             }
         }
     }

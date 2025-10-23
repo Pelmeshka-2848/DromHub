@@ -69,6 +69,46 @@ namespace DromHub.Views
             }
         }
 
+        protected override async void OnNavigatingFrom(NavigatingCancelEventArgs e)
+        {
+            if (ViewModel.HasChanges && !ViewModel.SaveCommand.IsRunning)
+            {
+                e.Cancel = true;
+
+                var dialog = new ContentDialog
+                {
+                    Title = "Есть несохранённые изменения",
+                    Content = "Сохранить изменения перед выходом?",
+                    PrimaryButtonText = "Сохранить",
+                    SecondaryButtonText = "Не сохранять",
+                    CloseButtonText = "Отмена",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+
+                if (result == ContentDialogResult.Primary)
+                {
+                    if (ViewModel.SaveCommand.CanExecute(null))
+                    {
+                        await ViewModel.SaveCommand.ExecuteAsync(null);
+                    }
+
+                    if (!ViewModel.HasChanges)
+                    {
+                        e.Cancel = false;
+                    }
+                }
+                else if (result == ContentDialogResult.Secondary)
+                {
+                    e.Cancel = false;
+                }
+            }
+
+            base.OnNavigatingFrom(e);
+        }
+
         /// <summary>
         /// Метод Accordion_Expanding выполняет основную операцию класса.
         /// </summary>
