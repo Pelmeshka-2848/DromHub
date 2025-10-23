@@ -354,7 +354,9 @@ namespace DromHub.ViewModels
                 var trimmedName = (Name ?? string.Empty).Trim();
                 brand.Name = trimmedName;
                 brand.IsOem = IsOem;
-                brand.Website = string.IsNullOrWhiteSpace(Website) ? null : Website.Trim();
+                brand.Website = string.IsNullOrWhiteSpace(Website)
+                    ? string.Empty
+                    : Website!.Trim();
                 brand.YearFounded = YearFounded;
                 brand.Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim();
                 brand.UserNotes = string.IsNullOrWhiteSpace(UserNotes) ? null : UserNotes.Trim();

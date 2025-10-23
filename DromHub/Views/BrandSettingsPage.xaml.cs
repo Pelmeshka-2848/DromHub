@@ -3,6 +3,7 @@ using DromHub.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System.Collections.Generic;
 
@@ -14,6 +15,26 @@ namespace DromHub.Views
     public sealed partial class BrandSettingsPage : Page
     {
         private readonly IReadOnlyList<Expander> _accordion;
+        private bool _suppressNavigationPrompt;
+
+        private readonly struct PendingNavigationRequest
+        {
+            public PendingNavigationRequest(NavigatingCancelEventArgs args)
+            {
+                Mode = args.NavigationMode;
+                TargetPageType = args.SourcePageType;
+                Parameter = args.Parameter;
+                TransitionInfo = args.NavigationTransitionInfo;
+            }
+
+            public NavigationMode Mode { get; }
+
+            public Type? TargetPageType { get; }
+
+            public object? Parameter { get; }
+
+            public NavigationTransitionInfo? TransitionInfo { get; }
+        }
 
         /// <summary>
         /// Gets the page view model.
@@ -71,8 +92,17 @@ namespace DromHub.Views
 
         protected override async void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
+            if (_suppressNavigationPrompt)
+            {
+                _suppressNavigationPrompt = false;
+                base.OnNavigatingFrom(e);
+                return;
+            }
+
             if (ViewModel.HasChanges && !ViewModel.SaveCommand.IsRunning)
             {
+                var pendingNavigation = new PendingNavigationRequest(e);
+
                 e.Cancel = true;
 
                 var dialog = new ContentDialog
@@ -97,16 +127,73 @@ namespace DromHub.Views
 
                     if (!ViewModel.HasChanges)
                     {
-                        e.Cancel = false;
+                        ResumeNavigation(pendingNavigation);
                     }
                 }
                 else if (result == ContentDialogResult.Secondary)
                 {
-                    e.Cancel = false;
+                    ResumeNavigation(pendingNavigation);
                 }
+
+                return;
             }
 
             base.OnNavigatingFrom(e);
+        }
+
+        private void ResumeNavigation(in PendingNavigationRequest request)
+        {
+            if (Frame is null)
+            {
+                return;
+            }
+
+            _suppressNavigationPrompt = true;
+
+            var resumed = false;
+
+            switch (request.Mode)
+            {
+                case NavigationMode.Back:
+                    if (Frame.CanGoBack)
+                    {
+                        Frame.GoBack();
+                        resumed = true;
+                    }
+
+                    break;
+                case NavigationMode.Forward:
+                    if (Frame.CanGoForward)
+                    {
+                        Frame.GoForward();
+                        resumed = true;
+                    }
+
+                    break;
+                case NavigationMode.New:
+                case NavigationMode.Refresh:
+                default:
+                    if (request.TargetPageType is not null)
+                    {
+                        if (request.TransitionInfo is NavigationTransitionInfo info)
+                        {
+                            Frame.Navigate(request.TargetPageType, request.Parameter, info);
+                        }
+                        else
+                        {
+                            Frame.Navigate(request.TargetPageType, request.Parameter);
+                        }
+
+                        resumed = true;
+                    }
+
+                    break;
+            }
+
+            if (!resumed)
+            {
+                _suppressNavigationPrompt = false;
+            }
         }
 
         /// <summary>
