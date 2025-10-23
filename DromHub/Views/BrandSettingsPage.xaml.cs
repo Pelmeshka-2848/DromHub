@@ -80,6 +80,11 @@ namespace DromHub.Views
 
             if (brandId != Guid.Empty)
             {
+                if (ViewModel.BrandId == brandId)
+                {
+                    return;
+                }
+
                 await ViewModel.InitializeAsync(brandId, XamlRoot);
             }
 
