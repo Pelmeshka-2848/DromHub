@@ -24,6 +24,8 @@ namespace DromHub.Views
             InitializeComponent();
             ViewModel = App.ServiceProvider.GetRequiredService<BrandOverviewViewModel>();
             DataContext = ViewModel;
+
+            NavigationCacheMode = NavigationCacheMode.Required;
         }
         /// <summary>
         /// Метод OnNavigatedTo выполняет основную операцию класса.

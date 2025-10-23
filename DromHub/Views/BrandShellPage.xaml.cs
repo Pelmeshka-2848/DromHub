@@ -17,7 +17,26 @@ namespace DromHub.Views
     {
         private const int BrandCacheLimit = 5;
 
-        private readonly Dictionary<Guid, Dictionary<BrandDetailsSection, Page>> _brandSectionCache = new();
+        private sealed class SectionCacheEntry
+        {
+            public SectionCacheEntry(Page page, string navigationState)
+            {
+                Page = page;
+                NavigationState = navigationState;
+            }
+
+            public Page Page { get; private set; }
+
+            public string NavigationState { get; set; }
+
+            public void Update(Page page, string navigationState)
+            {
+                Page = page;
+                NavigationState = navigationState;
+            }
+        }
+
+        private readonly Dictionary<Guid, Dictionary<BrandDetailsSection, SectionCacheEntry>> _brandSectionCache = new();
         private readonly Dictionary<Guid, BrandDetailsSection> _brandSectionSelection = new();
         private readonly LinkedList<Guid> _brandCacheOrder = new();
 
@@ -54,7 +73,17 @@ namespace DromHub.Views
                     TryMapPageTypeToSection(e.SourcePageType, out var section))
                 {
                     var cache = EnsureBrandCache(ViewModel.BrandId);
-                    cache[section] = page;
+                    var navigationState = SectionFrame.GetNavigationState();
+
+                    if (cache.TryGetValue(section, out var entry))
+                    {
+                        entry.Update(page, navigationState);
+                    }
+                    else
+                    {
+                        cache[section] = new SectionCacheEntry(page, navigationState);
+                    }
+
                     _brandSectionSelection[ViewModel.BrandId] = section;
                     TouchBrandCache(ViewModel.BrandId);
                 }
@@ -78,7 +107,7 @@ namespace DromHub.Views
             if (!hasCache)
             {
                 EnsureBrandCapacity(id);
-                _brandSectionCache[id] = new Dictionary<BrandDetailsSection, Page>();
+                _brandSectionCache[id] = new Dictionary<BrandDetailsSection, SectionCacheEntry>();
             }
             else
             {
@@ -117,13 +146,9 @@ namespace DromHub.Views
             }
 
             if (_brandSectionCache.TryGetValue(ViewModel.BrandId, out var cache) &&
-                cache.TryGetValue(section, out var cachedPage))
+                cache.TryGetValue(section, out var cachedEntry) &&
+                TryRestoreCachedSection(cachedEntry))
             {
-                if (!ReferenceEquals(SectionFrame.Content, cachedPage))
-                {
-                    SectionFrame.Content = cachedPage;
-                }
-
                 _brandSectionSelection[ViewModel.BrandId] = section;
                 TouchBrandCache(ViewModel.BrandId);
                 return;
@@ -254,7 +279,31 @@ namespace DromHub.Views
             return false;
         }
 
-        private Dictionary<BrandDetailsSection, Page> EnsureBrandCache(Guid brandId)
+        private bool TryRestoreCachedSection(SectionCacheEntry entry)
+        {
+            if (ReferenceEquals(SectionFrame.Content, entry.Page))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(entry.NavigationState))
+            {
+                return false;
+            }
+
+            try
+            {
+                SectionFrame.SetNavigationState(entry.NavigationState);
+                return true;
+            }
+            catch
+            {
+                entry.NavigationState = string.Empty;
+                return false;
+            }
+        }
+
+        private Dictionary<BrandDetailsSection, SectionCacheEntry> EnsureBrandCache(Guid brandId)
         {
             if (_brandSectionCache.TryGetValue(brandId, out var cache))
             {
@@ -262,7 +311,7 @@ namespace DromHub.Views
             }
 
             EnsureBrandCapacity(brandId);
-            cache = new Dictionary<BrandDetailsSection, Page>();
+            cache = new Dictionary<BrandDetailsSection, SectionCacheEntry>();
             _brandSectionCache[brandId] = cache;
             return cache;
         }
