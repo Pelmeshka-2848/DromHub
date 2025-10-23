@@ -117,6 +117,9 @@ namespace DromHub.ViewModels
         private double? markupPercent;
 
         [ObservableProperty]
+        private string? lastExpandedSection;
+
+        [ObservableProperty]
         private string newAliasText = string.Empty;
 
         [ObservableProperty]
@@ -202,7 +205,13 @@ namespace DromHub.ViewModels
         /// </summary>
         public async Task InitializeAsync(Guid brandId, XamlRoot xr)
         {
+            var brandChanged = BrandId != brandId;
+
             BrandId = brandId;
+            if (brandChanged)
+            {
+                LastExpandedSection = null;
+            }
             _ = xr;
 
             IsBusy = true;
