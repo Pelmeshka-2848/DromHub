@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
 using Microsoft.UI.Xaml.Navigation;
 using System;
+using System.Collections.Generic;
 
 namespace DromHub.Views
 {
@@ -14,6 +15,12 @@ namespace DromHub.Views
     /// </summary>
     public sealed partial class BrandShellPage : Page
     {
+        private const int BrandCacheLimit = 5;
+
+        private readonly Dictionary<Guid, Dictionary<BrandDetailsSection, Page>> _brandSectionCache = new();
+        private readonly Dictionary<Guid, BrandDetailsSection> _brandSectionSelection = new();
+        private readonly LinkedList<Guid> _brandCacheOrder = new();
+
         /// <summary>
         /// Свойство ViewModel предоставляет доступ к данным ViewModel.
         /// </summary>
@@ -29,6 +36,8 @@ namespace DromHub.Views
             ViewModel = App.ServiceProvider.GetRequiredService<BrandShellViewModel>();
             DataContext = ViewModel;
 
+            SectionFrame.CacheSize = BrandCacheLimit;
+
             ViewModel.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(BrandShellViewModel.Section))
@@ -39,6 +48,16 @@ namespace DromHub.Views
             {
                 if (e.Content is FrameworkElement fe && fe.DataContext == null)
                     fe.DataContext = ViewModel; // единый VM для подпейджей
+
+                if (e.Content is Page page &&
+                    ViewModel.BrandId != Guid.Empty &&
+                    TryMapPageTypeToSection(e.SourcePageType, out var section))
+                {
+                    var cache = EnsureBrandCache(ViewModel.BrandId);
+                    cache[section] = page;
+                    _brandSectionSelection[ViewModel.BrandId] = section;
+                    TouchBrandCache(ViewModel.BrandId);
+                }
             };
         }
         /// <summary>
@@ -49,17 +68,41 @@ namespace DromHub.Views
         {
             base.OnNavigatedTo(e);
 
-            if (e.Parameter is Guid id)
-                await ViewModel.InitializeAsync(id, this.XamlRoot);
-
-            // Экран по умолчанию — Overview, БЕЗ анимации
-            if (SectionFrame.Content == null ||
-                SectionFrame.CurrentSourcePageType != typeof(BrandOverviewPage))
+            if (e.Parameter is not Guid id)
             {
-                SectionFrame.Navigate(
-                    typeof(BrandOverviewPage),
-                    ViewModel.BrandId,
-                    new SuppressNavigationTransitionInfo());
+                return;
+            }
+
+            var hasCache = _brandSectionCache.ContainsKey(id);
+
+            if (!hasCache)
+            {
+                EnsureBrandCapacity(id);
+                _brandSectionCache[id] = new Dictionary<BrandDetailsSection, Page>();
+            }
+            else
+            {
+                TouchBrandCache(id);
+            }
+
+            await ViewModel.InitializeAsync(id, this.XamlRoot);
+
+            var targetSection = _brandSectionSelection.TryGetValue(id, out var storedSection)
+                ? storedSection
+                : BrandDetailsSection.Overview;
+
+            if (!hasCache)
+            {
+                _brandSectionSelection[id] = targetSection;
+            }
+
+            if (ViewModel.Section != targetSection)
+            {
+                ViewModel.Section = targetSection;
+            }
+            else
+            {
+                NavigateToSection(targetSection);
             }
         }
         /// <summary>
@@ -68,15 +111,25 @@ namespace DromHub.Views
 
         private void NavigateToSection(BrandDetailsSection section)
         {
-            var pageType = section switch
+            if (ViewModel.BrandId == Guid.Empty)
             {
-                BrandDetailsSection.Overview => typeof(BrandOverviewPage),
-                BrandDetailsSection.Parts => typeof(BrandPartsPage),
-                BrandDetailsSection.Settings => typeof(BrandSettingsPage),
-                BrandDetailsSection.About => typeof(BrandAboutPage),
-                BrandDetailsSection.Changes => typeof(BrandChangesPage),
-                _ => typeof(BrandOverviewPage)
-            };
+                return;
+            }
+
+            if (_brandSectionCache.TryGetValue(ViewModel.BrandId, out var cache) &&
+                cache.TryGetValue(section, out var cachedPage))
+            {
+                if (!ReferenceEquals(SectionFrame.Content, cachedPage))
+                {
+                    SectionFrame.Content = cachedPage;
+                }
+
+                _brandSectionSelection[ViewModel.BrandId] = section;
+                TouchBrandCache(ViewModel.BrandId);
+                return;
+            }
+
+            var pageType = MapSectionToPageType(section);
 
             // Переключение разделов — всегда без анимации
             if (SectionFrame.CurrentSourcePageType != pageType)
@@ -153,6 +206,97 @@ namespace DromHub.Views
         {
             if (ViewModel.HasNext && ViewModel.NextBrandId is Guid id)
                 NavigateToBrand(id, SlideNavigationTransitionEffect.FromRight);
+        }
+
+        private static Type MapSectionToPageType(BrandDetailsSection section) => section switch
+        {
+            BrandDetailsSection.Overview => typeof(BrandOverviewPage),
+            BrandDetailsSection.Parts => typeof(BrandPartsPage),
+            BrandDetailsSection.Settings => typeof(BrandSettingsPage),
+            BrandDetailsSection.About => typeof(BrandAboutPage),
+            BrandDetailsSection.Changes => typeof(BrandChangesPage),
+            _ => typeof(BrandOverviewPage)
+        };
+
+        private static bool TryMapPageTypeToSection(Type? pageType, out BrandDetailsSection section)
+        {
+            if (pageType == typeof(BrandOverviewPage))
+            {
+                section = BrandDetailsSection.Overview;
+                return true;
+            }
+
+            if (pageType == typeof(BrandPartsPage))
+            {
+                section = BrandDetailsSection.Parts;
+                return true;
+            }
+
+            if (pageType == typeof(BrandSettingsPage))
+            {
+                section = BrandDetailsSection.Settings;
+                return true;
+            }
+
+            if (pageType == typeof(BrandAboutPage))
+            {
+                section = BrandDetailsSection.About;
+                return true;
+            }
+
+            if (pageType == typeof(BrandChangesPage))
+            {
+                section = BrandDetailsSection.Changes;
+                return true;
+            }
+
+            section = default;
+            return false;
+        }
+
+        private Dictionary<BrandDetailsSection, Page> EnsureBrandCache(Guid brandId)
+        {
+            if (_brandSectionCache.TryGetValue(brandId, out var cache))
+            {
+                return cache;
+            }
+
+            EnsureBrandCapacity(brandId);
+            cache = new Dictionary<BrandDetailsSection, Page>();
+            _brandSectionCache[brandId] = cache;
+            return cache;
+        }
+
+        private void EnsureBrandCapacity(Guid brandId)
+        {
+            if (_brandSectionCache.ContainsKey(brandId))
+            {
+                return;
+            }
+
+            if (_brandSectionCache.Count >= BrandCacheLimit && _brandCacheOrder.First is not null)
+            {
+                var oldest = _brandCacheOrder.First.Value;
+                _brandCacheOrder.RemoveFirst();
+                _brandSectionCache.Remove(oldest);
+                _brandSectionSelection.Remove(oldest);
+            }
+
+            _brandCacheOrder.AddLast(brandId);
+        }
+
+        private void TouchBrandCache(Guid brandId)
+        {
+            var node = _brandCacheOrder.Find(brandId);
+
+            if (node is null)
+            {
+                _brandCacheOrder.AddLast(brandId);
+                return;
+            }
+
+            _brandCacheOrder.Remove(node);
+            _brandCacheOrder.AddLast(node);
         }
     }
 }

@@ -33,7 +33,14 @@ namespace DromHub.Views
         {
             base.OnNavigatedTo(e);
             if (e.Parameter is Guid id)
+            {
+                if (ViewModel.BrandId == id)
+                {
+                    return;
+                }
+
                 await ViewModel.InitializeAsync(id, this.XamlRoot);
+            }
         }
         /// <summary>
         /// Метод OnOpenInBrowserClicked выполняет основную операцию класса.
