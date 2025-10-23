@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DromHub.Views
 {
@@ -39,6 +40,8 @@ namespace DromHub.Views
         private readonly Dictionary<Guid, Dictionary<BrandDetailsSection, SectionCacheEntry>> _brandSectionCache = new();
         private readonly Dictionary<Guid, BrandDetailsSection> _brandSectionSelection = new();
         private readonly LinkedList<Guid> _brandCacheOrder = new();
+        private BrandDetailsSection _currentSection = BrandDetailsSection.Overview;
+        private bool _suppressSectionChange;
 
         /// <summary>
         /// Свойство ViewModel предоставляет доступ к данным ViewModel.
@@ -57,10 +60,31 @@ namespace DromHub.Views
 
             SectionFrame.CacheSize = BrandCacheLimit;
 
-            ViewModel.PropertyChanged += (_, e) =>
+            ViewModel.PropertyChanged += async (_, e) =>
             {
                 if (e.PropertyName == nameof(BrandShellViewModel.Section))
-                    NavigateToSection(ViewModel.Section);
+                {
+                    if (_suppressSectionChange)
+                    {
+                        return;
+                    }
+
+                    var targetSection = ViewModel.Section;
+                    var navigated = await NavigateToSectionAsync(targetSection);
+
+                    if (!navigated && targetSection != _currentSection)
+                    {
+                        try
+                        {
+                            _suppressSectionChange = true;
+                            ViewModel.Section = _currentSection;
+                        }
+                        finally
+                        {
+                            _suppressSectionChange = false;
+                        }
+                    }
+                }
             };
 
             SectionFrame.Navigated += (_, e) =>
@@ -86,6 +110,7 @@ namespace DromHub.Views
 
                     _brandSectionSelection[ViewModel.BrandId] = section;
                     TouchBrandCache(ViewModel.BrandId);
+                    _currentSection = section;
                 }
             };
         }
@@ -127,22 +152,38 @@ namespace DromHub.Views
 
             if (ViewModel.Section != targetSection)
             {
-                ViewModel.Section = targetSection;
+                try
+                {
+                    _suppressSectionChange = true;
+                    ViewModel.Section = targetSection;
+                }
+                finally
+                {
+                    _suppressSectionChange = false;
+                }
             }
-            else
-            {
-                NavigateToSection(targetSection);
-            }
+
+            await NavigateToSectionAsync(targetSection, force: true);
         }
         /// <summary>
         /// Метод NavigateToSection выполняет основную операцию класса.
         /// </summary>
 
-        private void NavigateToSection(BrandDetailsSection section)
+        private async Task<bool> NavigateToSectionAsync(BrandDetailsSection section, bool force = false)
         {
             if (ViewModel.BrandId == Guid.Empty)
             {
-                return;
+                return false;
+            }
+
+            if (!force && section == _currentSection && SectionFrame.Content is not null)
+            {
+                return true;
+            }
+
+            if (!await EnsureCanLeaveCurrentSectionAsync(section, force))
+            {
+                return false;
             }
 
             if (_brandSectionCache.TryGetValue(ViewModel.BrandId, out var cache) &&
@@ -151,19 +192,27 @@ namespace DromHub.Views
             {
                 _brandSectionSelection[ViewModel.BrandId] = section;
                 TouchBrandCache(ViewModel.BrandId);
-                return;
+                _currentSection = section;
+                return true;
             }
 
             var pageType = MapSectionToPageType(section);
 
             // Переключение разделов — всегда без анимации
-            if (SectionFrame.CurrentSourcePageType != pageType)
+            if (force || SectionFrame.CurrentSourcePageType != pageType)
             {
                 SectionFrame.Navigate(
                     pageType,
                     ViewModel.BrandId,
                     new SuppressNavigationTransitionInfo());
             }
+
+            if (SectionFrame.CurrentSourcePageType == pageType)
+            {
+                _currentSection = section;
+            }
+
+            return true;
         }
         /// <summary>
         /// Метод SectionButton_Checked выполняет основную операцию класса.
@@ -175,6 +224,66 @@ namespace DromHub.Views
                 Enum.TryParse(tag, out BrandDetailsSection section))
             {
                 ViewModel.Section = section;
+            }
+        }
+
+        private async Task<bool> EnsureCanLeaveCurrentSectionAsync(BrandDetailsSection targetSection, bool force)
+        {
+            if (force)
+            {
+                return true;
+            }
+
+            if (_currentSection == targetSection)
+            {
+                return true;
+            }
+
+            if (_currentSection != BrandDetailsSection.Settings)
+            {
+                return true;
+            }
+
+            if (SectionFrame.Content is not BrandSettingsPage settingsPage)
+            {
+                return true;
+            }
+
+            var vm = settingsPage.ViewModel;
+
+            if (!vm.HasChanges || vm.SaveCommand.IsRunning)
+            {
+                return true;
+            }
+
+            var dialog = new ContentDialog
+            {
+                Title = "Есть несохранённые изменения",
+                Content = "Сохранить изменения перед выходом?",
+                PrimaryButtonText = "Сохранить",
+                SecondaryButtonText = "Не сохранять",
+                CloseButtonText = "Отмена",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = settingsPage.XamlRoot ?? XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+
+            switch (result)
+            {
+                case ContentDialogResult.Primary:
+                    if (vm.SaveCommand.CanExecute(null))
+                    {
+                        await vm.SaveCommand.ExecuteAsync(null);
+                    }
+
+                    return !vm.HasChanges;
+
+                case ContentDialogResult.Secondary:
+                    return true;
+
+                default:
+                    return false;
             }
         }
 
