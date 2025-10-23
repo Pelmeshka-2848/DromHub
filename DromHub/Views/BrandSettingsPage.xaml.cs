@@ -58,15 +58,7 @@ namespace DromHub.Views
                 ex.Expanding += Accordion_Expanding;
             }
 
-            Loaded += (_, __) =>
-            {
-                // открыть первый, остальные закрыть
-                ExpCore.IsExpanded = true;
-                for (int i = 1; i < _accordion.Count; i++)
-                {
-                    _accordion[i].IsExpanded = false;
-                }
-            };
+            ApplyAccordionState();
         }
 
         /// <summary>
@@ -88,6 +80,8 @@ namespace DromHub.Views
             {
                 await ViewModel.InitializeAsync(brandId, XamlRoot);
             }
+
+            ApplyAccordionState();
         }
 
         protected override async void OnNavigatingFrom(NavigatingCancelEventArgs e)
@@ -201,12 +195,40 @@ namespace DromHub.Views
         /// </summary>
         private void Accordion_Expanding(Expander sender, ExpanderExpandingEventArgs args)
         {
+            if (!string.IsNullOrEmpty(sender.Name))
+            {
+                ViewModel.LastExpandedSection = sender.Name;
+            }
+
             foreach (var ex in _accordion)
             {
                 if (!ReferenceEquals(ex, sender))
                 {
                     ex.IsExpanded = false;
                 }
+            }
+        }
+
+        private void ApplyAccordionState()
+        {
+            var target = ExpCore;
+            var targetName = ViewModel.LastExpandedSection;
+
+            if (!string.IsNullOrWhiteSpace(targetName))
+            {
+                foreach (var expander in _accordion)
+                {
+                    if (string.Equals(expander.Name, targetName, StringComparison.Ordinal))
+                    {
+                        target = expander;
+                        break;
+                    }
+                }
+            }
+
+            foreach (var expander in _accordion)
+            {
+                expander.IsExpanded = ReferenceEquals(expander, target);
             }
         }
     }
