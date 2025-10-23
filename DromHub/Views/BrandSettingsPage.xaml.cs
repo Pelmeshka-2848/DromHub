@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DromHub.Views
 {
@@ -16,6 +17,13 @@ namespace DromHub.Views
     {
         private readonly IReadOnlyList<Expander> _accordion;
         private bool _suppressNavigationPrompt;
+
+        private enum UnsavedChangesResolution
+        {
+            Cancel,
+            Save,
+            Discard
+        }
 
         private readonly struct PendingNavigationRequest
         {
@@ -71,6 +79,8 @@ namespace DromHub.Views
         {
             base.OnNavigatedTo(e);
 
+            _suppressNavigationPrompt = false;
+
             var brandId = e?.Parameter switch
             {
                 Guid g => g,
@@ -80,8 +90,41 @@ namespace DromHub.Views
 
             if (brandId != Guid.Empty)
             {
+                if (ViewModel.BrandId != Guid.Empty && ViewModel.BrandId != brandId && ViewModel.HasChanges && !_suppressNavigationPrompt && !ViewModel.SaveCommand.IsRunning)
+                {
+                    var resolution = await ResolveUnsavedChangesAsync();
+
+                    if (resolution == UnsavedChangesResolution.Cancel)
+                    {
+                        _suppressNavigationPrompt = true;
+
+                        if (Frame?.CanGoBack == true)
+                        {
+                            Frame.GoBack();
+                        }
+
+                        ApplyAccordionState();
+                        return;
+                    }
+
+                    if (resolution == UnsavedChangesResolution.Save)
+                    {
+                        if (ViewModel.SaveCommand.CanExecute(null))
+                        {
+                            await ViewModel.SaveCommand.ExecuteAsync(null);
+                        }
+
+                        if (ViewModel.HasChanges)
+                        {
+                            ApplyAccordionState();
+                            return;
+                        }
+                    }
+                }
+
                 if (ViewModel.BrandId == brandId)
                 {
+                    ApplyAccordionState();
                     return;
                 }
 
@@ -106,20 +149,9 @@ namespace DromHub.Views
 
                 e.Cancel = true;
 
-                var dialog = new ContentDialog
-                {
-                    Title = "Есть несохранённые изменения",
-                    Content = "Сохранить изменения перед выходом?",
-                    PrimaryButtonText = "Сохранить",
-                    SecondaryButtonText = "Не сохранять",
-                    CloseButtonText = "Отмена",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = XamlRoot
-                };
+                var resolution = await ResolveUnsavedChangesAsync();
 
-                var result = await dialog.ShowAsync();
-
-                if (result == ContentDialogResult.Primary)
+                if (resolution == UnsavedChangesResolution.Save)
                 {
                     if (ViewModel.SaveCommand.CanExecute(null))
                     {
@@ -131,7 +163,7 @@ namespace DromHub.Views
                         ResumeNavigation(pendingNavigation);
                     }
                 }
-                else if (result == ContentDialogResult.Secondary)
+                else if (resolution == UnsavedChangesResolution.Discard)
                 {
                     ResumeNavigation(pendingNavigation);
                 }
@@ -140,6 +172,29 @@ namespace DromHub.Views
             }
 
             base.OnNavigatingFrom(e);
+        }
+
+        private async Task<UnsavedChangesResolution> ResolveUnsavedChangesAsync()
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Есть несохранённые изменения",
+                Content = "Сохранить изменения перед выходом?",
+                PrimaryButtonText = "Сохранить",
+                SecondaryButtonText = "Не сохранять",
+                CloseButtonText = "Отмена",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+
+            return result switch
+            {
+                ContentDialogResult.Primary => UnsavedChangesResolution.Save,
+                ContentDialogResult.Secondary => UnsavedChangesResolution.Discard,
+                _ => UnsavedChangesResolution.Cancel
+            };
         }
 
         private void ResumeNavigation(in PendingNavigationRequest request)
