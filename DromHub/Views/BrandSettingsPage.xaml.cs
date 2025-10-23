@@ -71,42 +71,51 @@ namespace DromHub.Views
 
         protected override async void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
-            if (ViewModel.HasChanges && !ViewModel.SaveCommand.IsRunning)
+            var deferral = e.GetDeferral();
+
+            try
             {
-                e.Cancel = true;
-
-                var dialog = new ContentDialog
+                if (ViewModel.HasChanges && !ViewModel.SaveCommand.IsRunning)
                 {
-                    Title = "Есть несохранённые изменения",
-                    Content = "Сохранить изменения перед выходом?",
-                    PrimaryButtonText = "Сохранить",
-                    SecondaryButtonText = "Не сохранять",
-                    CloseButtonText = "Отмена",
-                    DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = XamlRoot
-                };
+                    e.Cancel = true;
 
-                var result = await dialog.ShowAsync();
-
-                if (result == ContentDialogResult.Primary)
-                {
-                    if (ViewModel.SaveCommand.CanExecute(null))
+                    var dialog = new ContentDialog
                     {
-                        await ViewModel.SaveCommand.ExecuteAsync(null);
-                    }
+                        Title = "Есть несохранённые изменения",
+                        Content = "Сохранить изменения перед выходом?",
+                        PrimaryButtonText = "Сохранить",
+                        SecondaryButtonText = "Не сохранять",
+                        CloseButtonText = "Отмена",
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = XamlRoot
+                    };
 
-                    if (!ViewModel.HasChanges)
+                    var result = await dialog.ShowAsync();
+
+                    if (result == ContentDialogResult.Primary)
+                    {
+                        if (ViewModel.SaveCommand.CanExecute(null))
+                        {
+                            await ViewModel.SaveCommand.ExecuteAsync(null);
+                        }
+
+                        if (!ViewModel.HasChanges)
+                        {
+                            e.Cancel = false;
+                        }
+                    }
+                    else if (result == ContentDialogResult.Secondary)
                     {
                         e.Cancel = false;
                     }
                 }
-                else if (result == ContentDialogResult.Secondary)
-                {
-                    e.Cancel = false;
-                }
-            }
 
-            base.OnNavigatingFrom(e);
+                base.OnNavigatingFrom(e);
+            }
+            finally
+            {
+                deferral.Complete();
+            }
         }
 
         /// <summary>
