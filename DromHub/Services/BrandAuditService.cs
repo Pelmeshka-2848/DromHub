@@ -203,6 +203,42 @@ namespace DromHub.Services
         /// </summary>
         /// <value>Имя таблицы или «—».</value>
         public string TableDisplay => string.IsNullOrWhiteSpace(Table) ? "—" : Table;
+
+        /// <summary>
+        /// Содержит детализированный список изменений значений по каждому столбцу.
+        /// </summary>
+        /// <value>Наблюдаемая последовательность элементов <see cref="BrandAuditValueChange"/>; по умолчанию — пустая.</value>
+        public IReadOnlyList<BrandAuditValueChange> ValueChanges { get; init; } = Array.Empty<BrandAuditValueChange>();
+    }
+
+    /// <summary>
+    /// <para>Представляет пару «старое-новое» значение для конкретного столбца аудита, обеспечивая однозначную трактовку дельты.</para>
+    /// <para>Используется для визуализации изменений в интерфейсе и для ручной проверки корректности данных.</para>
+    /// <para>Поддерживает только плоские столбцы; вложенные структуры выводятся как JSON-строки для сохранения контекста.</para>
+    /// </summary>
+    /// <remarks>
+    /// Потокобезопасность: экземпляр иммутабелен после инициализации.
+    /// Побочные эффекты: отсутствуют.
+    /// </remarks>
+    public sealed class BrandAuditValueChange
+    {
+        /// <summary>
+        /// Название столбца, для которого отображается изменение.
+        /// </summary>
+        /// <value>Имя столбца в таблице брендов; никогда не пустая строка.</value>
+        public string ColumnName { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Подготовленное текстовое представление значения до изменения.
+        /// </summary>
+        /// <value>Строка с человеческим описанием или «—».</value>
+        public string OldValueDisplay { get; init; } = "—";
+
+        /// <summary>
+        /// Подготовленное текстовое представление значения после изменения.
+        /// </summary>
+        /// <value>Строка с человеческим описанием или «—».</value>
+        public string NewValueDisplay { get; init; } = "—";
     }
 
     /// <summary>
@@ -321,11 +357,183 @@ namespace DromHub.Services
                     BrandId = a.BrandId,
                     OldJson = a.OldData,
                     NewJson = a.NewData,
-                    ChangedColumns = a.ChangedColumns ?? Array.Empty<string>()
+                    ChangedColumns = a.ChangedColumns ?? Array.Empty<string>(),
+                    ValueChanges = BuildValueChanges(a)
                 });
             }
 
             return (rows, total);
+        }
+
+        /// <summary>
+        /// Формирует читаемый список изменений значений на основе данных аудита.
+        /// </summary>
+        /// <param name="entity">Запись аудита из базы данных.</param>
+        /// <returns>Список изменений для отображения в UI.</returns>
+        /// <remarks>
+        /// Алгоритм сопоставляет JSON-снимки и список столбцов, отфильтровывая неизменённые значения.
+        /// Сложность: O(n) относительно количества затронутых столбцов.
+        /// Потокобезопасность: статический метод без состояния.
+        /// </remarks>
+        private static IReadOnlyList<BrandAuditValueChange> BuildValueChanges(BrandAuditLog entity)
+        {
+            var result = new List<BrandAuditValueChange>();
+            using var oldDoc = ParseJson(entity.OldData);
+            using var newDoc = ParseJson(entity.NewData);
+
+            var changed = entity.ChangedColumns?
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => c.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (changed is { Length: > 0 })
+            {
+                foreach (var column in changed)
+                {
+                    var oldValue = ExtractValue(oldDoc, column);
+                    var newValue = ExtractValue(newDoc, column);
+
+                    if (oldValue == newValue)
+                    {
+                        continue;
+                    }
+
+                    result.Add(new BrandAuditValueChange
+                    {
+                        ColumnName = column,
+                        OldValueDisplay = oldValue,
+                        NewValueDisplay = newValue
+                    });
+                }
+            }
+            else if (entity.Action == 'I' && newDoc is not null && newDoc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in newDoc.RootElement.EnumerateObject())
+                {
+                    result.Add(new BrandAuditValueChange
+                    {
+                        ColumnName = property.Name,
+                        OldValueDisplay = "—",
+                        NewValueDisplay = FormatJsonValue(property.Value)
+                    });
+                }
+            }
+            else if (entity.Action == 'D' && oldDoc is not null && oldDoc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in oldDoc.RootElement.EnumerateObject())
+                {
+                    result.Add(new BrandAuditValueChange
+                    {
+                        ColumnName = property.Name,
+                        OldValueDisplay = FormatJsonValue(property.Value),
+                        NewValueDisplay = "—"
+                    });
+                }
+            }
+            else if (oldDoc is not null && newDoc is not null &&
+                     oldDoc.RootElement.ValueKind == JsonValueKind.Object &&
+                     newDoc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var property in newDoc.RootElement.EnumerateObject())
+                {
+                    names.Add(property.Name);
+                }
+
+                foreach (var property in oldDoc.RootElement.EnumerateObject())
+                {
+                    names.Add(property.Name);
+                }
+
+                foreach (var name in names)
+                {
+                    var oldValue = ExtractValue(oldDoc, name);
+                    var newValue = ExtractValue(newDoc, name);
+
+                    if (oldValue == newValue)
+                    {
+                        continue;
+                    }
+
+                    result.Add(new BrandAuditValueChange
+                    {
+                        ColumnName = name,
+                        OldValueDisplay = oldValue,
+                        NewValueDisplay = newValue
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Парсит JSON-строку в документ, обрабатывая пустые значения.
+        /// </summary>
+        /// <param name="json">Строка JSON или <see langword="null"/>.</param>
+        /// <returns><see cref="JsonDocument"/> или <see langword="null"/>, если вход пустой.</returns>
+        /// <remarks>
+        /// Потокобезопасность: статический метод без состояния.
+        /// </remarks>
+        private static JsonDocument? ParseJson(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            return JsonDocument.Parse(json);
+        }
+
+        /// <summary>
+        /// Извлекает значение свойства из JSON-документа и форматирует его для UI.
+        /// </summary>
+        /// <param name="doc">JSON-документ или <see langword="null"/>.</param>
+        /// <param name="propertyName">Имя свойства, которое требуется извлечь.</param>
+        /// <returns>Отформатированное строковое значение или «—».</returns>
+        /// <remarks>
+        /// Потокобезопасность: статический метод без состояния.
+        /// </remarks>
+        private static string ExtractValue(JsonDocument? doc, string propertyName)
+        {
+            if (doc is null)
+            {
+                return "—";
+            }
+
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return FormatJsonValue(root);
+            }
+
+            if (!root.TryGetProperty(propertyName, out var element))
+            {
+                return "—";
+            }
+
+            return FormatJsonValue(element);
+        }
+
+        /// <summary>
+        /// Преобразует JSON-элемент в человеко-читаемое строковое представление.
+        /// </summary>
+        /// <param name="element">JSON-элемент для отображения.</param>
+        /// <returns>Форматированная строка, готовая к показу в UI.</returns>
+        /// <remarks>
+        /// Потокобезопасность: статический метод без состояния.
+        /// </remarks>
+        private static string FormatJsonValue(JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString() ?? string.Empty,
+                JsonValueKind.Number => element.ToString(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Null => "null",
+                _ => element.GetRawText()
+            };
         }
 
         /// <summary>

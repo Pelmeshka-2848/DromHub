@@ -44,6 +44,11 @@ public sealed class BrandChangesViewModel : ObservableObject
     private readonly AsyncRelayCommand _prevPageCommand;
 
     /// <summary>
+    /// Инкапсулирует команду очистки фильтров, чтобы синхронизировать доступность с состоянием загрузки.
+    /// </summary>
+    private readonly RelayCommand _clearFiltersCommand;
+
+    /// <summary>
     /// Хранит идентификатор бренда, историю которого просматривает пользователь.
     /// </summary>
     private Guid _brandId;
@@ -109,6 +114,11 @@ public sealed class BrandChangesViewModel : ObservableObject
     private bool _pendingReload;
 
     /// <summary>
+    /// Блокирует автоматический запуск перезагрузки при массовом изменении фильтров.
+    /// </summary>
+    private bool _suppressReload;
+
+    /// <summary>
     /// Инициализирует модель представления зависимостью от <see cref="BrandAuditService"/> и настраивает команды.
     /// </summary>
     /// <param name="service">Сервис чтения лога аудита брендов; не допускает значение <see langword="null"/>.</param>
@@ -141,6 +151,7 @@ public sealed class BrandChangesViewModel : ObservableObject
         _loadCommand = new AsyncRelayCommand(LoadInternalAsync, () => !IsBusy);
         _nextPageCommand = new AsyncRelayCommand(NextPageInternalAsync, CanGoNext);
         _prevPageCommand = new AsyncRelayCommand(PrevPageInternalAsync, CanGoPrevious);
+        _clearFiltersCommand = new RelayCommand(ClearFilters, () => !IsBusy);
     }
 
     /// <summary>
@@ -198,6 +209,17 @@ public sealed class BrandChangesViewModel : ObservableObject
     public IAsyncRelayCommand PrevPageCommand => _prevPageCommand;
 
     /// <summary>
+    /// <para>Представляет команду сброса фильтров к значениям по умолчанию, обеспечивая быстрый возврат к чистому состоянию.</para>
+    /// <para>Применяйте при переходе между брендами или перед повторным поиском, чтобы исключить устаревшие параметры.</para>
+    /// </summary>
+    /// <value>Экземпляр <see cref="IRelayCommand"/>, который очищает даты, поиск и тип действия.</value>
+    /// <remarks>
+    /// Команда недоступна во время загрузки данных, чтобы избежать гонок состояния.
+    /// Потокобезопасность: обращаться из UI-потока, поскольку реализация изменяет состояние модели.
+    /// </remarks>
+    public IRelayCommand ClearFiltersCommand => _clearFiltersCommand;
+
+    /// <summary>
     /// Возвращает или задает идентификатор бренда, журнал изменений которого отображается.
     /// </summary>
     /// <value>GUID бренда; значение по умолчанию — <see cref="Guid.Empty"/>, что означает отсутствие выбранного бренда.</value>
@@ -224,7 +246,10 @@ public sealed class BrandChangesViewModel : ObservableObject
         {
             if (SetProperty(ref _fromDate, value))
             {
-                ScheduleReload(resetPage: true);
+                if (!_suppressReload)
+                {
+                    ScheduleReload(resetPage: true);
+                }
             }
         }
     }
@@ -243,7 +268,10 @@ public sealed class BrandChangesViewModel : ObservableObject
         {
             if (SetProperty(ref _toDate, value))
             {
-                ScheduleReload(resetPage: true);
+                if (!_suppressReload)
+                {
+                    ScheduleReload(resetPage: true);
+                }
             }
         }
     }
@@ -262,7 +290,10 @@ public sealed class BrandChangesViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedAction, value))
             {
-                ScheduleReload(resetPage: true);
+                if (!_suppressReload)
+                {
+                    ScheduleReload(resetPage: true);
+                }
             }
         }
     }
@@ -281,7 +312,10 @@ public sealed class BrandChangesViewModel : ObservableObject
         {
             if (SetProperty(ref _onlyChangedFields, value))
             {
-                ScheduleReload(resetPage: true);
+                if (!_suppressReload)
+                {
+                    ScheduleReload(resetPage: true);
+                }
             }
         }
     }
@@ -300,7 +334,10 @@ public sealed class BrandChangesViewModel : ObservableObject
         {
             if (SetProperty(ref _search, value))
             {
-                ScheduleReload(resetPage: true);
+                if (!_suppressReload)
+                {
+                    ScheduleReload(resetPage: true);
+                }
             }
         }
     }
@@ -378,6 +415,7 @@ public sealed class BrandChangesViewModel : ObservableObject
             if (SetProperty(ref _isBusy, value))
             {
                 _loadCommand.NotifyCanExecuteChanged();
+                _clearFiltersCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -525,6 +563,39 @@ public sealed class BrandChangesViewModel : ObservableObject
                 _ = _loadCommand.ExecuteAsync(null);
             }
         }
+    }
+
+    /// <summary>
+    /// <para>Сбрасывает пользовательские фильтры к значениям по умолчанию и инициирует обновление списка.</para>
+    /// <para>Поддерживает повторяемость сценариев анализа, устраняя накопившиеся критерии поиска.</para>
+    /// </summary>
+    /// <remarks>
+    /// Метод не выполняет действий, если загрузка уже идет, чтобы избежать двойных запросов.
+    /// Побочные эффекты: очищает текст поиска и сбрасывает флаги фильтров.
+    /// Потокобезопасность: вызывайте только из UI-потока.
+    /// </remarks>
+    private void ClearFilters()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _suppressReload = true;
+        try
+        {
+            FromDate = null;
+            ToDate = null;
+            SelectedAction = AuditActionFilter.All;
+            OnlyChangedFields = false;
+            Search = null;
+        }
+        finally
+        {
+            _suppressReload = false;
+        }
+
+        ScheduleReload(resetPage: true);
     }
 
     /// <summary>
