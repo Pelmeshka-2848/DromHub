@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DromHub.Data
 {
@@ -79,6 +80,9 @@ namespace DromHub.Data
         // УДАЛИТЬ эти строки:
         // public DbSet<Cart> Carts { get; set; }
         // public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<BrandAuditLog> BrandAuditLogs => Set<BrandAuditLog>();
+
+
         /// <summary>
         /// Метод OnModelCreating выполняет основную операцию класса.
         /// </summary>
@@ -237,6 +241,33 @@ namespace DromHub.Data
                     .HasDefaultValueSql("NOW()")
                     .ValueGeneratedOnAddOrUpdate();
             });
+
+            modelBuilder.Entity<BrandAuditLog>(ConfigureBrandAudit);
+        }
+
+        private static void ConfigureBrandAudit(EntityTypeBuilder<BrandAuditLog> e)
+        {
+            e.ToTable("brand_audit_log");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.EventId).HasColumnName("event_id");
+            e.Property(x => x.BrandId).HasColumnName("brand_id");
+            e.Property(x => x.Action).HasColumnName("action");
+            e.Property(x => x.ChangedColumns).HasColumnName("changed_columns").HasColumnType("text[]");
+
+            e.Property(x => x.OldData).HasColumnName("old_data").HasColumnType("jsonb");
+            e.Property(x => x.NewData).HasColumnName("new_data").HasColumnType("jsonb");
+
+            e.Property(x => x.Actor).HasColumnName("actor");
+            e.Property(x => x.AppContext).HasColumnName("app_context");
+            e.Property(x => x.TxId).HasColumnName("txid");
+            e.Property(x => x.EventTime).HasColumnName("event_time");
+
+            // generated stored columns (read-only)
+            e.Property(x => x.OldText).HasColumnName("old_text").ValueGeneratedOnAddOrUpdate();
+            e.Property(x => x.NewText).HasColumnName("new_text").ValueGeneratedOnAddOrUpdate();
+
+            e.HasIndex(x => new { x.BrandId, x.EventTime }).HasDatabaseName("ix_brand_audit_brand_time");
         }
         /// <summary>
         /// Метод SaveChanges выполняет основную операцию класса.

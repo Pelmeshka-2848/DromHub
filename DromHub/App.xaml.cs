@@ -20,6 +20,7 @@ using Npgsql;
 using WinRT;
 using WinRT.Interop;
 using Windows.System.Profile;
+using DromHub.Services;
 
 namespace DromHub
 {
@@ -107,8 +108,9 @@ namespace DromHub
             // Регистрация контекста базы данных
             services.AddDbContextFactory<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString));
-
-            // Регистрация ViewModels
+            services.AddTransient<DromHub.Services.BrandAuditService>();   // <— ЭТОГО НЕ ХВАТАЛО
+            services.AddTransient<DromHub.ViewModels.BrandChangesViewModel>();
+            services.AddTransient<BrandAuditService>();
             services.AddTransient<PartViewModel>();
             services.AddTransient<BrandOverviewViewModel>();
             services.AddTransient<BrandsIndexViewModel>();
@@ -117,6 +119,7 @@ namespace DromHub
             services.AddTransient<BrandShellViewModel>();
             services.AddTransient<MailParserViewModel>();
             services.AddTransient<BrandSettingsViewModel>();
+            services.AddTransient<BrandChangesViewModel>();
 
             // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
             services.AddTransient<CartViewModel>();

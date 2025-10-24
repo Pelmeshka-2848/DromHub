@@ -1,7 +1,51 @@
-<Page x:Class="DromHub.Views.BrandChangesPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="12">
-        <TextBlock Text="Изменения (заглушка)" />
+<Page
+    x:Class="DromHub.Views.BrandChangesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="12">
+        <!-- Фильтры -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <DatePicker Date="{Binding FromDate, Mode=TwoWay}"/>
+            <DatePicker Date="{Binding ToDate, Mode=TwoWay}"/>
+            <ComboBox ItemsSource="{Binding ActionItems}" SelectedItem="{Binding SelectedAction, Mode=TwoWay}" Width="160"/>
+            <CheckBox Content="Только изменённые" IsChecked="{Binding OnlyChangedFields, Mode=TwoWay}"/>
+            <TextBox Text="{Binding Search, Mode=TwoWay}" PlaceholderText="Поиск..." Width="240"/>
+            <Button Content="Обновить" Command="{Binding RefreshCommand}"/>
+        </StackPanel>
+
+        <!-- Список -->
+        <ListView Grid.Row="1"
+                  ItemsSource="{Binding Rows}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Spacing="4" Padding="8">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding ActionDisplay}"/>
+                        <TextBlock>
+                            <Run Text="{Binding TsDisplay}"/>
+                            <Run Text=" — "/>
+                            <Run Text="{Binding UserDisplay}"/>
+                            <Run Text=" | "/>
+                            <Run Text="{Binding TableDisplay}"/>
+                        </TextBlock>
+
+                        <TextBlock Text="Изменённые поля:" FontStyle="Italic"/>
+                        <TextBlock Text="{Binding ChangedColumnsJoined}" TextWrapping="Wrap"/>
+
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- Пагинация -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center"/>
+            <Button Content="&lt;" Command="{Binding PrevPageCommand}"/>
+            <Button Content="&gt;" Command="{Binding NextPageCommand}"/>
+        </StackPanel>
     </Grid>
 </Page>
