@@ -7,18 +7,21 @@ using System.Threading.Tasks;
 
 namespace DromHub.Data
 {
+    /// <summary>
+    /// Класс DatabaseInitializer отвечает за логику компонента DatabaseInitializer.
+    /// </summary>
     public static class DatabaseInitializer
     {
+        /// <summary>
+        /// Метод InitializeAsync выполняет основную операцию класса.
+        /// </summary>
         public static async Task InitializeAsync(ApplicationDbContext context, bool forceReset = false)
         {
             try
             {
                 await context.Database.EnsureCreatedAsync();
 
-                if (forceReset)
-                {
-                    await ClearDatabase(context);
-                }
+                await ClearDatabase(context, forceReset);
 
                 // Убрал внешнюю транзакцию, так как она уже есть в SeedBrands
                 await SeedBrands(context);
@@ -34,6 +37,9 @@ namespace DromHub.Data
                 throw;
             }
         }
+        /// <summary>
+        /// Метод SeedBrands выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedBrands(ApplicationDbContext context)
         {
@@ -88,6 +94,9 @@ namespace DromHub.Data
                 }
             });
         }
+        /// <summary>
+        /// Метод SeedParts выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedParts(ApplicationDbContext context)
         {
@@ -142,6 +151,9 @@ namespace DromHub.Data
                 throw;
             }
         }
+        /// <summary>
+        /// Метод GetOrCreateBrand выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task<Brand> GetOrCreateBrand(ApplicationDbContext context, string brandName)
         {
@@ -162,6 +174,9 @@ namespace DromHub.Data
 
             return brand;
         }
+        /// <summary>
+        /// Метод SeedSuppliers выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedSuppliers(ApplicationDbContext context)
         {
@@ -216,10 +231,12 @@ namespace DromHub.Data
                 await context.SaveChangesAsync();
             }
         }
+        /// <summary>
+        /// Метод SeedLocalStock выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task SeedLocalStock(ApplicationDbContext context)
         {
-            // Only seed if the table is empty
             if (!await context.LocalStocks.AnyAsync())
             {
                 var suppliers = await context.Suppliers.ToListAsync();
@@ -260,27 +277,42 @@ namespace DromHub.Data
                 await context.SaveChangesAsync();
             }
         }
+        /// <summary>
+        /// Метод ClearDatabase выполняет основную операцию класса.
+        /// </summary>
 
-        private static async Task ClearDatabase(ApplicationDbContext context)
+        private static async Task ClearDatabase(ApplicationDbContext context, bool forceReset)
         {
-            try
+            if (!forceReset)
             {
-                var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
-                foreach (var table in tables)
-                {
-                    var tableExists = await context.Database.ExecuteSqlRawAsync(
-                        $"SELECT 1 FROM information_schema.tables WHERE table_name = '{table}'");
+                Debug.WriteLine("Принудительное очищение БД не запрошено. Операция TRUNCATE пропущена.");
+                return;
+            }
 
-                    if (tableExists == 1)
-                    {
-                        await context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} CASCADE");
-                        Debug.WriteLine($"Таблица {table} очищена");
-                    }
+            var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
+            var allSucceeded = true;
+
+            foreach (var table in tables)
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE IF EXISTS \"{table}\" RESTART IDENTITY CASCADE");
+                    Debug.WriteLine($"Таблица {table} успешно очищена");
+                }
+                catch (Exception ex)
+                {
+                    allSucceeded = false;
+                    Debug.WriteLine($"Не удалось очистить таблицу {table}: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+
+            if (allSucceeded)
             {
-                Debug.WriteLine($"Ошибка очистки БД: {ex.Message}");
+                Debug.WriteLine("Очистка базы данных успешно завершена.");
+            }
+            else
+            {
+                Debug.WriteLine("Очистка базы данных завершена с ошибками. См. сообщения выше.");
             }
         }
     }

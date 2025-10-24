@@ -1,0 +1,111 @@
+<Page
+    x:Class="DromHub.Views.PartSearchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="12">
+        <StackPanel Spacing="8">
+            <!-- Поле поиска и кнопка -->
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBox 
+                    Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    PlaceholderText="Введите артикул или каталожный номер"
+                    Width="300"
+                    KeyDown="SearchTextBox_KeyDown"/>
+                <Button 
+                    Content="Найти"
+                    Command="{Binding SearchPartsCommand}"
+                    Width="100"/>
+            </StackPanel>
+
+            <!-- Легенда (заголовки таблицы) -->
+            <Grid Background="{ThemeResource SystemControlBackgroundAltHighBrush}" 
+                  Padding="10" 
+                  BorderBrush="LightGray" 
+                  BorderThickness="0,0,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*" MinWidth="120"/>
+                    <ColumnDefinition Width="1*" MinWidth="120"/>
+                    <ColumnDefinition Width="2*" MinWidth="200"/>
+                    <ColumnDefinition Width="1*" MinWidth="120"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <ColumnDefinition Width="Auto" MinWidth="100"/>
+                    <!-- новая для Просмотра -->
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="Артикул" FontWeight="Bold" Grid.Column="0"/>
+                <TextBlock Text="Каталожный №" FontWeight="Bold" Grid.Column="1"/>
+                <TextBlock Text="Название" FontWeight="Bold" Grid.Column="2"/>
+                <TextBlock Text="Бренд" FontWeight="Bold" Grid.Column="3"/>
+                <TextBlock Text="Просмотр" FontWeight="Bold" Grid.Column="4"/>
+                <TextBlock Text="Редактировать" FontWeight="Bold" Grid.Column="5"/>
+                <TextBlock Text="Удалить" FontWeight="Bold" Grid.Column="6"/>
+            </Grid>
+
+
+            <!-- Список результатов -->
+            <ListView ItemsSource="{Binding Parts}" Height="500">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="10" BorderBrush="LightGray" BorderThickness="0,0,0,1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*" MinWidth="120"/>
+                                <ColumnDefinition Width="1*" MinWidth="120"/>
+                                <ColumnDefinition Width="2*" MinWidth="200"/>
+                                <ColumnDefinition Width="1*" MinWidth="120"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <ColumnDefinition Width="Auto" MinWidth="100"/>
+                                <!-- для кнопки Просмотр -->
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="{Binding Article}" Grid.Column="0"/>
+                            <TextBlock Text="{Binding CatalogNumber}" Grid.Column="1"/>
+                            <TextBlock Text="{Binding Name}" Grid.Column="2" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Brand.Name}" Grid.Column="3"/>
+
+                            <Button Content="Просмотр"
+                                Grid.Column="4"
+                                Padding="10,5"
+                                Click="ViewPart_Click"/>
+
+                            <Button Content="Редактировать"
+                                Grid.Column="5"
+                                Padding="10,5"
+                                Click="EditPart_Click"/>
+
+                            <Button Content="Удалить"
+                                Grid.Column="6"
+                                Padding="10,5"
+                                Click="DeletePart_Click"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <TextBlock Text="Ничего не найдено"
+           Foreground="Gray"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"
+           Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+            <Button 
+                Content="+ Создать запись"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,20"
+                Padding="15,5"
+                Click="AddPart_Click"
+                Style="{StaticResource AccentButtonStyle}"/>
+        </StackPanel>
+    </Grid>
+</Page>

@@ -1,0 +1,168 @@
+<Page
+    x:Class="DromHub.Views.MailParserView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:DromHub.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <conv:ConnectionStatusConverter x:Key="ConnectionStatusConverter"/>
+        <conv:DoubleToPercentConverter x:Key="PercentFmt" Format="F0"/>
+    </Page.Resources>
+
+
+    <!-- Внешняя прокрутка — оборачиваем всё в ScrollViewer -->
+    <ScrollViewer Padding="20" VerticalScrollBarVisibility="Auto">
+        <!-- Главное вертикальное стек-расположение страниц -->
+        <StackPanel Spacing="20">
+
+            <!-- Заголовок -->
+            <TextBlock Text="Парсер почты"
+                       FontSize="24"
+                       FontWeight="Bold"/>
+
+            <!-- Блок: выбор почтового сервера (StackPanel внутри карточки) -->
+            <Border Background="White"
+                    BorderBrush="LightGray"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="15">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Почтовый сервер" FontWeight="SemiBold" FontSize="16"/>
+                    <ComboBox ItemsSource="{Binding MailServerTypes}"
+                              SelectedIndex="{Binding SelectedMailServerIndex, Mode=TwoWay}"
+                              PlaceholderText="Выберите почтовый сервер"/>
+
+                    <!-- Настройки для кастомного сервера -->
+                    <StackPanel Visibility="{Binding CustomServerVisibility, Mode=OneWay}" Spacing="8">
+                        <TextBox Header="Сервер IMAP"
+                                 Text="{Binding CustomServer, Mode=TwoWay}"
+                                 PlaceholderText="imap.example.com"/>
+                        <TextBox Header="Порт"
+                                 Text="{Binding CustomPort, Mode=TwoWay}"
+                                 PlaceholderText="993"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Блок: учётные данные -->
+            <!-- Поля для ввода учетных данных -->
+            <Border Background="White"
+        BorderBrush="LightGray"
+        BorderThickness="1"
+        CornerRadius="8"
+        Padding="15">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="Учетные данные" FontWeight="SemiBold" FontSize="16"/>
+
+                    <TextBox Header="Email адрес"
+             Text="{Binding EmailAddress, Mode=TwoWay}"
+             PlaceholderText="user@example.com"/>
+
+                    <PasswordBox x:Name="PasswordBox"
+                                 Header="Пароль"
+                                 PlaceholderText="Введите пароль"
+                                 PasswordChanged="PasswordBox_OnPasswordChanged"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <CheckBox Content="Запомнить меня"
+                IsChecked="{Binding RememberCredentials, Mode=TwoWay}" />
+                        <Button Content="Забыть сохранённые"
+              Command="{Binding ForgetSavedCredentialsCommand}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="Подключиться и загрузить"
+              Command="{Binding ConnectAndDownloadCommand}"
+              Background="#0078D4"
+              Foreground="White"
+              Padding="15,10"/>
+
+                        <Button Content="Очистить"
+              Command="{Binding ClearCredentialsCommand}"
+              Background="LightGray"
+              Padding="15,10"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+
+            <!-- Статус -->
+            <Border Background="White"
+        BorderBrush="LightGray"
+        BorderThickness="1"
+        CornerRadius="8"
+        Padding="15">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Статус" FontWeight="SemiBold" FontSize="16"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <ProgressRing IsActive="{Binding IsLoading}" Height="20" Width="20"/>
+                        <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Прогресс парсинга -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding ProgressDetails}" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <ProgressBar Minimum="0" Maximum="100" Height="8"
+                     Value="{Binding ParsingProgress}" Width="300"/>
+                            <TextBlock Text="{Binding ParsingProgress, Converter={StaticResource PercentFmt}}"/>
+                        </StackPanel>
+                        <TextBlock>
+    <Run Text="Поставщик: "/>
+    <Run Text="{Binding CurrentSupplier}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Блок: действия + лог — две колонки (Grid), потому что нужен сайдбайсайд -->
+            <Grid ColumnDefinitions="1*, 2*" ColumnSpacing="20">
+                <!-- Колонка 0: Действия (StackPanel внутри) -->
+                <Border Grid.Column="0"
+                        Background="White"
+                        BorderBrush="LightGray"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="15">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Действия" FontWeight="SemiBold" FontSize="16"/>
+
+                        <Button Content="📁 Открыть папку Prices"
+            Command="{Binding OpenPricesFolderCommand}"
+            Background="LightGray"
+            Padding="15,10"/>
+
+                        <Button Content="➕ Добавить прайс вручную"
+            Command="{Binding ManualAddPricesCommand}"
+            Background="#0078D4"
+            Foreground="White"
+            Padding="15,10"/>
+                    </StackPanel>
+
+
+                </Border>
+
+                <!-- Колонка 1: Лог (StackPanel + ScrollViewer для списка) -->
+
+                <StackPanel Spacing="10" Grid.Column="1" Height="1000">
+                    <TextBlock Text="Лог событий" FontWeight="SemiBold" FontSize="16"/>
+                    <ScrollViewer x:Name="LogScrollViewer"
+              VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding LogEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,4,0,4"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

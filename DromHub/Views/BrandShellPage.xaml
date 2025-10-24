@@ -1,0 +1,147 @@
+<Page
+    x:Class="DromHub.Views.BrandShellPage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:converters="using:DromHub.Converters"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <!-- для подсветки активной вкладки, если используете -->
+        <converters:EnumEqualsConverter x:Key="EnumEquals"/>
+    </Page.Resources>
+
+    <Page.KeyboardAccelerators>
+        <!-- Вперёд/назад по брендам -->
+        <KeyboardAccelerator Key="Left"  Invoked="Prev_KeyboardAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Right" Invoked="Next_KeyboardAccelerator_Invoked"/>
+
+        <!-- Опционально дублируем через Alt+[←/→], если хочешь всегда работать из текстовых полей
+         (оставь закомментированным, если не нужно) -->
+        <!--
+    <KeyboardAccelerator Modifiers="Menu" Key="Left"  Invoked="Prev_KeyboardAccelerator_Invoked"/>
+    <KeyboardAccelerator Modifiers="Menu" Key="Right" Invoked="Next_KeyboardAccelerator_Invoked"/>
+    -->
+    </Page.KeyboardAccelerators>
+
+    <Grid RowSpacing="12" Padding="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- header -->
+            <RowDefinition Height="Auto"/>
+            <!-- info strip -->
+            <RowDefinition Height="*"/>
+            <!-- body -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== HEADER ===== -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center" Padding="4,0">
+
+            <!-- Prev -->
+            <AppBarButton Grid.Column="0"
+                          Label="{Binding PrevBrandNameUpper}"
+                          IsEnabled="{Binding HasPrev}"
+                          Click="GoPrev_Click">
+                <ToolTipService.ToolTip>
+                    <ToolTip Content="Предыдущий бренд" FontFamily="{StaticResource SFPro}"/>
+                </ToolTipService.ToolTip>
+                <AppBarButton.Icon>
+                    <ImageIcon Source="/Assets/chevron.backward.svg"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
+
+            <!-- Center: разделы -->
+            <CommandBar Grid.Column="1"
+                        Background="Transparent"
+                        DefaultLabelPosition="Right"
+                        IsOpen="False"
+                        HorizontalAlignment="Center">
+
+                <AppBarToggleButton Label="ГЛАВНАЯ"
+                                    FontFamily="{StaticResource SFPro}"
+                                    Tag="Overview"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Overview}">
+                    <AppBarToggleButton.Icon>
+                        <ImageIcon Source="/Assets/house.svg"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+
+                <AppBarSeparator/>
+
+                <AppBarToggleButton Label="ЗАПЧАСТИ"
+                                    FontFamily="{StaticResource SFPro}"
+                                    Tag="Parts"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Parts}">
+                    <AppBarToggleButton.Icon>
+                        <ImageIcon Source="/Assets/list.bullet.svg"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+
+                <AppBarSeparator/>
+
+                <!-- БЫЛО: СИНОНИМЫ. СТАЛО: НАСТРОЙКИ (наценка+алиасы) -->
+                <AppBarToggleButton Label="НАСТРОЙКИ"
+                                    FontFamily="{StaticResource SFPro}"
+                                    Tag="Settings"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Settings}">
+                    <AppBarToggleButton.Icon>
+                        <ImageIcon Source="/Assets/gear.svg"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+
+                <AppBarSeparator/>
+
+                <AppBarToggleButton Label="О БРЕНДЕ"
+                                    FontFamily="{StaticResource SFPro}"
+                                    Tag="About"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=About}">
+                    <AppBarToggleButton.Icon>
+                        <ImageIcon Source="/Assets/info.svg"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+
+                <AppBarSeparator/>
+
+                <AppBarToggleButton Label="ИЗМЕНЕНИЯ"
+                                    FontFamily="{StaticResource SFPro}"
+                                    Tag="Changes"
+                                    Checked="SectionButton_Checked"
+                                    IsChecked="{Binding Section, Mode=TwoWay,
+                                                Converter={StaticResource EnumEquals}, ConverterParameter=Changes}">
+                    <AppBarToggleButton.Icon>
+                        <ImageIcon Source="/Assets/clock.svg"/>
+                    </AppBarToggleButton.Icon>
+                </AppBarToggleButton>
+            </CommandBar>
+
+            <!-- Next -->
+            <AppBarButton Grid.Column="2"
+                          Label="{Binding NextBrandNameUpper}"
+                          IsEnabled="{Binding HasNext}"
+                          Click="GoNext_Click">
+                <ToolTipService.ToolTip>
+                    <ToolTip Content="Следующий бренд" FontFamily="{StaticResource SFPro}"/>
+                </ToolTipService.ToolTip>
+                <AppBarButton.Icon>
+                    <ImageIcon Source="/Assets/chevron.forward.svg"/>
+                </AppBarButton.Icon>
+            </AppBarButton>
+        </Grid>
+
+        <!-- ===== BODY: секции в под-страницах ===== -->
+        <Grid Grid.Row="2">
+            <Frame x:Name="SectionFrame"/>
+        </Grid>
+    </Grid>
+</Page>

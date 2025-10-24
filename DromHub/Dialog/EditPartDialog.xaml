@@ -1,0 +1,17 @@
+<ContentDialog
+    x:Class="DromHub.Views.EditPartDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Редактировать запись"
+    PrimaryButtonText="Сохранить"
+    CloseButtonText="Отмена"
+    SecondaryButtonText=""
+    >
+    <StackPanel Padding="20" Spacing="10">
+        <TextBox Header="Каталожный №" Text="{Binding CatalogNumber, Mode=TwoWay}" />
+        <TextBox Header="Название" Text="{Binding Name, Mode=TwoWay}" />
+        <ComboBox Header="Бренд" ItemsSource="{Binding Brands}" 
+                  SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
+                  DisplayMemberPath="Name"/>
+    </StackPanel>
+</ContentDialog>

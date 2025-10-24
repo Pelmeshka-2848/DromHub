@@ -1,0 +1,493 @@
+<Page
+    x:Class="DromHub.Views.BrandOverviewPage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- ========= RESOURCES ========= -->
+    <Page.Resources>
+        <!-- hairlines (light) -->
+        <LinearGradientBrush x:Key="SoftDividerHBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#00000000" Offset="0.0"/>
+            <GradientStop Color="#33000000" Offset="0.5"/>
+            <GradientStop Color="#00000000" Offset="1.0"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="SoftDividerVBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#00000000" Offset="0.0"/>
+            <GradientStop Color="#33000000" Offset="0.06"/>
+            <GradientStop Color="#33000000" Offset="0.94"/>
+            <GradientStop Color="#00000000" Offset="1.0"/>
+        </LinearGradientBrush>
+
+        <Style x:Key="HairlineH" TargetType="Rectangle">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Fill" Value="{StaticResource SoftDividerHBrush}"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="HairlineV" TargetType="Rectangle">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Fill" Value="{StaticResource SoftDividerVBrush}"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- tooltips / labels -->
+        <x:String x:Key="ChipYearTT">Год основания / релевантный год</x:String>
+        <x:String x:Key="ChipMarkupTT">Наценка, % (бренд)</x:String>
+        <x:String x:Key="ChipCountryTT">Страна (ISO-2)</x:String>
+        <x:String x:Key="ChipPartsTT">Всего деталей бренда</x:String>
+        <x:String x:Key="ChipAgeTT">Лет на рынке</x:String>
+    </Page.Resources>
+
+    <!-- ========= LAYOUT (2 cols × 6 rows) ========= -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7*"/>
+                <ColumnDefinition Width="6*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <!-- 0: бренд | о бренде -->
+                <RowDefinition Height="Auto"/>
+                <!-- 1: основной контент -->
+                <RowDefinition Height="Auto"/>
+                <!-- 2: кнопка открыть в браузере -->
+                <RowDefinition Height="Auto"/>
+                <!-- 3: сцена/заполнение -->
+                <RowDefinition Height="*"/>
+                <!-- 4: синонимы -->
+                <RowDefinition Height="Auto"/>
+                <!-- 5: ID -->
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ===== Row 0 Col 0: Бренд (заголовок) ===== -->
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="{Binding BrandNameUpper}"
+                       FontFamily="{StaticResource SFPro}"
+                       Style="{ThemeResource DisplayTextBlockStyle}"
+                       Margin="20,0,20,0"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"/>
+
+            <!-- ===== Row 0 Col 1: «О БРЕНДЕ» ===== -->
+            <TextBlock Grid.Row="0" Grid.Column="1"
+                       Text="О БРЕНДЕ"
+                       FontFamily="{StaticResource SFPro}"
+                       Style="{ThemeResource TitleLargeTextBlockStyle}"
+                       Margin="20,0,20,0"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"/>
+
+            <!-- ===== Row 1 Col 0: ОСНОВНОЙ КОНТЕНТ (ЛЕВАЯ КОЛОНКА) ===== -->
+            <Grid Grid.Row="1" Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <!-- 1: лента -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 2: остальное -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Лента -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,0,20,10" VerticalAlignment="Center">
+                    <!-- избранное -->
+                    <ImageIcon Source="/Assets/star.svg" Height="32" Width="32"/>
+
+                    <!-- разделители между группами -->
+                    <StackPanel Width="8"/>
+
+                    <!-- популярность -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17" Width="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/diamond.fill.svg" Height="17" Width="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/diamond.svg" Height="17" Width="17" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Width="8"/>
+
+                    <!-- тип -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="ТИП ПРОИЗВОДИТЕЛЯ:"
+                                   FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/car.svg" Height="17" Width="17" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Width="8"/>
+
+                    <!-- метки -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="МЕТКИ:"
+                                   FontFamily="{StaticResource SFPro}"
+                                   Style="{ThemeResource BodyTextBlockStyle}"
+                                   VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/oilcan.svg" Height="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/steeringwheel.svg" Height="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/suspension.shock.svg" Height="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/pedal.brake.svg" Height="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/minus.plus.batteryblock.svg" Height="17" VerticalAlignment="Center"/>
+                        <ImageIcon Source="/Assets/headlight.high.beam.svg" Height="17" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Остальное: линии + метрики1/2 -->
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- верхняя линия -->
+                        <RowDefinition Height="*"/>
+                        <!-- контент -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- нижняя линия -->
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- метрики1 -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- вертикальная линия -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- метрики2 -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- линии -->
+                    <Rectangle Grid.Row="0" Grid.ColumnSpan="3" Style="{StaticResource HairlineH}"/>
+                    <Rectangle Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Style="{StaticResource HairlineV}"/>
+                    <Rectangle Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource HairlineH}"/>
+
+                    <!-- ===== Метрики 1 (левая группа) ===== -->
+                    <Grid Grid.Row="1" Grid.Column="0" Margin="20,10,20,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Ассортимент -->
+                        <Grid Grid.Row="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                       Text="АССОРТИМЕНТ:"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="8" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ImageIcon Grid.Column="0" Source="/Assets/square.stack.3d.up.svg" Height="24" Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding AssortmentDisplay}"
+                                           FontFamily="{StaticResource SFPro}"
+                                           Style="{ThemeResource SubtitleTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Узнаваемость -->
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                       Text="УЗНАВАЕМОСТЬ:"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="8" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ImageIcon Grid.Column="0" Source="/Assets/tag.svg" Height="24" Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding AwarenessDisplay}"
+                                           FontFamily="{StaticResource SFPro}"
+                                           Style="{ThemeResource SubtitleTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Маржинальность -->
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                       Text="МАРЖИНАЛЬНОСТЬ:"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+
+                            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="8" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ImageIcon Grid.Column="0" Source="/Assets/centsign.svg" Height="24" Width="24" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding MarginDisplay}"
+                                           FontFamily="{StaticResource SFPro}"
+                                           Style="{ThemeResource SubtitleTextBlockStyle}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <!-- ===== Метрики 2 (правая группа: чипсы + бары) ===== -->
+                    <Grid Grid.Row="1" Grid.Column="2" Margin="20,10,20,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <!-- чипсы -->
+                            <RowDefinition Height="12"/>
+                            <!-- отступ -->
+                            <RowDefinition Height="*"/>
+                            <!-- метрика A -->
+                            <RowDefinition Height="*"/>
+                            <!-- метрика B -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Чипсы -->
+                        <Grid Grid.Row="0" HorizontalAlignment="Left" RowSpacing="4" ColumnSpacing="4">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="64"/>
+                                <ColumnDefinition Width="64"/>
+                                <ColumnDefinition Width="64"/>
+                                <ColumnDefinition Width="64"/>
+                                <ColumnDefinition Width="64"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Иконки по порядку Grid: Markup(0), Parts(1), Country(2), Age(3), Year(4) -->
+                            <ImageIcon Grid.Row="0" Grid.Column="0" Source="/Assets/percent.svg" Height="24" Width="24">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip Content="{StaticResource ChipMarkupTT}"/>
+                                </ToolTipService.ToolTip>
+                            </ImageIcon>
+                            <ImageIcon Grid.Row="0" Grid.Column="1" Source="/Assets/wrench.and.screwdriver.svg" Height="24" Width="24">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip Content="{StaticResource ChipPartsTT}"/>
+                                </ToolTipService.ToolTip>
+                            </ImageIcon>
+                            <ImageIcon Grid.Row="0" Grid.Column="2" Source="{Binding CountryWorldIconAsset}" Height="24" Width="24">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip Content="{StaticResource ChipCountryTT}"/>
+                                </ToolTipService.ToolTip>
+                            </ImageIcon>
+                            <ImageIcon Grid.Row="0" Grid.Column="3" Source="/Assets/hourglass.svg" Height="24" Width="24">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip Content="{StaticResource ChipAgeTT}"/>
+                                </ToolTipService.ToolTip>
+                            </ImageIcon>
+                            <ImageIcon Grid.Row="0" Grid.Column="4" Source="/Assets/calendar.svg" Height="24" Width="24">
+                                <ToolTipService.ToolTip>
+                                    <ToolTip Content="{StaticResource ChipYearTT}"/>
+                                </ToolTipService.ToolTip>
+                            </ImageIcon>
+
+                            <!-- Значения -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding ChipMarkupText}"
+                                       FontFamily="{StaticResource SFPro}" Style="{ThemeResource CaptionTextBlockStyle}" TextAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ChipPartsText}"
+                                       FontFamily="{StaticResource SFPro}" Style="{ThemeResource CaptionTextBlockStyle}" TextAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding ChipCountryText}"
+                                       FontFamily="{StaticResource SFPro}" Style="{ThemeResource CaptionTextBlockStyle}" TextAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding ChipAgeText}"
+                                       FontFamily="{StaticResource SFPro}" Style="{ThemeResource CaptionTextBlockStyle}" TextAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Grid.Column="4" Text="{Binding ChipYearText}"
+                                       FontFamily="{StaticResource SFPro}" Style="{ThemeResource CaptionTextBlockStyle}" TextAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Метрика A -->
+                        <Grid Grid.Row="2" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <!-- бар -->
+                                <ColumnDefinition Width="Auto"/>
+                                <!-- дельта -->
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- название -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- бар + дельта -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- число (центр по бару) -->
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="ПОЛНОТА"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+
+                            <ProgressBar x:Name="BarA" Grid.Row="1" Grid.Column="0" Height="10"
+                                         Value="{Binding BarAValue}" HorizontalAlignment="Stretch"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BarADeltaText}"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding BarATextCenter}"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Width="{Binding ElementName=BarA, Path=ActualWidth}"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top"
+                                       Margin="0,4,0,0"/>
+                        </Grid>
+
+                        <!-- Метрика B -->
+                        <Grid Grid.Row="3" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="АКТУАЛЬНОСТЬ"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"/>
+
+                            <ProgressBar x:Name="BarB" Grid.Row="1" Grid.Column="0" Height="10"
+                                         Value="{Binding BarBValue}" HorizontalAlignment="Stretch"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding BarBDeltaText}"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding BarBTextCenter}"
+                                       FontFamily="{StaticResource SFPro}"
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       Width="{Binding ElementName=BarB, Path=ActualWidth}"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top"
+                                       Margin="0,4,0,0"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <!-- ===== Row 1 Col 1: ПРАВЫЙ КОНТЕНТ (описание + заметки + литера) ===== -->
+            <Grid Grid.Row="1" Grid.Column="1" Grid.RowSpan="3" Margin="20,0,20,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- описание -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- title заметок -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- текст заметок -->
+                    <RowDefinition Height="*"/>
+                    <!-- литера -->
+                </Grid.RowDefinitions>
+
+                <!-- Описание -->
+                <TextBlock Grid.Row="0"
+                           VerticalAlignment="Top"
+                           Text="{Binding DescriptionOrPlaceholder}"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           TextWrapping="WrapWholeWords"/>
+
+                <!-- Заголовок заметок -->
+                <TextBlock Grid.Row="1"
+                           Text="ПОЛЬЗОВАТЕЛЬСКИЕ ЗАМЕТКИ"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource TitleTextBlockStyle}"
+                           Margin="0,30,0,20"/>
+
+                <!-- Текст заметок -->
+                <TextBlock Grid.Row="2"
+                           Text="{Binding UserNotesOrPlaceholder}"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           TextWrapping="WrapWholeWords"/>
+
+                <!-- Литера (монограмма), по центру вертикально -->
+                <TextBlock Grid.Row="3"
+                           Text="{Binding Monogram}"
+                           FontFamily="{StaticResource SFPro}"
+                           Opacity="0.06"
+                           FontSize="220"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- ===== Row 2: КНОПКА ===== -->
+            <Grid Grid.Row="2" Grid.Column="0" Margin="0,0,20,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="Открыть в браузере"
+                        Margin="20,10,12,10"
+                        FontFamily="{StaticResource SFPro}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        IsEnabled="{Binding HasWebsite}"
+                        ToolTipService.ToolTip="Сайт не указан"
+                        Click="OnOpenInBrowserClicked"/>
+
+                <TextBlock Grid.Column="1"
+                           Margin="0,10,0,10"
+                           VerticalAlignment="Center"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Text="{Binding WebsiteHost}"/>
+            </Grid>
+
+            <!-- ===== Row 4: СИНОНИМЫ ===== -->
+            <Grid Grid.Row="4" Grid.ColumnSpan="2">
+                <TextBlock Text="{Binding AliasesJoinedDisplay}"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}"
+                           HorizontalAlignment="Center"/>
+            </Grid>
+
+            <!-- ===== Row 5: ID ===== -->
+            <Grid Grid.Row="5" Grid.ColumnSpan="2">
+                <TextBlock Text="{Binding BrandId}"
+                           FontFamily="{StaticResource SFPro}"
+                           Style="{ThemeResource CaptionTextBlockStyle}"
+                           HorizontalAlignment="Center"/>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,133 @@
+<Page
+    x:Class="DromHub.Views.BrandsIndexPage"
+    x:Name="PageRoot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:models="using:DromHub.Models"
+    xmlns:converters="using:DromHub.Converters"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <converters:BrandMarkupBadgeConverter x:Key="MarkupPctToBadgeConverter"/>
+        <converters:BrandMarkupBadgeTooltipConverter x:Key="MarkupPctToTooltipConverter"/>
+        <converters:NullToBooleanConverter x:Key="NullToBooleanConverter"/>
+
+        <CollectionViewSource x:Key="BrandCvs"
+                              Source="{Binding GroupedBrands}"
+                              IsSourceGrouped="True"
+                              ItemsPath="Items"/>
+    </Page.Resources>
+
+    <Grid Padding="12" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Поиск + фильтры -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox Width="280"
+                     PlaceholderText="Поиск бренда…"
+                     Text="{Binding SearchText, Mode=TwoWay}"
+                     KeyDown="OnSearchKeyDown"/>
+            <ToggleButton Content="OEM" IsChecked="{Binding FilterIsOem, Mode=TwoWay}"/>
+            <ToggleButton Content="С наценкой" IsChecked="{Binding FilterWithMarkup, Mode=TwoWay}"/>
+            <ToggleButton Content="Наценка 0%" IsChecked="{Binding FilterMarkupZero, Mode=TwoWay}"/>
+            <ToggleButton Content="Без алиасов" IsChecked="{Binding FilterNoAliases, Mode=TwoWay}"/>
+            <Button Content="Обновить" Click="Refresh_Click"/>
+        </StackPanel>
+
+        <!-- Список + вертикальный A–Z индекс -->
+        <Grid Grid.Row="1" x:Name="ListWithIndexGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="ListCol" Width="*"/>
+                <ColumnDefinition x:Name="IndexSepCol" Width="1"/>
+                <ColumnDefinition x:Name="IndexCol" Width="36"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- сам список -->
+            <Border Grid.Column="0"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <ListView x:Name="BrandsList"
+                          ItemsSource="{Binding Source={StaticResource BrandCvs}}"
+                          SelectionMode="Single"
+                          SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <!-- липкие заголовки групп -->
+                            <ItemsStackPanel AreStickyGroupHeadersEnabled="True"/>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Brand">
+                            <!-- Имя + (кол-во) слева; бейдж-наценка справа -->
+                            <Grid ColumnDefinitions="*,Auto" Padding="8,4">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{x:Bind Name}"/>
+                                    <TextBlock Text="(" Opacity="0.6"/>
+                                    <TextBlock Text="{x:Bind PartsCount}" Opacity="0.6"/>
+                                    <TextBlock Text=")" Opacity="0.6"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="{x:Bind MarkupPercent, Converter={StaticResource MarkupPctToBadgeConverter}}"
+                                           HorizontalAlignment="Right"
+                                           Opacity="0.8">
+                                    <ToolTipService.ToolTip>
+                                        <TextBlock Text="{x:Bind MarkupPercent, Converter={StaticResource MarkupPctToTooltipConverter}}"/>
+                                    </ToolTipService.ToolTip>
+                                </TextBlock>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+
+                    <ListView.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Key}"
+                                               FontWeight="Bold"
+                                               FontSize="16"
+                                               Margin="8,8,8,4"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListView.GroupStyle>
+                </ListView>
+            </Border>
+
+            <!-- разделитель -->
+            <Rectangle Grid.Column="1"
+                       Fill="{ThemeResource CardStrokeColorDefaultBrush}"/>
+
+            <!-- динамический контейнер для букв -->
+            <Grid x:Name="IndexHost"
+                  Grid.Column="2"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"/>
+        </Grid>
+
+        <!-- Действия -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    HorizontalAlignment="Right">
+            <Button Content="Открыть"
+                    Click="OpenBrand_Click"
+                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+            <Button Content="Создать запчасть"
+                    Click="CreatePart_Click"
+                    IsEnabled="{Binding SelectedBrand, Converter={StaticResource NullToBooleanConverter}}"/>
+            <Button Content="Объединить…"
+                    Click="OpenMergeWizard_Click"/>
+        </StackPanel>
+    </Grid>
+</Page>

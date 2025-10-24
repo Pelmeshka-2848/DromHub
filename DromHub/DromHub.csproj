@@ -13,25 +13,55 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Prices\**" />
+    <EmbeddedResource Remove="Prices\**" />
+    <None Remove="Prices\**" />
+    <Page Remove="Prices\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Assets\Fonts\SF-Pro.ttf" />
+    <Content Include="Assets\Fonts\SF-Pro.ttf" />
     <Content Remove="assets\MessageWindow.xaml" />
     <Content Remove="Assets\MessageWindow.xaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Assets\car.svg" />
+    <None Remove="Assets\centsign.svg" />
+    <None Remove="Assets\chart.line.uptrend.xyaxis.svg" />
+    <None Remove="Assets\chevron.backward.svg" />
+    <None Remove="Assets\chevron.forward.svg" />
+    <None Remove="Assets\clock.svg" />
+    <None Remove="Assets\diamond.fill.svg" />
+    <None Remove="Assets\diamond.svg" />
+    <None Remove="Assets\engine.combustion.svg" />
+    <None Remove="Assets\fan.svg" />
+    <None Remove="Assets\gear.svg" />
+    <None Remove="Assets\globe.americas.svg" />
+    <None Remove="Assets\globe.central.south.asia.svg" />
+    <None Remove="Assets\globe.europe.africa.svg" />
+    <None Remove="Assets\globe.svg" />
+    <None Remove="Assets\headlight.high.beam.svg" />
+    <None Remove="Assets\house.svg" />
+    <None Remove="Assets\info.svg" />
+    <None Remove="Assets\list.bullet.svg" />
+    <None Remove="Assets\minus.plus.batteryblock.svg" />
+    <None Remove="Assets\oilcan.svg" />
+    <None Remove="Assets\pedal.brake.svg" />
+    <None Remove="Assets\rhombus.fill.svg" />
+    <None Remove="Assets\rhombus.svg" />
+    <None Remove="Assets\shippingbox.svg" />
+    <None Remove="Assets\SplashScreen.scale-200.png" />
+    <None Remove="Assets\square.stack.3d.up.svg" />
+    <None Remove="Assets\star.fill.svg" />
+    <None Remove="Assets\steeringwheel.svg" />
+    <None Remove="Assets\suspension.shock.svg" />
+    <None Remove="Assets\tag.svg" />
+    <None Remove="Assets\transmission.svg" />
+    <None Remove="Views\BrandPage.xaml" />
     <None Remove="Views\MainPage.xaml" />
-    <None Remove="Views\PartView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Page Remove="assets\MessageWindow.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,27 +78,88 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="EPPlus" Version="7.5.2" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Views\MainPage.xaml">
+    <Page Update="Dialog\ViewPartDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Views\BrandSettingsPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Tab2Page.xaml">
+    <Page Update="Views\BrandChangesPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandAboutPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandPartsPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandOverviewPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandMergeWizardPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandShellPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandsIndexPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandsHomePage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Views\BrandPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Dialog\DeletePartDialog.xaml">
       <SubType>Designer</SubType>
     </Page>
-    <Page Update="Tab4Page.xaml">
+    <Page Update="Dialog\EditPartDialog.xaml">
       <SubType>Designer</SubType>
     </Page>
-    <Page Update="Tab3Page.xaml">
+    <Page Update="Dialog\AddPartDialog.xaml">
       <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Views\MainPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
@@ -94,4 +185,16 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
     <DefaultLanguage>ru-RU</DefaultLanguage>
   </PropertyGroup>
+  <ItemGroup>
+    <PRIResource Remove="Prices\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="appsettings.Development.json" Condition="Exists('appsettings.Development.json')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

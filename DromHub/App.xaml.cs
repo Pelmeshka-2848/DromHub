@@ -1,70 +1,183 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DromHub.Data;
 using DromHub.Models;
 using DromHub.ViewModels;
+using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using OfficeOpenXml;
+using Npgsql;
 using WinRT;
+using WinRT.Interop;
+using Windows.System.Profile;
 
 namespace DromHub
 {
+    /// <summary>
+    /// Класс App отвечает за логику компонента App.
+    /// </summary>
     public partial class App : Application
     {
         private static IServiceProvider _serviceProvider;
+        /// <summary>
+        /// Свойство DbContext предоставляет доступ к данным DbContext.
+        /// </summary>
         public static ApplicationDbContext DbContext { get; private set; }
+        /// <summary>
+        /// Свойство MainWindow предоставляет доступ к данным MainWindow.
+        /// </summary>
+        public static Window MainWindow { get; private set; }
         private Window m_window;
+        /// <summary>
+        /// Свойство MainHwnd предоставляет доступ к данным MainHwnd.
+        /// </summary>
+        public static nint MainHwnd { get; private set; }
         private WindowsSystemDispatcherQueueHelper m_wsdqHelper;
         private MicaController m_micaController;
         private SystemBackdropConfiguration m_configuration;
+        /// <summary>
+        /// Свойство ServiceProvider предоставляет доступ к данным ServiceProvider.
+        /// </summary>
         public static IServiceProvider ServiceProvider => _serviceProvider;
+        /// <summary>
+        /// Свойство Configuration предоставляет доступ к данным Configuration.
+        /// </summary>
+        public static IConfiguration Configuration { get; private set; } = default!;
+        /// <summary>
+        /// Конструктор App инициализирует экземпляр класса.
+        /// </summary>
 
         public App()
         {
             this.InitializeComponent();
+            Configuration = BuildConfiguration();
             ConfigureServices();
+            ConfigureEpplusLicense();
         }
+        /// <summary>
+        /// Метод ConfigureServices выполняет основную операцию класса.
+        /// </summary>
 
         private void ConfigureServices()
         {
             var services = new ServiceCollection();
 
+            services.AddSingleton<IConfiguration>(Configuration);
+
+            var connectionString = Configuration.GetConnectionString("DromHub");
+            if (string.IsNullOrWhiteSpace(connectionString) ||
+                connectionString.IndexOf("CHANGE_ME", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                throw new InvalidOperationException(
+                    "The required database connection string 'ConnectionStrings:DromHub' is missing or still uses the " +
+                    "placeholder value. Provide a valid Npgsql connection string via appsettings.json, environment variables, " +
+                    "or user secrets. See README.md for configuration options.");
+            }
+
+            NpgsqlConnectionStringBuilder connectionStringBuilder;
+            try
+            {
+                connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "The database connection string 'ConnectionStrings:DromHub' is invalid. " +
+                    "Ensure it contains a valid Npgsql connection string.",
+                    ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(connectionStringBuilder.Password))
+            {
+                throw new InvalidOperationException(
+                    "The database connection string 'ConnectionStrings:DromHub' must include a password. " +
+                    "Provide credentials through appsettings.json, environment variables, or user secrets before launching the application.");
+            }
+
             // Регистрация контекста базы данных
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql("Host=localhost;Database=DromHubDB;Username=postgres;Password=admin"));
+            services.AddDbContextFactory<ApplicationDbContext>(options =>
+                options.UseNpgsql(connectionString));
 
             // Регистрация ViewModels
-            services.AddScoped<PartSearchViewModel>();
             services.AddTransient<PartViewModel>();
+            services.AddTransient<BrandOverviewViewModel>();
+            services.AddTransient<BrandsIndexViewModel>();
+            services.AddTransient<BrandMergeWizardViewModel>();
+            services.AddTransient<BrandsHomeViewModel>();
+            services.AddTransient<BrandShellViewModel>();
+            services.AddTransient<MailParserViewModel>();
+            services.AddTransient<BrandSettingsViewModel>();
+
+            // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
+            services.AddTransient<CartViewModel>();
 
             // Регистрация MainWindow
             services.AddTransient<MainWindow>();
 
             // Добавьте это в конфигурацию сервисов
-            services.AddLogging(); // Добавляет систему логгирования
-
+            services.AddLogging(builder =>
+            {
+                builder.AddDebug();
+            });
 
             _serviceProvider = services.BuildServiceProvider();
         }
+        /// <summary>
+        /// Метод BuildConfiguration выполняет основную операцию класса.
+        /// </summary>
+
+        private static IConfiguration BuildConfiguration()
+        {
+            var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true);
+
+            if (string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                builder.AddUserSecrets<App>(optional: true);
+            }
+
+            return builder
+                .AddEnvironmentVariables()
+                .AddEnvironmentVariables("DROMHUB_")
+                .Build();
+        }
+        /// <summary>
+        /// Метод OnLaunched выполняет основную операцию класса.
+        /// </summary>
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
         {
             m_window = new MainWindow();
-
+            m_window.Activate();
+            MainWindow = m_window;
+            MainHwnd = WindowNative.GetWindowHandle(m_window);
             try
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+                    await using var dbContext = await dbFactory.CreateDbContextAsync();
+                    var logger = scope.ServiceProvider.GetRequiredService<ILogger<App>>();
+                    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+                    var forceResetRequested = DatabaseResetGuard.IsResetRequested(configuration, args.Arguments, logger);
 
                     // Инициализация БД
-                    await DatabaseInitializer.InitializeAsync(dbContext, forceReset: true);
+                    await DatabaseInitializer.InitializeAsync(dbContext, forceResetRequested);
 
                     // Дополнительная проверка (на всякий случай)
                     await EnsureTestPartExists(dbContext);
@@ -79,15 +192,57 @@ namespace DromHub
                         : "Деталь не найдена!");
                 }
             }
+            catch (PostgresException postgresEx) when (string.Equals(postgresEx.SqlState, "28P01", StringComparison.Ordinal))
+            {
+                HandleInitializationError(
+                    "Не удалось подключиться к базе данных: проверьте имя пользователя и пароль в строке подключения.",
+                    postgresEx);
+            }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка инициализации: {ex.Message}");
+                HandleInitializationError("Ошибка инициализации: " + ex.Message, ex);
             }
 
             TrySetMicaBackdrop();
-
             m_window.Activate();
         }
+        /// <summary>
+        /// Метод HandleInitializationError выполняет основную операцию класса.
+        /// </summary>
+
+        private void HandleInitializationError(string message, Exception ex)
+        {
+            Debug.WriteLine(message);
+            Debug.WriteLine(ex);
+
+            var logger = ServiceProvider.GetService<ILogger<App>>();
+            logger?.LogError(ex, message);
+
+            var errorWindow = new MessageWindow(message);
+            errorWindow.Activate();
+        }
+        /// <summary>
+        /// Метод ConfigureEpplusLicense выполняет основную операцию класса.
+        /// </summary>
+
+        private static void ConfigureEpplusLicense()
+        {
+            // EPPlus 8+: ExcelPackage.License (статическое свойство)
+            // EPPlus ≤7: ExcelPackage.LicenseContext (старое свойство)
+            var prop = typeof(ExcelPackage).GetProperty("License", BindingFlags.Public | BindingFlags.Static);
+            if (prop != null)
+            {
+                // у EPPlus 8 тип тот же (LicenseContext)
+                prop.SetValue(null, LicenseContext.NonCommercial);
+            }
+            else
+            {
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            }
+        }
+        /// <summary>
+        /// Метод EnsureTestPartExists выполняет основную операцию класса.
+        /// </summary>
 
         private static async Task EnsureTestPartExists(ApplicationDbContext context)
         {
@@ -122,6 +277,9 @@ namespace DromHub
                 Debug.WriteLine($"Ошибка при проверке детали: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод InitializeDatabaseAsync выполняет основную операцию класса.
+        /// </summary>
 
         private async void InitializeDatabaseAsync()
         {
@@ -129,7 +287,8 @@ namespace DromHub
             {
                 using (var scope = ServiceProvider.CreateScope())
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+                    await using var dbContext = await dbFactory.CreateDbContextAsync();
                     await DatabaseInitializer.InitializeAsync(dbContext);
                 }
             }
@@ -139,6 +298,9 @@ namespace DromHub
                 Debug.WriteLine($"Ошибка инициализации БД: {ex.Message}");
             }
         }
+        /// <summary>
+        /// Метод TrySetMicaBackdrop выполняет основную операцию класса.
+        /// </summary>
 
         private void TrySetMicaBackdrop()
         {
@@ -154,8 +316,9 @@ namespace DromHub
 
                 m_micaController = new MicaController();
 
-                // Указываем тип Mica
-                m_micaController.Kind = MicaKind.BaseAlt; // или MicaKind.Base
+                m_micaController.Kind = IsMicaBaseAltSupported()
+                    ? MicaKind.BaseAlt
+                    : MicaKind.Base;
 
                 // Включаем Mica для окна
                 m_micaController.AddSystemBackdropTarget(m_window.As<ICompositionSupportsSystemBackdrop>());
@@ -166,6 +329,9 @@ namespace DromHub
                 m_window.Closed += Window_Closed;
             }
         }
+        /// <summary>
+        /// Метод Window_Activated выполняет основную операцию класса.
+        /// </summary>
 
         private void Window_Activated(object sender, WindowActivatedEventArgs args)
         {
@@ -174,6 +340,9 @@ namespace DromHub
                 m_configuration.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
             }
         }
+        /// <summary>
+        /// Метод Window_Closed выполняет основную операцию класса.
+        /// </summary>
 
         private void Window_Closed(object sender, WindowEventArgs args)
         {
@@ -186,6 +355,23 @@ namespace DromHub
             m_configuration = null;
         }
 
+        private static bool IsMicaBaseAltSupported()
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
+            {
+                return true;
+            }
+
+            var deviceFamilyVersion = AnalyticsInfo.VersionInfo.DeviceFamilyVersion;
+            if (ulong.TryParse(deviceFamilyVersion, out var versionValue))
+            {
+                var build = (versionValue & 0x00000000FFFF0000UL) >> 16;
+                return build >= 22621;
+            }
+
+            return false;
+        }
+
         public static T GetService<T>() where T : class
         {
             return _serviceProvider.GetService<T>();
@@ -193,8 +379,14 @@ namespace DromHub
     }
 
     // Класс для работы с DispatcherQueue
+    /// <summary>
+    /// Класс WindowsSystemDispatcherQueueHelper отвечает за логику компонента WindowsSystemDispatcherQueueHelper.
+    /// </summary>
     class WindowsSystemDispatcherQueueHelper
     {
+        /// <summary>
+        /// Структура DispatcherQueueOptions отвечает за логику компонента DispatcherQueueOptions.
+        /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         struct DispatcherQueueOptions
         {
@@ -202,11 +394,17 @@ namespace DromHub
             internal int threadType;
             internal int apartmentType;
         }
+        /// <summary>
+        /// Метод CreateDispatcherQueueController выполняет основную операцию класса.
+        /// </summary>
 
         [DllImport("CoreMessaging.dll")]
         private static extern int CreateDispatcherQueueController([In] DispatcherQueueOptions options, [In, Out, MarshalAs(UnmanagedType.IUnknown)] ref object dispatcherQueueController);
 
         private object m_dispatcherQueueController = null;
+        /// <summary>
+        /// Метод EnsureWindowsSystemDispatcherQueueController выполняет основную операцию класса.
+        /// </summary>
 
         public void EnsureWindowsSystemDispatcherQueueController()
         {

@@ -1,0 +1,151 @@
+<Page x:Class="DromHub.Views.CartPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      mc:Ignorable="d">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <StackPanel Grid.Row="0" Padding="20" Background="{ThemeResource SystemControlBackgroundAltHighBrush}">
+            <TextBlock Text="Корзина" FontSize="24" FontWeight="Bold"/>
+            <TextBlock FontSize="16" Foreground="{ThemeResource TextFillColorSecondary}">
+                <Run Text="Товаров: "/>
+                <Run Text="{Binding TotalItems}"/>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Содержимое корзины -->
+        <ScrollViewer Grid.Row="1" Padding="20">
+            <StackPanel Spacing="15">
+                <!-- Поле для номера телефона -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefault}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="15">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Номер телефона" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding PhoneNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="Введите номер телефона..."
+                                 FontSize="14"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Список товаров -->
+                <ItemsControl ItemsSource="{Binding CartItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefault}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="15"
+                                    Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Информация о товаре -->
+                                    <StackPanel Grid.Column="0" Spacing="5">
+                                        <TextBlock Text="{Binding Part.CatalogNumber}" 
+                                                   FontWeight="SemiBold" FontSize="16"/>
+                                        <TextBlock Text="{Binding Part.Brand.Name}" 
+                                                   Foreground="{ThemeResource TextFillColorSecondary}"/>
+                                        <TextBlock Text="{Binding Part.Name}" 
+                                                   TextWrapping="Wrap"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5,0,0">
+                                            <TextBlock Text="Количество:"/>
+                                            <TextBlock Text="{Binding Quantity}" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource SystemAccentColor}">
+                                            <Run Text="Цена: "/>
+                                            <Run Text="{Binding UnitPrice, TargetNullValue='—', FallbackValue='—'}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <!-- Кнопка удаления -->
+                                    <Button Grid.Column="1"
+                                            Content="❌"
+                                            Click="RemoveItem_Click"
+                                            Tag="{Binding}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Width="40"
+                                            Height="40"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Пустая корзина -->
+                <Border x:Name="EmptyCartPlaceholder"
+                        Background="{ThemeResource CardBackgroundFillColorDefault}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="40"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                    <StackPanel Spacing="10" HorizontalAlignment="Center">
+                        <TextBlock Text="🛒" FontSize="48" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Корзина пуста" 
+                                   FontSize="18" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Добавьте товары из каталога"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{ThemeResource TextFillColorSecondary}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Итого и кнопки -->
+        <Border Grid.Row="2" 
+                Background="{ThemeResource SystemControlBackgroundAltHighBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefault}"
+                BorderThickness="1,1,0,0"
+                Padding="20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Общая сумма -->
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontSize="18" FontWeight="SemiBold">
+                        <Run Text="Итого: $"/>
+                        <Run Text="{Binding TotalPrice}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Кнопка очистки -->
+                <Button Grid.Column="1"
+                        Content="Очистить корзину"
+                        Command="{Binding ClearCartCommand}"
+                        Margin="0,0,10,0"
+                        Style="{ThemeResource DefaultButtonStyle}"/>
+
+                <!-- Кнопка заказа -->
+                <Button Grid.Column="2"
+                        Content="Оформить заказ"
+                        Command="{Binding PlaceOrderCommand}"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Padding="20,10"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

@@ -1,0 +1,19 @@
+<ContentDialog
+    x:Class="DromHub.Views.AddPartDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Создать новую запчасть"
+    PrimaryButtonText="Сохранить"
+    CloseButtonText="Отмена"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="12" Width="400">
+        <TextBox Header="Каталожный №" Text="{Binding CatalogNumber, Mode=TwoWay}"/>
+        <TextBox Header="Название" Text="{Binding Name, Mode=TwoWay}"/>
+
+        <ComboBox Header="Бренд"
+                  ItemsSource="{Binding Brands}"
+                  DisplayMemberPath="Name"
+                  SelectedItem="{Binding SelectedBrand, Mode=TwoWay}"/>
+    </StackPanel>
+</ContentDialog>
