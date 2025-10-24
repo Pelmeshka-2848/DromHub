@@ -21,7 +21,7 @@ namespace DromHub.ViewModels;
 /// Сложность типичных операций: O(n) относительно размера текущей страницы при загрузке.
 /// См. также: <see cref="BrandAuditService"/>.
 /// </remarks>
-public sealed partial class BrandChangesViewModel : ObservableObject
+public sealed class BrandChangesViewModel : ObservableObject
 {
     /// <summary>
     /// Сохраняет ссылку на сервис аудита для построения выдачи журнала изменений.
@@ -406,6 +406,35 @@ public sealed partial class BrandChangesViewModel : ObservableObject
     {
         get => _pageInfo;
         private set => SetProperty(ref _pageInfo, value);
+    }
+
+    /// <summary>
+    /// <para>Сбрасывает состояние модели представления, когда страница теряет контекст бренда или должна показать пустой экран.</para>
+    /// <para>Используйте перед навигацией без идентификатора или после удаления бренда, чтобы очистить коллекции и уведомить пользователя.</para>
+    /// <para>Не запускает загрузку и тем самым предотвращает бессмысленные запросы к <see cref="BrandAuditService"/>.</para>
+    /// </summary>
+    /// <param name="emptyStateMessage">Сообщение для пользователя; допускает <see langword="null"/> для использования стандартного текста.</param>
+    /// <remarks>
+    /// Предусловия: вызов допустим в любой момент, даже во время загрузки; метод отменяет отложенную перезагрузку.
+    /// Постусловия: <see cref="BrandId"/> равен <see cref="Guid.Empty"/>, коллекции очищены, команды возвращены в исходное состояние.
+    /// Побочные эффекты: очищает привязанные коллекции и сбрасывает счетчики UI.
+    /// Потокобезопасность: вызывать только из UI-потока.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// viewModel.ResetState("Бренд не выбран");
+    /// // UI отображает пустые списки и пояснение для пользователя.
+    /// </code>
+    /// </example>
+    public void ResetState(string? emptyStateMessage = null)
+    {
+        _pendingReload = false;
+        IsBusy = false;
+        BrandId = Guid.Empty;
+        Rows.Clear();
+        TotalCount = 0;
+        ErrorMessage = emptyStateMessage;
+        PageInfo = string.IsNullOrWhiteSpace(emptyStateMessage) ? "Нет записей." : emptyStateMessage;
     }
 
     /// <summary>
