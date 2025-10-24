@@ -1,26 +1,100 @@
-﻿using System;
-using System.Text.Json;
+using System;
 
 namespace DromHub.Models;
 
-public class BrandAuditLog
+/// <summary>
+/// <para>Описывает запись триггерного аудита бренда, формируемую функцией <c>trg_brand_audit</c> в базе PostgreSQL.</para>
+/// <para>Используется слоем данных и сервисом <see cref="DromHub.Services.BrandAuditService"/> для материализации истории изменений.</para>
+/// <para>Не содержит логики преобразований; представляет собой DTO, отражающее текущую схему таблицы <c>brand_audit_log</c>.</para>
+/// </summary>
+/// <remarks>
+/// Потокобезопасность: экземпляр не потокобезопасен при записи, но безопасен для неизменяемого чтения между потоками.
+/// Побочные эффекты: отсутствуют; свойства содержат значения, считанные из БД.
+/// Требования к nullability: допускает <see langword="null"/> для необязательных полей триггера (<see cref="BrandId"/>, <see cref="OldData"/>, <see cref="NewData"/>).
+/// </remarks>
+public sealed class BrandAuditLog
 {
-    public long Id { get; set; }
+    /// <summary>
+    /// <para>Содержит уникальный идентификатор события аудита, совпадающий с колонкой <c>event_id</c>.</para>
+    /// <para>Используется как первичный ключ и для корреляции связанных записей при анализе транзакций.</para>
+    /// </summary>
+    /// <value>Глобально уникальный идентификатор события; никогда не пустой.</value>
     public Guid EventId { get; set; }
+
+    /// <summary>
+    /// <para>Фиксирует идентификатор бренда, изменение которого привело к созданию записи аудита.</para>
+    /// <para>Применяется для фильтрации истории по конкретному бренду в UI и сервисах.</para>
+    /// </summary>
+    /// <value>GUID бренда или <see langword="null"/>, если действие не связано с конкретным брендом.</value>
     public Guid? BrandId { get; set; }
-    public char Action { get; set; }           // 'I','U','D'
+
+    /// <summary>
+    /// <para>Отражает тип действия, выполненного над сущностью бренда.</para>
+    /// <para>Значения соответствуют символам триггера: <c>'I'</c> — вставка, <c>'U'</c> — обновление, <c>'D'</c> — удаление.</para>
+    /// </summary>
+    /// <value>Буквенный код действия; по умолчанию — <c>'\0'</c>.</value>
+    public char Action { get; set; }
+
+    /// <summary>
+    /// <para>Содержит список столбцов, которые фактически изменились при обновлении.</para>
+    /// <para>Сервис использует список, чтобы исключить технические операции без бизнес-изменений.</para>
+    /// </summary>
+    /// <value>Массив имен столбцов или <see langword="null"/> для вставок/удалений.</value>
     public string[]? ChangedColumns { get; set; }
 
-    // Храним как string для простоты сериализации/превью
-    public string? OldData { get; set; }       // jsonb
-    public string? NewData { get; set; }       // jsonb
+    /// <summary>
+    /// <para>Хранит состояние сущности до изменения в формате JSONB, сериализованное в строку.</para>
+    /// <para>Позволяет UI отображать детальные отличия и восстанавливать предыдущие значения.</para>
+    /// </summary>
+    /// <value>JSON-строка или <see langword="null"/>, если данные недоступны.</value>
+    public string? OldData { get; set; }
 
+    /// <summary>
+    /// <para>Содержит новое состояние сущности после операции, сериализованное в JSONB.</para>
+    /// <para>Используется вместе с <see cref="OldData"/> для визуализации дельты.</para>
+    /// </summary>
+    /// <value>JSON-строка или <see langword="null"/> для операций удаления.</value>
+    public string? NewData { get; set; }
+
+    /// <summary>
+    /// <para>Фиксирует имя или роль пользователя БД, инициировавшего изменение.</para>
+    /// <para>Помогает расследовать инциденты и подтверждать авторство изменений.</para>
+    /// </summary>
+    /// <value>Имя пользователя или <see langword="null"/>, если триггер не зафиксировал актера.</value>
     public string? Actor { get; set; }
+
+    /// <summary>
+    /// <para>Содержит значение <c>application_name</c> соединения, записанное триггером.</para>
+    /// <para>Используется для диагностики клиентских приложений, производящих изменения.</para>
+    /// </summary>
+    /// <value>Имя контекста приложения или <see langword="null"/>.</value>
     public string? AppContext { get; set; }
+
+    /// <summary>
+    /// <para>Отражает идентификатор транзакции PostgreSQL, внутри которой выполнено изменение.</para>
+    /// <para>Позволяет группировать события в одну бизнес-операцию.</para>
+    /// </summary>
+    /// <value>Числовой идентификатор транзакции; неотрицательное целое.</value>
     public long TxId { get; set; }
+
+    /// <summary>
+    /// <para>Содержит момент времени, когда был создан аудит, в часовом поясе UTC.</para>
+    /// <para>Служит основным полем сортировки при отображении истории.</para>
+    /// </summary>
+    /// <value>Метка времени в формате <see cref="DateTimeOffset"/>; всегда валидна.</value>
     public DateTimeOffset EventTime { get; set; }
 
-    // Сгенерированные (read-only)
+    /// <summary>
+    /// <para>Представляет текстовую версию старых данных, сформированную в базе из JSONB.</para>
+    /// <para>Упрощает полнотекстовый поиск и отображение в интерфейсе без дополнительной сериализации.</para>
+    /// </summary>
+    /// <value>Текстовое представление или <see langword="null"/>.</value>
     public string? OldText { get; set; }
+
+    /// <summary>
+    /// <para>Содержит текстовую версию новых данных, синхронизированную с колонкой <c>new_text</c>.</para>
+    /// <para>Позволяет выполнять ILIKE-поиск без конвертации JSON на стороне приложения.</para>
+    /// </summary>
+    /// <value>Строка или <see langword="null"/>.</value>
     public string? NewText { get; set; }
 }
