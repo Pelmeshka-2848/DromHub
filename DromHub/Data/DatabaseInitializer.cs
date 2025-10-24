@@ -295,13 +295,23 @@ namespace DromHub.Data
                 return;
             }
 
-            var brandLookup = await context.Brands
-                .AsNoTracking()
-                .ToDictionaryAsync(b => b.Name, StringComparer.OrdinalIgnoreCase);
+            var brandLookup = BuildLookup(
+                await context.Brands
+                    .AsNoTracking()
+                    .ToListAsync(),
+                brand => brand.Name,
+                brand => brand.Id.ToString("D"),
+                StringComparer.OrdinalIgnoreCase,
+                "брендов");
 
-            var partLookup = await context.Parts
-                .AsNoTracking()
-                .ToDictionaryAsync(p => p.CatalogNumber, StringComparer.OrdinalIgnoreCase);
+            var partLookup = BuildLookup(
+                await context.Parts
+                    .AsNoTracking()
+                    .ToListAsync(),
+                part => part.CatalogNumber,
+                part => part.Id.ToString("D"),
+                StringComparer.OrdinalIgnoreCase,
+                "деталей");
 
             Guid ResolveBrand(string name) =>
                 brandLookup.TryGetValue(name, out var brand)
@@ -540,6 +550,80 @@ namespace DromHub.Data
             {
                 Debug.WriteLine("Очистка базы данных завершена с ошибками. См. сообщения выше.");
             }
+        }
+
+        /// <summary>
+        /// Формирует словарь для быстрых поисков по строковому ключу, устраняя дубликаты и сохраняя первую валидную запись.
+        /// Используйте метод перед сидированием зависимых сущностей, чтобы защититься от исторических коллизий данных без падения инициализации.
+        /// При обнаружении повтора ключа фиксирует диагностическое сообщение через <see cref="Debug.WriteLine(string?)"/>, помогая оперативно очистить данные.
+        /// </summary>
+        /// <typeparam name="TEntity">Тип сущности EF Core, содержащий требуемый идентификатор и строковый ключ.</typeparam>
+        /// <param name="items">Коллекция сущностей, считанная из <see cref="ApplicationDbContext"/>; не должна быть <see langword="null"/>.</param>
+        /// <param name="keySelector">Делегат, извлекающий строковый ключ (например, имя бренда); обязан возвращать непустое значение.</param>
+        /// <param name="identitySelector">Делегат, формирующий человекочитаемый идентификатор для логирования (например, GUID в формате <c>D</c>).</param>
+        /// <param name="comparer">Компаратор сравнения ключей (обычно <see cref="StringComparer.OrdinalIgnoreCase"/>).</param>
+        /// <param name="contextLabel">Текстовое описание коллекции для диагностических сообщений (например, «брендов»); не должно быть пустым.</param>
+        /// <returns>Словарь <see cref="IReadOnlyDictionary{TKey, TValue}"/> без повторяющихся ключей, готовый к вызовам <see cref="Dictionary{TKey, TValue}.TryGetValue(TKey, out TValue)"/>.</returns>
+        /// <exception cref="ArgumentNullException">Когда <paramref name="items"/>, <paramref name="keySelector"/>, <paramref name="identitySelector"/> или <paramref name="comparer"/> не заданы.</exception>
+        /// <exception cref="ArgumentException">Когда <paramref name="contextLabel"/> пуст либо состоит только из пробелов.</exception>
+        /// <exception cref="InvalidOperationException">Когда <paramref name="keySelector"/> возвращает пустой ключ для конкретной сущности, нарушая доменные инварианты.</exception>
+        /// <remarks>
+        /// Предусловия: коллекция полностью материализована и доступна для однопроходного чтения; делегаты не выбрасывают исключений.
+        /// Постусловия: результирующий словарь содержит ровно по одной записи для каждого уникального ключа; исходная коллекция не модифицируется.
+        /// Побочные эффекты: выполняет диагностическую запись в <see cref="Debug"/> при обнаружении дубликатов ключей.
+        /// Потокобезопасность: метод не потокобезопасен; вызывайте его в рамках одного потока инициализации.
+        /// Сложность: O(n) по числу элементов в <paramref name="items"/>; память O(n) для результирующего словаря.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var lookup = BuildLookup(brands, b => b.Name, b => b.Id.ToString("D"), StringComparer.OrdinalIgnoreCase, "брендов");
+        /// if (!lookup.TryGetValue("Toyota", out var toyota))
+        /// {
+        ///     throw new InvalidOperationException("Бренд Toyota должен быть предварительно посеян.");
+        /// }
+        /// </code>
+        /// </example>
+        private static IReadOnlyDictionary<string, TEntity> BuildLookup<TEntity>(
+            IEnumerable<TEntity> items,
+            Func<TEntity, string?> keySelector,
+            Func<TEntity, string?> identitySelector,
+            StringComparer comparer,
+            string contextLabel)
+        {
+            ArgumentNullException.ThrowIfNull(items);
+            ArgumentNullException.ThrowIfNull(keySelector);
+            ArgumentNullException.ThrowIfNull(identitySelector);
+            ArgumentNullException.ThrowIfNull(comparer);
+
+            if (string.IsNullOrWhiteSpace(contextLabel))
+            {
+                throw new ArgumentException("Описание контекста не должно быть пустым.", nameof(contextLabel));
+            }
+
+            var dictionary = new Dictionary<string, TEntity>(comparer);
+
+            foreach (var item in items)
+            {
+                var key = keySelector(item);
+
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new InvalidOperationException("Обнаружен пустой ключ при построении словаря сидов; проверьте источник данных.");
+                }
+
+                if (dictionary.TryGetValue(key, out var existing))
+                {
+                    var existingId = identitySelector(existing) ?? "<unknown>";
+                    var incomingId = identitySelector(item) ?? "<unknown>";
+                    Debug.WriteLine(
+                        $"[ChangeLogSeed] Повтор ключа '{key}' при подготовке {contextLabel}. Сохраняем {existingId}, игнорируем {incomingId}.");
+                    continue;
+                }
+
+                dictionary[key] = item;
+            }
+
+            return dictionary;
         }
 
         /// <summary>
