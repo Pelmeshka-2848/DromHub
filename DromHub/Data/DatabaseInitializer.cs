@@ -1,6 +1,7 @@
 ﻿using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +29,7 @@ namespace DromHub.Data
                 await SeedParts(context);
                 await SeedSuppliers(context);
                 await SeedLocalStock(context);
+                await SeedChangeLog(context);
 
                 Debug.WriteLine("Инициализация БД успешно завершена");
             }
@@ -278,6 +280,214 @@ namespace DromHub.Data
             }
         }
         /// <summary>
+        /// Метод SeedChangeLog выполняет основную операцию класса.
+        /// </summary>
+
+        private static async Task SeedChangeLog(ApplicationDbContext context)
+        {
+            if (await context.ChangeLogPatches.AnyAsync())
+            {
+                return;
+            }
+
+            var brandLookup = await context.Brands
+                .AsNoTracking()
+                .ToDictionaryAsync(b => b.Name, StringComparer.OrdinalIgnoreCase);
+
+            var partLookup = await context.Parts
+                .AsNoTracking()
+                .ToDictionaryAsync(p => p.CatalogNumber, StringComparer.OrdinalIgnoreCase);
+
+            Guid ResolveBrand(string name) =>
+                brandLookup.TryGetValue(name, out var brand)
+                    ? brand.Id
+                    : throw new InvalidOperationException($"Не удалось найти бренд '{name}' для сидов ChangeLog.");
+
+            Guid ResolvePart(string catalogNumber) =>
+                partLookup.TryGetValue(catalogNumber, out var part)
+                    ? part.Id
+                    : throw new InvalidOperationException($"Не удалось найти деталь '{catalogNumber}' для сидов ChangeLog.");
+
+            var toyotaFilterId = ResolvePart("04152-YZZA1");
+            var camryAirFilterId = ResolvePart("17801-0P010");
+            var boschBrakeDiscId = ResolvePart("0 986 452 211");
+            var mannCabinFilterId = ResolvePart("WK 842/3");
+
+            var toyotaBrandId = ResolveBrand("Toyota");
+            var boschBrandId = ResolveBrand("Bosch");
+            var mannBrandId = ResolveBrand("Mann-Filter");
+
+            var toyotaStock = await context.LocalStocks
+                .AsNoTracking()
+                .Include(ls => ls.Supplier)
+                .FirstOrDefaultAsync(ls => ls.PartId == toyotaFilterId);
+
+            var mannStock = await context.LocalStocks
+                .AsNoTracking()
+                .Include(ls => ls.Supplier)
+                .FirstOrDefaultAsync(ls => ls.PartId == mannCabinFilterId);
+
+            var fallPatch = new ChangeLogPatch
+            {
+                Id = Guid.NewGuid(),
+                Version = "2024.9",
+                Title = "Осенний фокус",
+                ReleaseDate = new DateTime(2024, 9, 17, 0, 0, 0, DateTimeKind.Utc),
+                SortOrder = 0,
+                Sections = new List<ChangeLogSection>
+                {
+                    new ChangeLogSection
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Брендовые инициативы",
+                        Category = ChangeLogCategory.Brand,
+                        SortOrder = 0,
+                        Entries = new List<ChangeLogEntry>
+                        {
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                BrandId = toyotaBrandId,
+                                Headline = "Toyota: новый раздел про наследие",
+                                Description = "Добавили расширенный рассказ о происхождении бренда и выделили достижения в гибридных технологиях. Описание автоматически отображается на карточке бренда.",
+                                ImpactLevel = ChangeLogImpactLevel.Medium,
+                                IconAsset = "/Assets/globe.svg",
+                                SortOrder = 0
+                            },
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                BrandId = boschBrandId,
+                                Headline = "Bosch получает акцент на инновации",
+                                Description = "На странице бренда появился блок с ключевыми инновациями и ссылками на свежие пресс-релизы. Это помогает продавцам подсвечивать сильные стороны марки.",
+                                ImpactLevel = ChangeLogImpactLevel.Low,
+                                IconAsset = "/Assets/star.fill.svg",
+                                SortOrder = 1
+                            }
+                        }
+                    },
+                    new ChangeLogSection
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Цены и склад",
+                        Category = ChangeLogCategory.Pricing,
+                        SortOrder = 1,
+                        Entries = new List<ChangeLogEntry>
+                        {
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                PartId = toyotaFilterId,
+                                Headline = "Camry: перерасчёт локального склада",
+                                Description = toyotaStock is null
+                                    ? "Пересчитали рекомендованную цену и остатки фильтров для Toyota Camry в локальном складе."
+                                    : $"Пересчитали цену закупки и остатки фильтров Toyota Camry для поставщика {toyotaStock.Supplier?.Name ?? "—"}. Цена снижена на 7% для синхронизации с RRP.",
+                                ImpactLevel = ChangeLogImpactLevel.High,
+                                IconAsset = "/Assets/chart.line.uptrend.xyaxis.svg",
+                                SortOrder = 0
+                            },
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                PartId = mannCabinFilterId,
+                                Headline = "Mann-Filter: корректировка остатков",
+                                Description = mannStock is null
+                                    ? "Уточнили доступные остатки по популярным фильтрам Mann-Filter."
+                                    : $"Уточнили доступные остатки Mann-Filter для поставщика {mannStock.Supplier?.Name ?? "—"}; данные теперь обновляются ежедневно.",
+                                ImpactLevel = ChangeLogImpactLevel.Medium,
+                                IconAsset = "/Assets/square.stack.3d.up.svg",
+                                SortOrder = 1
+                            }
+                        }
+                    },
+                    new ChangeLogSection
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Обновления ассортимента",
+                        Category = ChangeLogCategory.Parts,
+                        SortOrder = 2,
+                        Entries = new List<ChangeLogEntry>
+                        {
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                PartId = camryAirFilterId,
+                                Headline = "Camry: улучшили карточку фильтра",
+                                Description = "Карточка воздушного фильтра получила уточнённые размеры и список совместимых поколений авто. На страницу добавлены фотографии высокого разрешения.",
+                                ImpactLevel = ChangeLogImpactLevel.Medium,
+                                IconAsset = "/Assets/fan.svg",
+                                SortOrder = 0
+                            },
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                PartId = boschBrakeDiscId,
+                                Headline = "Bosch: новая совместимость",
+                                Description = "Тормозные диски Bosch теперь показываются в подборе для Volkswagen Golf и Passat благодаря расширенному кроссу. Фильтры OEM обновлены автоматически.",
+                                ImpactLevel = ChangeLogImpactLevel.High,
+                                IconAsset = "/Assets/steeringwheel.svg",
+                                SortOrder = 1
+                            }
+                        }
+                    }
+                }
+            };
+
+            var summerPatch = new ChangeLogPatch
+            {
+                Id = Guid.NewGuid(),
+                Version = "2024.6",
+                Title = "Летний баланс",
+                ReleaseDate = new DateTime(2024, 6, 5, 0, 0, 0, DateTimeKind.Utc),
+                SortOrder = 1,
+                Sections = new List<ChangeLogSection>
+                {
+                    new ChangeLogSection
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Общее",
+                        Category = ChangeLogCategory.General,
+                        SortOrder = 0,
+                        Entries = new List<ChangeLogEntry>
+                        {
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                Headline = "Глобальный поиск стал умнее",
+                                Description = "Добавили подсветку брендов и деталей в результате поиска по каталогу. Это изменение видно всем пользователям, независимо от выбранного бренда.",
+                                ImpactLevel = ChangeLogImpactLevel.Medium,
+                                IconAsset = "/Assets/list.bullet.svg",
+                                SortOrder = 0
+                            }
+                        }
+                    },
+                    new ChangeLogSection
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = "Логистика",
+                        Category = ChangeLogCategory.Logistics,
+                        SortOrder = 1,
+                        Entries = new List<ChangeLogEntry>
+                        {
+                            new ChangeLogEntry
+                            {
+                                Id = Guid.NewGuid(),
+                                BrandId = mannBrandId,
+                                Headline = "Mann-Filter: обновлённые сроки",
+                                Description = "Срок поставки из Германии сокращён до 5 дней благодаря новой схеме консолидации заказов. Эти данные теперь отображаются в карточке поставщика.",
+                                ImpactLevel = ChangeLogImpactLevel.High,
+                                IconAsset = "/Assets/shippingbox.svg",
+                                SortOrder = 0
+                            }
+                        }
+                    }
+                }
+            };
+
+            await context.ChangeLogPatches.AddRangeAsync(fallPatch, summerPatch);
+            await context.SaveChangesAsync();
+        }
+        /// <summary>
         /// Метод ClearDatabase выполняет основную операцию класса.
         /// </summary>
 
@@ -289,7 +499,18 @@ namespace DromHub.Data
                 return;
             }
 
-            var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
+            var tables = new[]
+            {
+                "change_log_entries",
+                "change_log_sections",
+                "change_log_patches",
+                "local_stocks",
+                "parts",
+                "brand_aliases",
+                "brands",
+                "suppliers",
+                "supplier_localities"
+            };
             var allSucceeded = true;
 
             foreach (var table in tables)

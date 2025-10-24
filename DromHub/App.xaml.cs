@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using DromHub.Data;
 using DromHub.Models;
+using DromHub.Services;
 using DromHub.ViewModels;
 using DromHub.Views;
 using Microsoft.EntityFrameworkCore;
@@ -108,6 +109,9 @@ namespace DromHub
             services.AddDbContextFactory<ApplicationDbContext>(options =>
                 options.UseNpgsql(connectionString));
 
+            // Регистрация сервисов
+            services.AddTransient<ChangeLogService>();
+
             // Регистрация ViewModels
             services.AddTransient<PartViewModel>();
             services.AddTransient<BrandOverviewViewModel>();
@@ -117,6 +121,7 @@ namespace DromHub
             services.AddTransient<BrandShellViewModel>();
             services.AddTransient<MailParserViewModel>();
             services.AddTransient<BrandSettingsViewModel>();
+            services.AddTransient<BrandChangeLogViewModel>();
 
             // ДОБАВЬТЕ ЭТУ СТРОКУ - регистрация CartViewModel
             services.AddTransient<CartViewModel>();

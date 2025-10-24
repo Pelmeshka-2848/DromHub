@@ -76,6 +76,18 @@ namespace DromHub.Data
         /// Свойство Countries предоставляет доступ к данным Countries.
         /// </summary>
         public DbSet<Country> Countries { get; set; }
+        /// <summary>
+        /// Свойство ChangeLogPatches предоставляет доступ к данным ChangeLogPatches.
+        /// </summary>
+        public DbSet<ChangeLogPatch> ChangeLogPatches { get; set; }
+        /// <summary>
+        /// Свойство ChangeLogSections предоставляет доступ к данным ChangeLogSections.
+        /// </summary>
+        public DbSet<ChangeLogSection> ChangeLogSections { get; set; }
+        /// <summary>
+        /// Свойство ChangeLogEntries предоставляет доступ к данным ChangeLogEntries.
+        /// </summary>
+        public DbSet<ChangeLogEntry> ChangeLogEntries { get; set; }
         // УДАЛИТЬ эти строки:
         // public DbSet<Cart> Carts { get; set; }
         // public DbSet<CartItem> CartItems { get; set; }
@@ -226,6 +238,83 @@ namespace DromHub.Data
                     .HasConversion(
                         v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                         v => JsonSerializer.Deserialize<JsonDocument>(v, (JsonSerializerOptions)null));
+            });
+
+            // Конфигурация ChangeLogPatch
+            modelBuilder.Entity<ChangeLogPatch>(entity =>
+            {
+                entity.HasIndex(p => p.ReleaseDate);
+                entity.HasIndex(p => p.SortOrder);
+
+                entity.Property(p => p.Version)
+                    .HasMaxLength(64)
+                    .IsRequired();
+
+                entity.Property(p => p.Title)
+                    .HasMaxLength(256);
+
+                entity.Property(p => p.SortOrder)
+                    .HasDefaultValue(0);
+
+                entity.HasMany(p => p.Sections)
+                    .WithOne(s => s.Patch)
+                    .HasForeignKey(s => s.PatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Конфигурация ChangeLogSection
+            modelBuilder.Entity<ChangeLogSection>(entity =>
+            {
+                entity.HasIndex(s => new { s.PatchId, s.SortOrder });
+
+                entity.Property(s => s.Title)
+                    .HasMaxLength(256)
+                    .IsRequired();
+
+                entity.Property(s => s.Category)
+                    .HasConversion<string>()
+                    .HasMaxLength(32)
+                    .IsRequired();
+
+                entity.Property(s => s.SortOrder)
+                    .HasDefaultValue(0);
+
+                entity.HasMany(s => s.Entries)
+                    .WithOne(e => e.Section)
+                    .HasForeignKey(e => e.SectionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Конфигурация ChangeLogEntry
+            modelBuilder.Entity<ChangeLogEntry>(entity =>
+            {
+                entity.HasIndex(e => new { e.SectionId, e.SortOrder });
+                entity.HasIndex(e => e.BrandId);
+                entity.HasIndex(e => e.PartId);
+
+                entity.Property(e => e.ImpactLevel)
+                    .HasConversion<string>()
+                    .HasMaxLength(32)
+                    .IsRequired();
+
+                entity.Property(e => e.IconAsset)
+                    .HasMaxLength(256);
+
+                entity.Property(e => e.Description)
+                    .IsRequired();
+
+                entity.Property(e => e.SortOrder)
+                    .HasDefaultValue(0);
+
+                entity.HasOne(e => e.Brand)
+                    .WithMany()
+                    .HasForeignKey(e => e.BrandId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Part)
+                    .WithMany()
+                    .HasForeignKey(e => e.PartId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Конфигурация PriceMarkup
