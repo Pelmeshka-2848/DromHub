@@ -27,6 +27,8 @@ namespace DromHub.Data
 
                 await EnsureChangeLogSchemaAsync(context);
 
+                await NormalizeLegacyNullNotesAsync(context);
+
                 await ClearDatabase(context, forceReset);
 
                 // Убрал внешнюю транзакцию, так как она уже есть в SeedBrands
@@ -683,7 +685,7 @@ namespace DromHub.Data
                         "id" uuid NOT NULL,
                         "patch_id" uuid NOT NULL,
                         "title" character varying(256) NOT NULL,
-                        "category" character varying(32) NOT NULL,
+                        "category" integer NOT NULL,
                         "sort_order" integer NOT NULL DEFAULT 0,
                         CONSTRAINT "pk_change_log_sections" PRIMARY KEY ("id"),
                         CONSTRAINT "fk_change_log_sections_change_log_patches_patch_id" FOREIGN KEY ("patch_id") REFERENCES "change_log_patches" ("id") ON DELETE CASCADE
@@ -703,7 +705,7 @@ namespace DromHub.Data
                         "section_id" uuid NOT NULL,
                         "headline" character varying(256),
                         "description" text NOT NULL,
-                        "impact_level" character varying(32) NOT NULL,
+                        "impact_level" integer NOT NULL,
                         "icon_asset" character varying(256),
                         "brand_id" uuid,
                         "part_id" uuid,
@@ -747,6 +749,8 @@ namespace DromHub.Data
                         await context.Database.ExecuteSqlRawAsync(indexSql, cancellationToken).ConfigureAwait(false);
                     }
                 }
+
+                await NormalizeChangeLogEnumColumnsAsync(context, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -796,6 +800,214 @@ namespace DromHub.Data
             var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
 
             return result is string { Length: > 0 };
+        }
+
+        /// <summary>
+        /// Обнаруживает и устраняет наследованные NULL-значения в колонках примечаний, чтобы EF Core не падал при материализации строк.
+        /// Применяйте метод перед запуском сидов и пользовательских сценариев, если база могла быть создана старым скриптом без ограничений по NULL.
+        /// Логирование сообщает таблицу и количество исправленных записей, упрощая диагностику повторяющихся инцидентов.
+        /// </summary>
+        /// <param name="context">Активный <see cref="ApplicationDbContext"/>, через который выполняются корректирующие UPDATE-запросы.</param>
+        /// <param name="cancellationToken">Токен отмены; при отмене выбрасывается <see cref="OperationCanceledException"/> и изменения не применяются.</param>
+        /// <returns>Задача, завершающаяся после нормализации всех поддерживаемых таблиц.</returns>
+        /// <exception cref="ArgumentNullException">Когда <paramref name="context"/> не передан.</exception>
+        /// <remarks>
+        /// Предусловия: схема таблиц существует и совпадает с используемыми именами; вызывается до старта конкурентных запросов.
+        /// Постусловия: колонки <c>note</c> в перечисленных таблицах не содержат <see langword="null"/>; значения <c>''</c> трактуются как отсутствие заметки.
+        /// Побочные эффекты: модифицирует данные с записью количества затронутых строк в <see cref="Debug"/>.
+        /// Потокобезопасность: метод не потокобезопасен, выполняйте его в одиночном потоке инициализации.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// await NormalizeLegacyNullNotesAsync(context, ct);
+        /// </code>
+        /// </example>
+        private static async Task NormalizeLegacyNullNotesAsync(ApplicationDbContext context, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+
+            var targets = new (string Table, string Column)[]
+            {
+                ("local_stock", "note"),
+                ("brand_markups", "note"),
+                ("brand_aliases", "note"),
+                ("supplier_markups", "note"),
+                ("supplier_pricelist_layouts", "note"),
+                ("price_markups", "note"),
+                ("oem_cross", "note")
+            };
+
+            foreach (var (table, column) in targets)
+            {
+                var sql = $"UPDATE \"{table}\" SET \"{column}\" = '' WHERE \"{column}\" IS NULL;";
+                var affected = await context.Database.ExecuteSqlRawAsync(sql, cancellationToken).ConfigureAwait(false);
+
+                if (affected > 0)
+                {
+                    Debug.WriteLine($"[DatabaseInitializer] Колонка '{column}' в таблице '{table}' нормализована, обновлено {affected} строк.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Приводит колонки перечислений патчноутов к целочисленному типу хранения, преобразуя текстовые значения и устраняя рассинхрон между схемой и моделью EF.
+        /// Метод полезен при обновлении проекта с ранних ревизий, где <see cref="ChangeLogCategory"/> и <see cref="ChangeLogImpactLevel"/> сохранялись как строки.
+        /// Выполняется идемпотентно: если столбцы уже integer, повторный запуск просто завершится без изменений.
+        /// </summary>
+        /// <param name="context">Экземпляр <see cref="ApplicationDbContext"/>, через который отправляются DDL/UPDATE команды.</param>
+        /// <param name="cancellationToken">Токен отмены операции; при отмене инициирует <see cref="OperationCanceledException"/>.</param>
+        /// <returns>Задача, завершающаяся после синхронизации обоих столбцов.</returns>
+        /// <exception cref="ArgumentNullException">Когда <paramref name="context"/> не передан.</exception>
+        /// <exception cref="DbException">При ошибках выполнения SQL.</exception>
+        /// <remarks>
+        /// Предусловия: таблицы патчноутов существуют; вызов выполняется вне внешних транзакций, чтобы ALTER TABLE завершился успешно.
+        /// Постусловия: колонки <c>change_log_sections.category</c> и <c>change_log_entries.impact_level</c> имеют тип <c>integer</c> и содержат числовые значения.
+        /// Побочные эффекты: выполняет UPDATE и ALTER TABLE; возможна блокировка таблиц на короткое время.
+        /// Потокобезопасность: не потокобезопасен; запускайте в одиночном потоке миграции.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// await NormalizeChangeLogEnumColumnsAsync(context, ct);
+        /// </code>
+        /// </example>
+        private static async Task NormalizeChangeLogEnumColumnsAsync(ApplicationDbContext context, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+
+            var enumColumns = new[]
+            {
+                new
+                {
+                    Table = "change_log_sections",
+                    Column = "category",
+                    Mapping = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [nameof(ChangeLogCategory.Brand)] = (int)ChangeLogCategory.Brand,
+                        [nameof(ChangeLogCategory.Parts)] = (int)ChangeLogCategory.Parts,
+                        [nameof(ChangeLogCategory.Pricing)] = (int)ChangeLogCategory.Pricing,
+                        [nameof(ChangeLogCategory.General)] = (int)ChangeLogCategory.General,
+                        [nameof(ChangeLogCategory.Logistics)] = (int)ChangeLogCategory.Logistics
+                    },
+                    DefaultValue = (int)ChangeLogCategory.General
+                },
+                new
+                {
+                    Table = "change_log_entries",
+                    Column = "impact_level",
+                    Mapping = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [nameof(ChangeLogImpactLevel.Low)] = (int)ChangeLogImpactLevel.Low,
+                        [nameof(ChangeLogImpactLevel.Medium)] = (int)ChangeLogImpactLevel.Medium,
+                        [nameof(ChangeLogImpactLevel.High)] = (int)ChangeLogImpactLevel.High,
+                        [nameof(ChangeLogImpactLevel.Critical)] = (int)ChangeLogImpactLevel.Critical
+                    },
+                    DefaultValue = (int)ChangeLogImpactLevel.Medium
+                }
+            };
+
+            var connection = context.Database.GetDbConnection();
+            var shouldCloseConnection = connection.State != ConnectionState.Open;
+
+            if (shouldCloseConnection)
+            {
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            try
+            {
+                foreach (var column in enumColumns)
+                {
+                    var dataType = await GetColumnDataTypeAsync(connection, column.Table, column.Column, cancellationToken).ConfigureAwait(false);
+
+                    if (dataType is null || dataType.Equals("integer", StringComparison.OrdinalIgnoreCase) || dataType.Equals("int4", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (!dataType.Equals("character varying", StringComparison.OrdinalIgnoreCase) && !dataType.Equals("varchar", StringComparison.OrdinalIgnoreCase) && !dataType.Equals("text", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Debug.WriteLine($"[DatabaseInitializer] Колонка '{column.Table}.{column.Column}' имеет неподдерживаемый тип '{dataType}', нормализация пропущена.");
+                        continue;
+                    }
+
+                    var cases = string.Join(Environment.NewLine, column.Mapping.Select(mapping =>
+                        $"            WHEN UPPER(\"{column.Column}\") = '{mapping.Key.ToUpperInvariant()}' THEN '{mapping.Value}'"));
+
+                    var updateSql = $@"
+UPDATE \"{column.Table}\"
+SET \"{column.Column}\" =
+    CASE
+{cases}
+            WHEN \"{column.Column}\" ~ '^[0-9]+$' THEN \"{column.Column}\"
+            ELSE '{column.DefaultValue}'
+    END
+WHERE \"{column.Column}\" IS NOT NULL
+  AND \"{column.Column}\" <> ''
+  AND \"{column.Column}\" !~ '^[0-9]+$';";
+
+                    var affected = await context.Database.ExecuteSqlRawAsync(updateSql, cancellationToken).ConfigureAwait(false);
+
+                    if (affected > 0)
+                    {
+                        Debug.WriteLine($"[DatabaseInitializer] Конвертировано {affected} строк в {column.Table}.{column.Column} из строкового представления перечисления в числовое.");
+                    }
+
+                    var alterSql = $@"
+ALTER TABLE \"{column.Table}\"
+ALTER COLUMN \"{column.Column}\" TYPE integer
+USING NULLIF(\"{column.Column}\", '')::integer;";
+
+                    await context.Database.ExecuteSqlRawAsync(alterSql, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    await connection.CloseAsync().ConfigureAwait(false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Возвращает тип данных столбца из <c>information_schema.columns</c>, чтобы адаптировать процедуру нормализации.
+        /// Используется вспомогательными методами, преобразующими схему для совместимости новых версий приложения с существующей БД.
+        /// </summary>
+        /// <param name="connection">Открытое подключение к базе PostgreSQL.</param>
+        /// <param name="tableName">Имя таблицы в схеме <c>public</c>.</param>
+        /// <param name="columnName">Имя столбца, для которого нужно определить тип.</param>
+        /// <param name="cancellationToken">Токен отмены; при отмене возбуждается <see cref="OperationCanceledException"/>.</param>
+        /// <returns>Строка с типом данных (например, <c>integer</c>, <c>character varying</c>) либо <see langword="null"/>, если столбец не найден.</returns>
+        /// <exception cref="ArgumentNullException">Когда <paramref name="connection"/> не задан.</exception>
+        /// <remarks>
+        /// Потокобезопасность: метод не потокобезопасен, создавайте отдельные команды на поток.
+        /// Сложность: O(1) — одиночный запрос к системному каталогу.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var dataType = await GetColumnDataTypeAsync(connection, "change_log_sections", "category", ct);
+        /// </code>
+        /// </example>
+        private static async Task<string?> GetColumnDataTypeAsync(DbConnection connection, string tableName, string columnName, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(connection);
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = "select data_type from information_schema.columns where table_name = @table and column_name = @column limit 1;";
+
+            var tableParameter = command.CreateParameter();
+            tableParameter.ParameterName = "table";
+            tableParameter.Value = tableName;
+            command.Parameters.Add(tableParameter);
+
+            var columnParameter = command.CreateParameter();
+            columnParameter.ParameterName = "column";
+            columnParameter.Value = columnName;
+            command.Parameters.Add(columnParameter);
+
+            var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+            return result as string;
         }
     }
 }

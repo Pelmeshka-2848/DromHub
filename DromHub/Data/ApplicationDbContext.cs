@@ -273,8 +273,6 @@ namespace DromHub.Data
                     .IsRequired();
 
                 entity.Property(s => s.Category)
-                    .HasConversion<string>()
-                    .HasMaxLength(32)
                     .IsRequired();
 
                 entity.Property(s => s.SortOrder)
@@ -294,8 +292,6 @@ namespace DromHub.Data
                 entity.HasIndex(e => e.PartId);
 
                 entity.Property(e => e.ImpactLevel)
-                    .HasConversion<string>()
-                    .HasMaxLength(32)
                     .IsRequired();
 
                 entity.Property(e => e.IconAsset)
