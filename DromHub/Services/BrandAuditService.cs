@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using DromHub.Data;
 using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DromHub.Services
 {
@@ -378,8 +381,8 @@ namespace DromHub.Services
         private static IReadOnlyList<BrandAuditValueChange> BuildValueChanges(BrandAuditLog entity)
         {
             var result = new List<BrandAuditValueChange>();
-            using var oldDoc = ParseJson(entity.OldData);
-            using var newDoc = ParseJson(entity.NewData);
+            var oldDoc = ParseJson(entity.OldData);
+            var newDoc = ParseJson(entity.NewData);
 
             var changed = entity.ChangedColumns?
                 .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -406,9 +409,9 @@ namespace DromHub.Services
                     });
                 }
             }
-            else if (entity.Action == 'I' && newDoc is not null && newDoc.RootElement.ValueKind == JsonValueKind.Object)
+            else if (entity.Action == 'I' && newDoc is not null)
             {
-                foreach (var property in newDoc.RootElement.EnumerateObject())
+                foreach (var property in newDoc.Properties())
                 {
                     result.Add(new BrandAuditValueChange
                     {
@@ -418,9 +421,9 @@ namespace DromHub.Services
                     });
                 }
             }
-            else if (entity.Action == 'D' && oldDoc is not null && oldDoc.RootElement.ValueKind == JsonValueKind.Object)
+            else if (entity.Action == 'D' && oldDoc is not null)
             {
-                foreach (var property in oldDoc.RootElement.EnumerateObject())
+                foreach (var property in oldDoc.Properties())
                 {
                     result.Add(new BrandAuditValueChange
                     {
@@ -430,17 +433,15 @@ namespace DromHub.Services
                     });
                 }
             }
-            else if (oldDoc is not null && newDoc is not null &&
-                     oldDoc.RootElement.ValueKind == JsonValueKind.Object &&
-                     newDoc.RootElement.ValueKind == JsonValueKind.Object)
+            else if (oldDoc is not null && newDoc is not null)
             {
                 var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var property in newDoc.RootElement.EnumerateObject())
+                foreach (var property in newDoc.Properties())
                 {
                     names.Add(property.Name);
                 }
 
-                foreach (var property in oldDoc.RootElement.EnumerateObject())
+                foreach (var property in oldDoc.Properties())
                 {
                     names.Add(property.Name);
                 }
@@ -468,46 +469,72 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// Парсит JSON-строку в документ, обрабатывая пустые значения.
+        /// Выполняет безопасную материализацию JSON-строки из аудита в <see cref="JObject"/>, чтобы последующий анализ мог использовать LINQ-проекции.
+        /// Применяйте при сравнении снимков «до/после», когда входные данные формируются PostgreSQL-триггером и могут быть пустыми или частично повреждёнными.
+        /// Возвращает <see langword="null"/>, если строка отсутствует или не проходит синтаксический разбор, тем самым сигнализируя UI о необходимости graceful degradation.
         /// </summary>
-        /// <param name="json">Строка JSON или <see langword="null"/>.</param>
-        /// <returns><see cref="JsonDocument"/> или <see langword="null"/>, если вход пустой.</returns>
+        /// <param name="json">Строка JSON или <see langword="null"/>; допускаются пустые строки.</param>
+        /// <returns><see cref="JObject"/>, готовый к чтению свойств, либо <see langword="null"/> при невозможности разбора.</returns>
         /// <remarks>
+        /// Предусловия: отсутствуют.
+        /// Постусловия: возвращаемый объект не содержит ссылок на исходный буфер.
+        /// Побочные эффекты: отсутствуют.
         /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(n) относительно длины JSON-строки.
         /// </remarks>
-        private static JsonDocument? ParseJson(string? json)
+        /// <example>
+        /// <code>
+        /// var parsed = ParseJson(entity.NewData);
+        /// var status = parsed?[
+        ///     "status"
+        /// ]?.ToString();
+        /// </code>
+        /// </example>
+        private static JObject? ParseJson(string? json)
         {
             if (string.IsNullOrWhiteSpace(json))
             {
                 return null;
             }
 
-            return JsonDocument.Parse(json);
+            try
+            {
+                return JObject.Parse(json);
+            }
+            catch (JsonReaderException)
+            {
+                return null;
+            }
         }
 
         /// <summary>
-        /// Извлекает значение свойства из JSON-документа и форматирует его для UI.
+        /// Извлекает значение свойства из JSON-снимка и приводит его к формату, пригодному для таблицы изменений.
+        /// Используйте, когда нужно сопоставить конкретный столбец из списка <c>changed_columns</c> с фактическим значением в документе.
+        /// Возвращает «—» для отсутствующих полей, подчёркивая, что триггер не передал данные.
         /// </summary>
-        /// <param name="doc">JSON-документ или <see langword="null"/>.</param>
-        /// <param name="propertyName">Имя свойства, которое требуется извлечь.</param>
-        /// <returns>Отформатированное строковое значение или «—».</returns>
+        /// <param name="doc">JSON-объект или <see langword="null"/>, предоставленный триггером аудита.</param>
+        /// <param name="propertyName">Имя свойства в формате столбца базы данных; сравнивается без учёта регистра.</param>
+        /// <returns>Отформатированное строковое значение или «—», если свойство не найдено.</returns>
         /// <remarks>
+        /// Предусловия: <paramref name="propertyName"/> не <see cref="string.Empty"/>.
+        /// Побочные эффекты: отсутствуют.
         /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(1) для плоских объектов.
         /// </remarks>
-        private static string ExtractValue(JsonDocument? doc, string propertyName)
+        /// <example>
+        /// <code>
+        /// var payload = JObject.Parse("{\"name\":\"Acme\"}");
+        /// var value = ExtractValue(payload, "name"); // "Acme"
+        /// </code>
+        /// </example>
+        private static string ExtractValue(JObject? doc, string propertyName)
         {
             if (doc is null)
             {
                 return "—";
             }
 
-            var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return FormatJsonValue(root);
-            }
-
-            if (!root.TryGetProperty(propertyName, out var element))
+            if (!doc.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var element))
             {
                 return "—";
             }
@@ -516,23 +543,40 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// Преобразует JSON-элемент в человеко-читаемое строковое представление.
+        /// Конвертирует произвольное JSON-значение в компактную строку, пригодную для отображения в таблице аудита.
+        /// Поддерживает базовые типы <see cref="JValue"/> и сворачивает сложные структуры в однострочный JSON, чтобы не перегружать UI.
+        /// Гарантирует детерминированное форматирование чисел и дат, исключая региональные артефакты.
         /// </summary>
-        /// <param name="element">JSON-элемент для отображения.</param>
+        /// <param name="element">JSON-значение для отображения; допускает <see langword="null"/>.</param>
         /// <returns>Форматированная строка, готовая к показу в UI.</returns>
         /// <remarks>
+        /// Предусловия: отсутствуют.
+        /// Побочные эффекты: отсутствуют.
         /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(1) для примитивов, O(n) для сериализации вложенных структур.
         /// </remarks>
-        private static string FormatJsonValue(JsonElement element)
+        /// <example>
+        /// <code>
+        /// var rendered = FormatJsonValue(JToken.Parse("{\"isActive\":true}")["isActive"]);
+        /// // rendered == "true"
+        /// </code>
+        /// </example>
+        private static string FormatJsonValue(JToken? element)
         {
-            return element.ValueKind switch
+            if (element is null || element.Type == JTokenType.Undefined)
             {
-                JsonValueKind.String => element.GetString() ?? string.Empty,
-                JsonValueKind.Number => element.ToString(),
-                JsonValueKind.True => "true",
-                JsonValueKind.False => "false",
-                JsonValueKind.Null => "null",
-                _ => element.GetRawText()
+                return "—";
+            }
+
+            return element.Type switch
+            {
+                JTokenType.Null => "null",
+                JTokenType.String => element.Value<string>() ?? string.Empty,
+                JTokenType.Integer => element.Value<long>().ToString(CultureInfo.InvariantCulture),
+                JTokenType.Float => element.Value<double>().ToString(CultureInfo.InvariantCulture),
+                JTokenType.Boolean => element.Value<bool>() ? "true" : "false",
+                JTokenType.Date => element.Value<DateTime>().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+                _ => element.ToString(Formatting.None)
             };
         }
 
