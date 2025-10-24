@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace DromHub.Views
@@ -42,6 +43,7 @@ namespace DromHub.Views
         private readonly LinkedList<Guid> _brandCacheOrder = new();
         private BrandDetailsSection _currentSection = BrandDetailsSection.Overview;
         private bool _suppressSectionChange;
+        private Task<bool>? _pendingUnsavedSettingsDialog;
 
         /// <summary>
         /// Свойство ViewModel предоставляет доступ к данным ViewModel.
@@ -114,6 +116,19 @@ namespace DromHub.Views
                 }
             };
         }
+
+        /// <summary>
+        /// Возвращает <c>true</c>, если текущая страница настроек содержит несохранённые изменения.
+        /// </summary>
+        public bool HasPendingBrandSettingsChanges =>
+            SectionFrame.Content is BrandSettingsPage settingsPage &&
+            settingsPage.ViewModel.HasChanges &&
+            !settingsPage.ViewModel.SaveCommand.IsRunning;
+
+        /// <summary>
+        /// Пытается обработать несохранённые изменения на странице настроек.
+        /// </summary>
+        public Task<bool> TryHandleUnsavedBrandSettingsAsync() => EnsureCanLeaveSettingsAsync();
         /// <summary>
         /// Метод OnNavigatedTo выполняет основную операцию класса.
         /// </summary>
@@ -244,6 +259,42 @@ namespace DromHub.Views
                 return true;
             }
 
+            return await EnsureCanLeaveSettingsAsync();
+        }
+
+        private Task<bool> EnsureCanLeaveSettingsAsync()
+        {
+            if (_pendingUnsavedSettingsDialog is { IsCompleted: false } pending)
+            {
+                return pending;
+            }
+
+            var task = EnsureCanLeaveSettingsCoreAsync();
+
+            if (task.IsCompleted)
+            {
+                return task;
+            }
+
+            async Task<bool> AwaitAndClearAsync()
+            {
+                try
+                {
+                    return await task;
+                }
+                finally
+                {
+                    _pendingUnsavedSettingsDialog = null;
+                }
+            }
+
+            var wrappedTask = AwaitAndClearAsync();
+            _pendingUnsavedSettingsDialog = wrappedTask;
+            return wrappedTask;
+        }
+
+        private async Task<bool> EnsureCanLeaveSettingsCoreAsync()
+        {
             if (SectionFrame.Content is not BrandSettingsPage settingsPage)
             {
                 return true;
@@ -267,7 +318,16 @@ namespace DromHub.Views
                 XamlRoot = settingsPage.XamlRoot ?? XamlRoot
             };
 
-            var result = await dialog.ShowAsync();
+            ContentDialogResult result;
+
+            try
+            {
+                result = await dialog.ShowAsync();
+            }
+            catch (COMException ex) when ((uint)ex.HResult == 0x80000019)
+            {
+                return false;
+            }
 
             switch (result)
             {

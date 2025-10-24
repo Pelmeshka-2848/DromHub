@@ -3,6 +3,8 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Navigation;
 using System;
 using Windows.Graphics;
 using WinRT.Interop;
@@ -16,6 +18,7 @@ namespace DromHub
     {
         private const double CinemaAspect = 21.0 / 9.0;
         private bool _isAdjusting;
+        private bool _suppressContentNavigationPrompt;
         /// <summary>
         /// Конструктор MainWindow инициализирует экземпляр класса.
         /// </summary>
@@ -31,6 +34,8 @@ namespace DromHub
             // 2) Держим аспект 21:9
             var appWindow = GetAppWindow();
             appWindow.Changed += AppWindow_Changed;
+
+            contentFrame.Navigating += ContentFrame_Navigating;
 
             // 3) Стартовая страница
             contentFrame.Navigate(typeof(MainPage));
@@ -109,6 +114,105 @@ namespace DromHub
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Navigation error for tag '{tag}': {ex.Message}");
+            }
+        }
+
+        private readonly struct PendingNavigationRequest
+        {
+            public PendingNavigationRequest(NavigatingCancelEventArgs args)
+            {
+                Mode = args.NavigationMode;
+                TargetPageType = args.SourcePageType;
+                Parameter = args.Parameter;
+                TransitionInfo = args.NavigationTransitionInfo;
+            }
+
+            public NavigationMode Mode { get; }
+
+            public Type? TargetPageType { get; }
+
+            public object? Parameter { get; }
+
+            public NavigationTransitionInfo? TransitionInfo { get; }
+        }
+
+        private async void ContentFrame_Navigating(object sender, NavigatingCancelEventArgs e)
+        {
+            if (_suppressContentNavigationPrompt)
+            {
+                _suppressContentNavigationPrompt = false;
+                return;
+            }
+
+            if (contentFrame.Content is not BrandShellPage shellPage)
+            {
+                return;
+            }
+
+            if (!shellPage.HasPendingBrandSettingsChanges)
+            {
+                return;
+            }
+
+            var pendingNavigation = new PendingNavigationRequest(e);
+
+            e.Cancel = true;
+
+            if (await shellPage.TryHandleUnsavedBrandSettingsAsync())
+            {
+                ResumeContentNavigation(pendingNavigation);
+            }
+        }
+
+        private void ResumeContentNavigation(in PendingNavigationRequest request)
+        {
+            _suppressContentNavigationPrompt = true;
+
+            var resumed = false;
+
+            switch (request.Mode)
+            {
+                case NavigationMode.Back:
+                    if (contentFrame.CanGoBack)
+                    {
+                        contentFrame.GoBack();
+                        resumed = true;
+                    }
+
+                    break;
+
+                case NavigationMode.Forward:
+                    if (contentFrame.CanGoForward)
+                    {
+                        contentFrame.GoForward();
+                        resumed = true;
+                    }
+
+                    break;
+
+                case NavigationMode.New:
+                case NavigationMode.Refresh:
+                default:
+                    if (request.TargetPageType is not null)
+                    {
+                        if (request.TransitionInfo is NavigationTransitionInfo info)
+                        {
+                            contentFrame.Navigate(request.TargetPageType, request.Parameter, info);
+                        }
+                        else
+                        {
+                            contentFrame.Navigate(request.TargetPageType, request.Parameter);
+                        }
+
+                        resumed = true;
+                    }
+
+                    break;
+            }
+
+            if (!resumed)
+            {
+                _suppressContentNavigationPrompt = false;
             }
         }
         /// <summary>
