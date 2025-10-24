@@ -657,7 +657,7 @@ namespace DromHub.Services
                 JTokenType.Integer => element.Value<long>().ToString(CultureInfo.InvariantCulture),
                 JTokenType.Float => element.Value<double>().ToString(CultureInfo.InvariantCulture),
                 JTokenType.Boolean => element.Value<bool>() ? "true" : "false",
-                JTokenType.Date => element.Value<DateTime>().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+                JTokenType.Date => element.Value<DateTime>().ToString("dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                 _ => element.ToString(Formatting.None)
             };
         }
