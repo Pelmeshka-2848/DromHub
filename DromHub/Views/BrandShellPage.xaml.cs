@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Animation; // <-- для TransitionInfo
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace DromHub.Views
@@ -42,6 +43,7 @@ namespace DromHub.Views
         private readonly LinkedList<Guid> _brandCacheOrder = new();
         private BrandDetailsSection _currentSection = BrandDetailsSection.Overview;
         private bool _suppressSectionChange;
+        private Task<bool>? _pendingUnsavedSettingsDialog;
 
         /// <summary>
         /// Свойство ViewModel предоставляет доступ к данным ViewModel.
@@ -260,7 +262,38 @@ namespace DromHub.Views
             return await EnsureCanLeaveSettingsAsync();
         }
 
-        private async Task<bool> EnsureCanLeaveSettingsAsync()
+        private Task<bool> EnsureCanLeaveSettingsAsync()
+        {
+            if (_pendingUnsavedSettingsDialog is { IsCompleted: false } pending)
+            {
+                return pending;
+            }
+
+            var task = EnsureCanLeaveSettingsCoreAsync();
+
+            if (task.IsCompleted)
+            {
+                return task;
+            }
+
+            async Task<bool> AwaitAndClearAsync()
+            {
+                try
+                {
+                    return await task;
+                }
+                finally
+                {
+                    _pendingUnsavedSettingsDialog = null;
+                }
+            }
+
+            var wrappedTask = AwaitAndClearAsync();
+            _pendingUnsavedSettingsDialog = wrappedTask;
+            return wrappedTask;
+        }
+
+        private async Task<bool> EnsureCanLeaveSettingsCoreAsync()
         {
             if (SectionFrame.Content is not BrandSettingsPage settingsPage)
             {
@@ -285,7 +318,16 @@ namespace DromHub.Views
                 XamlRoot = settingsPage.XamlRoot ?? XamlRoot
             };
 
-            var result = await dialog.ShowAsync();
+            ContentDialogResult result;
+
+            try
+            {
+                result = await dialog.ShowAsync();
+            }
+            catch (COMException ex) when ((uint)ex.HResult == 0x80000019)
+            {
+                return false;
+            }
 
             switch (result)
             {
