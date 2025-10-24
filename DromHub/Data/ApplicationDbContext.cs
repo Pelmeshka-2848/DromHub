@@ -80,6 +80,12 @@ namespace DromHub.Data
         // УДАЛИТЬ эти строки:
         // public DbSet<Cart> Carts { get; set; }
         // public DbSet<CartItem> CartItems { get; set; }
+        /// <summary>
+        /// Предоставляет доступ к таблице <c>brand_audit_log</c>, созданной триггером аудита брендов.
+        /// Позволяет выполнять LINQ-запросы и переиспользуется <see cref="DromHub.Services.BrandAuditService"/>.
+        /// </summary>
+        /// <value>Набор сущностей <see cref="BrandAuditLog"/>; всегда возвращает экземпляр контекста.</value>
+        /// <remarks>Коллекция доступна только для операций чтения; модификация обходится через SQL-триггер.</remarks>
         public DbSet<BrandAuditLog> BrandAuditLogs => Set<BrandAuditLog>();
 
 
@@ -248,7 +254,7 @@ namespace DromHub.Data
         private static void ConfigureBrandAudit(EntityTypeBuilder<BrandAuditLog> e)
         {
             e.ToTable("brand_audit_log");
-            e.HasKey(x => x.Id);
+            e.HasKey(x => x.EventId);
 
             e.Property(x => x.EventId).HasColumnName("event_id");
             e.Property(x => x.BrandId).HasColumnName("brand_id");
