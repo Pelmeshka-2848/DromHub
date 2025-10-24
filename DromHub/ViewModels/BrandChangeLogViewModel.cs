@@ -209,11 +209,11 @@ namespace DromHub.ViewModels
             return new SolidColorBrush(color);
         }
 
-        private static Color ParseColor(string hex)
+        private static Windows.UI.Color ParseColor(string hex)
         {
             if (string.IsNullOrWhiteSpace(hex))
             {
-                return Colors.Gray;
+                return Windows.UI.Colors.Gray;
             }
 
             var span = hex.AsSpan().TrimStart('#');
@@ -232,7 +232,7 @@ namespace DromHub.ViewModels
             idx += 2;
             var b = Convert.ToByte(span.Slice(idx, 2).ToString(), 16);
 
-            return ColorHelper.FromArgb(a, r, g, b);
+            return Windows.UI.Color.FromArgb(a, r, g, b);
         }
     }
 
@@ -316,11 +316,11 @@ namespace DromHub.ViewModels
 
         private static SolidColorBrush CreateBrush(string hex) => new SolidColorBrush(ParseColor(hex));
 
-        private static Color ParseColor(string hex)
+        private static Windows.UI.Color ParseColor(string hex)
         {
             if (string.IsNullOrWhiteSpace(hex))
             {
-                return Colors.Gray;
+                return Windows.UI.Colors.Gray;
             }
 
             var span = hex.AsSpan().TrimStart('#');
@@ -339,7 +339,7 @@ namespace DromHub.ViewModels
             idx += 2;
             var b = Convert.ToByte(span.Slice(idx, 2).ToString(), 16);
 
-            return ColorHelper.FromArgb(a, r, g, b);
+            return Windows.UI.Color.FromArgb(a, r, g, b);
         }
     }
 }
