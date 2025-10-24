@@ -14,6 +14,7 @@
             <ComboBox ItemsSource="{Binding ActionItems}" SelectedItem="{Binding SelectedAction, Mode=TwoWay}" Width="160"/>
             <CheckBox Content="Только изменённые" IsChecked="{Binding OnlyChangedFields, Mode=TwoWay}"/>
             <TextBox Text="{Binding Search, Mode=TwoWay}" PlaceholderText="Поиск..." Width="240"/>
+            <Button Content="Очистить" Command="{Binding ClearFiltersCommand}"/>
             <Button Content="Обновить" Command="{Binding RefreshCommand}"/>
         </StackPanel>
 
@@ -34,6 +35,20 @@
 
                         <TextBlock Text="Изменённые поля:" FontStyle="Italic"/>
                         <TextBlock Text="{Binding ChangedColumnsJoined}" TextWrapping="Wrap"/>
+
+                        <ItemsControl ItemsSource="{Binding ValueChanges}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="{Binding ColumnName}"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding OldValueDisplay}"/>
+                                        <Run Text=" → "/>
+                                        <Run Text="{Binding NewValueDisplay}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,8,0,0"/>
                     </StackPanel>
