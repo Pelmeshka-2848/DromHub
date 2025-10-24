@@ -9,8 +9,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DromHub.Models;
 using DromHub.Services;
-using Microsoft.UI;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 
 namespace DromHub.ViewModels
 {
@@ -26,7 +26,7 @@ namespace DromHub.ViewModels
     /// Сложность типичных операций: загрузка истории O(n), где n — количество записей в патче.
     /// См. также: <see cref="ChangeLogPatchGroup"/>, <see cref="ChangeLogSectionGroup"/>, <see cref="ChangeLogEntryItem"/>.
     /// </remarks>
-    public sealed class BrandChangeLogViewModel : ObservableObject
+    public sealed partial class BrandChangeLogViewModel : ObservableObject
     {
         /// <summary>
         /// Хранит сервис истории изменений, чтобы избегать повторного разрешения зависимостей и обеспечить единый источник данных.
@@ -46,17 +46,17 @@ namespace DromHub.ViewModels
         /// <summary>
         /// Идентификатор бренда, для которого актуально текущее состояние представления.
         /// </summary>
-        private Guid _brandId;
+        private Guid _currentBrandId;
 
         /// <summary>
         /// Отражает, выполняется ли в данный момент асинхронная операция загрузки истории.
         /// </summary>
-        private bool _isBusy;
+        private bool _isLoading;
 
         /// <summary>
         /// Показывает, что история содержит хотя бы один патч после последней загрузки.
         /// </summary>
-        private bool _hasHistory;
+        private bool _hasVisibleHistory;
 
         /// <summary>
         /// Текст сообщения для пустого состояния; допускает локализацию и переопределение из XAML.
@@ -114,10 +114,10 @@ namespace DromHub.ViewModels
         /// Предусловия: устанавливается только методами view-model; внешний код должен вызывать <see cref="LoadAsync(Guid)"/>.
         /// Потокобезопасность: обращаться из UI-потока.
         /// </remarks>
-        public Guid BrandId
+        public Guid CurrentBrandId
         {
-            get => _brandId;
-            private set => SetProperty(ref _brandId, value);
+            get => _currentBrandId;
+            private set => SetProperty(ref _currentBrandId, value);
         }
 
         /// <summary>
@@ -127,10 +127,10 @@ namespace DromHub.ViewModels
         /// <remarks>
         /// Потокобезопасность: изменяется только из UI-потока.
         /// </remarks>
-        public bool IsBusy
+        public bool IsLoading
         {
-            get => _isBusy;
-            private set => SetProperty(ref _isBusy, value);
+            get => _isLoading;
+            private set => SetProperty(ref _isLoading, value);
         }
 
         /// <summary>
@@ -140,10 +140,10 @@ namespace DromHub.ViewModels
         /// <remarks>
         /// Потокобезопасность: изменяется только из UI-потока.
         /// </remarks>
-        public bool HasHistory
+        public bool HasVisibleHistory
         {
-            get => _hasHistory;
-            private set => SetProperty(ref _hasHistory, value);
+            get => _hasVisibleHistory;
+            private set => SetProperty(ref _hasVisibleHistory, value);
         }
 
         /// <summary>
@@ -177,7 +177,7 @@ namespace DromHub.ViewModels
         /// <example>
         /// <code>
         /// await viewModel.LoadAsync(navigationBrandId);
-        /// if (!viewModel.HasHistory)
+        /// if (!viewModel.HasVisibleHistory)
         /// {
         ///     // Показать заглушку Empty State
         /// }
@@ -195,8 +195,8 @@ namespace DromHub.ViewModels
             _loadCts?.Dispose();
             _loadCts = new CancellationTokenSource();
 
-            BrandId = id;
-            IsBusy = true;
+            CurrentBrandId = id;
+            IsLoading = true;
 
             try
             {
@@ -209,7 +209,7 @@ namespace DromHub.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                IsLoading = false;
                 _loadCts?.Dispose();
                 _loadCts = null;
             }
@@ -268,14 +268,14 @@ namespace DromHub.ViewModels
                 _patches.Add(patchVm);
             }
 
-            HasHistory = _patches.Count > 0;
+            HasVisibleHistory = _patches.Count > 0;
         }
 
         /// <summary>
         /// Сбрасывает состояние view-model, отменяя незавершённую загрузку и очищая коллекцию патчей.
         /// </summary>
         /// <remarks>
-        /// Постусловия: <see cref="BrandId"/> становится <see cref="Guid.Empty"/>, <see cref="Patches"/> очищена, <see cref="HasHistory"/> равно <see langword="false"/>.
+        /// Постусловия: <see cref="CurrentBrandId"/> становится <see cref="Guid.Empty"/>, <see cref="Patches"/> очищена, <see cref="HasVisibleHistory"/> равно <see langword="false"/>.
         /// Побочные эффекты: отменяет текущий <see cref="CancellationTokenSource"/>.
         /// Потокобезопасность: вызывать из UI-потока.
         /// </remarks>
@@ -290,9 +290,9 @@ namespace DromHub.ViewModels
             _loadCts?.Dispose();
             _loadCts = null;
 
-            BrandId = Guid.Empty;
+            CurrentBrandId = Guid.Empty;
             _patches.Clear();
-            HasHistory = false;
+            HasVisibleHistory = false;
         }
     }
 
@@ -544,10 +544,10 @@ namespace DromHub.ViewModels
         }
 
         /// <summary>
-        /// Преобразует HEX-представление в структуру <see cref="Color"/>.
+        /// Преобразует HEX-представление в структуру <see cref="Windows.UI.Color"/>.
         /// </summary>
         /// <param name="hex">Строка HEX; допускается с альфа-каналом.</param>
-        /// <returns>Цвет <see cref="Color"/>; при ошибке форматирования возвращает серый.</returns>
+        /// <returns>Цвет <see cref="Windows.UI.Color"/>; при ошибке форматирования возвращает серый.</returns>
         /// <remarks>
         /// Предусловия: строка не <see langword="null"/>; пустая строка трактуется как серый цвет.
         /// Потокобезопасность: безопасно вызывать из разных потоков.
@@ -556,7 +556,7 @@ namespace DromHub.ViewModels
         {
             if (string.IsNullOrWhiteSpace(hex))
             {
-                return Colors.Gray;
+                return Color.FromArgb(255, 128, 128, 128);
             }
 
             var span = hex.AsSpan().TrimStart('#');
@@ -797,7 +797,7 @@ namespace DromHub.ViewModels
         private static SolidColorBrush CreateBrush(string hex) => new SolidColorBrush(ParseColor(hex));
 
         /// <summary>
-        /// Преобразует HEX-представление в цвет <see cref="Color"/>.
+        /// Преобразует HEX-представление в цвет <see cref="Windows.UI.Color"/>.
         /// </summary>
         /// <param name="hex">Строка в формате «#AARRGGBB» или «#RRGGBB».</param>
         /// <returns>Цвет для заполнения кисти.</returns>
@@ -808,7 +808,7 @@ namespace DromHub.ViewModels
         {
             if (string.IsNullOrWhiteSpace(hex))
             {
-                return Colors.Gray;
+                return Color.FromArgb(255, 128, 128, 128);
             }
 
             var span = hex.AsSpan().TrimStart('#');

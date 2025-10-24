@@ -196,7 +196,7 @@
 
             <Grid x:Name="EmptyState"
                   Background="Transparent"
-                  Visibility="{Binding HasHistory, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
+                  Visibility="{Binding HasVisibleHistory, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=invert}">
                 <TextBlock Text="{Binding EmptyStateMessage}"
                            FontFamily="{StaticResource PatchFont}"
                            FontSize="16"
@@ -207,8 +207,8 @@
             </Grid>
 
             <Grid Background="#B3000000"
-                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                  IsHitTestVisible="{Binding IsBusy}">
+                  Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  IsHitTestVisible="{Binding IsLoading}">
                 <ProgressRing Width="64"
                               Height="64"
                               IsActive="True" />
