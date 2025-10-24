@@ -673,8 +673,9 @@ namespace DromHub.Data
         }
 
         /// <summary>
-        /// Проверяет наличие таблицы в схеме PostgreSQL, использующейся контекстом, через системный вызов <c>to_regclass</c>.
-        /// Метод применяется для безопасной идемпотентной инициализации: отсутствующая таблица однозначно сигнализирует о необходимости запуска DDL.
+        /// Выполняет целевую проверку наличия таблицы PostgreSQL через вызов <c>to_regclass</c>, обеспечивая корректный запуск миграций при пропущенных шагах деплоя.
+        /// Используйте метод перед выполнением DDL, чтобы убедиться в сохранности схемы и избежать повторного создания существующих таблиц.
+        /// В сценариях восстановления резервных копий помогает определить, требуется ли дополнительная инициализация без открытия транзакций.
         /// </summary>
         /// <param name="connection">Открытое подключение <see cref="DbConnection"/> к целевой базе данных.</param>
         /// <param name="tableName">Имя таблицы в нижнем регистре без схемы, например <c>change_log_patches</c>.</param>
@@ -683,13 +684,15 @@ namespace DromHub.Data
         /// <exception cref="ArgumentNullException">Выбрасывается, когда <paramref name="connection"/> не задан.</exception>
         /// <exception cref="DbException">Возникает, если PostgreSQL отклоняет запрос проверки существования таблицы.</exception>
         /// <remarks>
-        /// Предусловия: подключение находится в состоянии <see cref="ConnectionState.Open"/>.
-        /// Постусловия: состояние подключения не изменяется, параметры команды очищаются.
-        /// Потокобезопасность: не потокобезопасен; используйте отдельное подключение на поток.
-        /// Сложность: O(1), выполняется один запрос <c>SELECT</c>.
+        /// Предусловия: подключение находится в состоянии <see cref="ConnectionState.Open"/> и связано с <see cref="Npgsql.NpgsqlConnection"/>.
+        /// Постусловия: состояние подключения не изменяется, коллекция параметров команды очищена, результат материализован как <see cref="string"/>.
+        /// Потокобезопасность: не потокобезопасен; создавайте отдельные экземпляры команды на поток.
+        /// Сложность: O(1); выполняется одиночный оператор <c>SELECT</c> без блокировок.
         /// </remarks>
         /// <example>
         /// <code>
+        /// await using var connection = new Npgsql.NpgsqlConnection(connectionString);
+        /// await connection.OpenAsync(ct);
         /// var exists = await TableExistsAsync(connection, "change_log_entries", ct);
         /// </code>
         /// </example>
@@ -698,10 +701,10 @@ namespace DromHub.Data
             ArgumentNullException.ThrowIfNull(connection);
 
             await using var command = connection.CreateCommand();
-            command.CommandText = "select to_regclass(@qualifiedName);";
+            command.CommandText = "select to_regclass(@qualifiedName)::text;";
 
             var parameter = command.CreateParameter();
-            parameter.ParameterName = "@qualifiedName";
+            parameter.ParameterName = "qualifiedName";
             parameter.Value = $"public.{tableName}";
             command.Parameters.Add(parameter);
 
