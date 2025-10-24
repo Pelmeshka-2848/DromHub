@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /DromHub/Prices
 /Pass.txt
+/DromHub/appsettings.json
+/DromHub/appsettings.Development.json

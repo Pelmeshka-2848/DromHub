@@ -50,6 +50,7 @@
     <None Remove="Assets\rhombus.fill.svg" />
     <None Remove="Assets\rhombus.svg" />
     <None Remove="Assets\shippingbox.svg" />
+    <None Remove="Assets\SplashScreen.scale-200.png" />
     <None Remove="Assets\square.stack.3d.up.svg" />
     <None Remove="Assets\star.fill.svg" />
     <None Remove="Assets\steeringwheel.svg" />
