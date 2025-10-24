@@ -2,8 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DromHub.Data
@@ -21,6 +24,8 @@ namespace DromHub.Data
             try
             {
                 await context.Database.EnsureCreatedAsync();
+
+                await EnsureChangeLogSchemaAsync(context);
 
                 await ClearDatabase(context, forceReset);
 
@@ -535,6 +540,174 @@ namespace DromHub.Data
             {
                 Debug.WriteLine("Очистка базы данных завершена с ошибками. См. сообщения выше.");
             }
+        }
+
+        /// <summary>
+        /// Гарантирует наличие таблиц патчноутов в PostgreSQL, создавая их и индексы при первом развёртывании без миграций.
+        /// Используйте метод при инициализации разработки, когда схема уже существует частично и <see cref="DbContext.Database.EnsureCreatedAsync(System.Threading.CancellationToken)"/> не добавляет новые сущности.
+        /// Соблюдает идемпотентность: повторные вызовы не влияют на существующую структуру, что позволяет выполнять метод при каждом старте приложения без риска повредить данные.
+        /// </summary>
+        /// <param name="context">Экземпляр <see cref="ApplicationDbContext"/>, обеспечивающий доступ к соединению и исполняющий DDL-скрипты.</param>
+        /// <param name="cancellationToken">Токен отмены операции; при отмене возбуждает <see cref="OperationCanceledException"/> и не создаёт частично подготовленных таблиц.</param>
+        /// <returns>Задача, завершающаяся после проверки наличия всех таблиц и, при необходимости, их создания.</returns>
+        /// <exception cref="ArgumentNullException">Возникает, если <paramref name="context"/> не указан, поскольку требуется активный контекст БД.</exception>
+        /// <exception cref="DbException">Пробрасывается при ошибках подключения или DDL-операций в PostgreSQL.</exception>
+        /// <remarks>
+        /// Предусловия: открыт доступ к PostgreSQL и корректно настроены базовые таблицы (бренды, детали), так как внешние ключи ссылаются на них.
+        /// Постусловия: таблицы <c>change_log_patches</c>, <c>change_log_sections</c>, <c>change_log_entries</c> существуют с ожидаемыми индексами и ограничениями каскадного удаления.
+        /// Побочные эффекты: выполняет DDL-команды <see cref="Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.ExecuteSqlRawAsync(Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade, string, CancellationToken)"/>, влияющие на схему БД.
+        /// Потокобезопасность: метод не потокобезопасен; вызывайте его в единственном потоке инициализации.
+        /// Идемпотентность: полная; при наличии таблиц метод только проверяет их наличие без модификаций.
+        /// Сложность: O(n) по количеству проверяемых таблиц, так как выполняется по одному запросу на таблицу.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// await DatabaseInitializer.EnsureChangeLogSchemaAsync(context);
+        /// </code>
+        /// </example>
+        private static async Task EnsureChangeLogSchemaAsync(ApplicationDbContext context, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+
+            var creationScripts = new Dictionary<string, (string Table, IReadOnlyList<string> Indexes)>
+            {
+                ["change_log_patches"] =
+                (
+                    """
+                    CREATE TABLE IF NOT EXISTS "change_log_patches"
+                    (
+                        "id" uuid NOT NULL,
+                        "version" character varying(64) NOT NULL,
+                        "title" character varying(256),
+                        "release_date" timestamp without time zone NOT NULL,
+                        "sort_order" integer NOT NULL DEFAULT 0,
+                        CONSTRAINT "pk_change_log_patches" PRIMARY KEY ("id")
+                    );
+                    """,
+                    new[]
+                    {
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_patches_release_date\" ON \"change_log_patches\" (\"release_date\");",
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_patches_sort_order\" ON \"change_log_patches\" (\"sort_order\");"
+                    }
+                ),
+                ["change_log_sections"] =
+                (
+                    """
+                    CREATE TABLE IF NOT EXISTS "change_log_sections"
+                    (
+                        "id" uuid NOT NULL,
+                        "patch_id" uuid NOT NULL,
+                        "title" character varying(256) NOT NULL,
+                        "category" character varying(32) NOT NULL,
+                        "sort_order" integer NOT NULL DEFAULT 0,
+                        CONSTRAINT "pk_change_log_sections" PRIMARY KEY ("id"),
+                        CONSTRAINT "fk_change_log_sections_change_log_patches_patch_id" FOREIGN KEY ("patch_id") REFERENCES "change_log_patches" ("id") ON DELETE CASCADE
+                    );
+                    """,
+                    new[]
+                    {
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_sections_patch_id_sort_order\" ON \"change_log_sections\" (\"patch_id\", \"sort_order\");"
+                    }
+                ),
+                ["change_log_entries"] =
+                (
+                    """
+                    CREATE TABLE IF NOT EXISTS "change_log_entries"
+                    (
+                        "id" uuid NOT NULL,
+                        "section_id" uuid NOT NULL,
+                        "headline" character varying(256),
+                        "description" text NOT NULL,
+                        "impact_level" character varying(32) NOT NULL,
+                        "icon_asset" character varying(256),
+                        "brand_id" uuid,
+                        "part_id" uuid,
+                        "sort_order" integer NOT NULL DEFAULT 0,
+                        CONSTRAINT "pk_change_log_entries" PRIMARY KEY ("id"),
+                        CONSTRAINT "fk_change_log_entries_change_log_sections_section_id" FOREIGN KEY ("section_id") REFERENCES "change_log_sections" ("id") ON DELETE CASCADE,
+                        CONSTRAINT "fk_change_log_entries_brands_brand_id" FOREIGN KEY ("brand_id") REFERENCES "brands" ("id") ON DELETE SET NULL,
+                        CONSTRAINT "fk_change_log_entries_parts_part_id" FOREIGN KEY ("part_id") REFERENCES "parts" ("id") ON DELETE SET NULL
+                    );
+                    """,
+                    new[]
+                    {
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_entries_section_id_sort_order\" ON \"change_log_entries\" (\"section_id\", \"sort_order\");",
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_entries_brand_id\" ON \"change_log_entries\" (\"brand_id\");",
+                        "CREATE INDEX IF NOT EXISTS \"ix_change_log_entries_part_id\" ON \"change_log_entries\" (\"part_id\");"
+                    }
+                )
+            };
+
+            var connection = context.Database.GetDbConnection();
+            var shouldCloseConnection = connection.State != ConnectionState.Open;
+
+            if (shouldCloseConnection)
+            {
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            try
+            {
+                foreach (var (tableName, scripts) in creationScripts)
+                {
+                    if (await TableExistsAsync(connection, tableName, cancellationToken).ConfigureAwait(false))
+                    {
+                        continue;
+                    }
+
+                    await context.Database.ExecuteSqlRawAsync(scripts.Table, cancellationToken).ConfigureAwait(false);
+
+                    foreach (var indexSql in scripts.Indexes)
+                    {
+                        await context.Database.ExecuteSqlRawAsync(indexSql, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    await connection.CloseAsync().ConfigureAwait(false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Проверяет наличие таблицы в схеме PostgreSQL, использующейся контекстом, через системный вызов <c>to_regclass</c>.
+        /// Метод применяется для безопасной идемпотентной инициализации: отсутствующая таблица однозначно сигнализирует о необходимости запуска DDL.
+        /// </summary>
+        /// <param name="connection">Открытое подключение <see cref="DbConnection"/> к целевой базе данных.</param>
+        /// <param name="tableName">Имя таблицы в нижнем регистре без схемы, например <c>change_log_patches</c>.</param>
+        /// <param name="cancellationToken">Токен отмены операции; при отмене генерирует <see cref="OperationCanceledException"/>.</param>
+        /// <returns><c>true</c>, если таблица зарегистрирована в схеме <c>public</c>; иначе <c>false</c>.</returns>
+        /// <exception cref="ArgumentNullException">Выбрасывается, когда <paramref name="connection"/> не задан.</exception>
+        /// <exception cref="DbException">Возникает, если PostgreSQL отклоняет запрос проверки существования таблицы.</exception>
+        /// <remarks>
+        /// Предусловия: подключение находится в состоянии <see cref="ConnectionState.Open"/>.
+        /// Постусловия: состояние подключения не изменяется, параметры команды очищаются.
+        /// Потокобезопасность: не потокобезопасен; используйте отдельное подключение на поток.
+        /// Сложность: O(1), выполняется один запрос <c>SELECT</c>.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var exists = await TableExistsAsync(connection, "change_log_entries", ct);
+        /// </code>
+        /// </example>
+        private static async Task<bool> TableExistsAsync(DbConnection connection, string tableName, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(connection);
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = "select to_regclass(@qualifiedName);";
+
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "@qualifiedName";
+            parameter.Value = $"public.{tableName}";
+            command.Parameters.Add(parameter);
+
+            var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+            return result is string { Length: > 0 };
         }
     }
 }
