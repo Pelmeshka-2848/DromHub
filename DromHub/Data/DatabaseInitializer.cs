@@ -274,6 +274,7 @@ namespace DromHub.Data
                             SupplierId = supplier.Id,
                             Quantity = random.Next(1, 50),
                             PriceIn = Math.Round((decimal)(random.NextDouble() * 1000 + 100), 2),
+                            Note = "Сгенерировано при инициализации каталога.",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         });
