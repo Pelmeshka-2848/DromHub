@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using DromHub.Data;
 using DromHub.Models;
 using Microsoft.EntityFrameworkCore;
@@ -115,13 +116,13 @@ namespace DromHub.Services
     /// <summary>
     /// Представляет строку аудита бренда, подготовленную для потребления XAML-интерфейсом.
     /// Инкапсулирует исходные данные и производные текстовые представления, уменьшая нагрузку на слой представления.
-    /// Обеспечивает единообразное отображение истории изменений в разных разделах приложения.
+    /// Обеспечивает единообразное отображение истории изменений и поддерживает выбор элементов для пакетных операций.
     /// </summary>
     /// <remarks>
     /// Потокобезопасность: объект иммутабелен после инициализации; допускает совместное чтение.
     /// Побочные эффекты: отсутствуют.
     /// </remarks>
-    public sealed class BrandAuditRow
+    public sealed class BrandAuditRow : ObservableObject
     {
         /// <summary>
         /// Идентификатор события аудита, совпадает с <c>event_id</c> в таблице.
@@ -212,6 +213,31 @@ namespace DromHub.Services
         /// </summary>
         /// <value>Наблюдаемая последовательность элементов <see cref="BrandAuditValueChange"/>; по умолчанию — пустая.</value>
         public IReadOnlyList<BrandAuditValueChange> ValueChanges { get; init; } = Array.Empty<BrandAuditValueChange>();
+
+        /// <summary>
+        /// <para>Определяет, выбран ли элемент пользователем для пакетных операций (например, удаления записей аудита).</para>
+        /// <para>Используется привязками XAML для синхронизации чекбоксов и команд выборки.</para>
+        /// <para>Сбрасывается при каждой повторной загрузке данных, чтобы исключить ложные срабатывания.</para>
+        /// </summary>
+        /// <value><see langword="true"/>, если запись отмечена; значение по умолчанию — <see langword="false"/>.</value>
+        /// <remarks>
+        /// Потокобезопасность: свойство предназначено для изменения из UI-потока.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// row.IsSelected = true;
+        /// </code>
+        /// </example>
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
+        }
+
+        /// <summary>
+        /// Хранит текущее значение свойства <see cref="IsSelected"/>, обеспечивая уведомления об изменениях.
+        /// </summary>
+        private bool _isSelected;
     }
 
     /// <summary>
@@ -366,6 +392,62 @@ namespace DromHub.Services
             }
 
             return (rows, total);
+        }
+
+        /// <summary>
+        /// <para>Удаляет выбранные записи аудита бренда, чтобы администратор мог скрыть технический шум или исправить ошибки триггера.</para>
+        /// <para>Применяйте после ручного анализа, когда сохранение истории нежелательно либо нарушает требования комплаенса.</para>
+        /// <para>Поддерживает массовое удаление; оптимизировано под пакетные операции без загрузки сущностей в память.</para>
+        /// </summary>
+        /// <param name="brandId">Идентификатор бренда, для которого подтверждено удаление; допускает <see cref="Guid.Empty"/> для снятия ограничения.</param>
+        /// <param name="eventIds">Коллекция идентификаторов событий аудита; игнорируются значения <see cref="Guid.Empty"/> и дубликаты.</param>
+        /// <param name="ct">Токен отмены; при отмене выбрасывается <see cref="OperationCanceledException"/> до применения изменений.</param>
+        /// <returns>Количество удалённых записей; может быть меньше числа запросов из-за фильтрации по бренду.</returns>
+        /// <exception cref="ArgumentNullException">Когда <paramref name="eventIds"/> не предоставлены.</exception>
+        /// <exception cref="OperationCanceledException">При отмене операции инфраструктурой или пользователем.</exception>
+        /// <remarks>
+        /// Предусловия: вызывающий должен убедиться в наличии административных прав на изменение журнала.
+        /// Потокобезопасность: метод безопасен для параллельных вызовов; каждый вызов создает отдельный контекст.
+        /// Побочные эффекты: выполняет оператор DELETE в БД PostgreSQL; изменения необратимы.
+        /// Сложность: O(k) по числу удаляемых идентификаторов; запрос компилируется один раз на весь пакет.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var removed = await auditService.DeleteAsync(brandId, selectedIds, ct);
+        /// if (removed == 0)
+        /// {
+        ///     // Записи уже удалены или принадлежали другому бренду.
+        /// }
+        /// </code>
+        /// </example>
+        public async Task<int> DeleteAsync(Guid brandId, IEnumerable<Guid> eventIds, CancellationToken ct = default)
+        {
+            if (eventIds is null)
+            {
+                throw new ArgumentNullException(nameof(eventIds));
+            }
+
+            var normalized = eventIds
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToArray();
+
+            if (normalized.Length == 0)
+            {
+                return 0;
+            }
+
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+
+            var query = db.BrandAuditLogs.Where(x => normalized.Contains(x.EventId));
+
+            if (brandId != Guid.Empty)
+            {
+                query = query.Where(x => x.BrandId == brandId);
+            }
+
+            var removed = await query.ExecuteDeleteAsync(ct);
+            return removed;
         }
 
         /// <summary>

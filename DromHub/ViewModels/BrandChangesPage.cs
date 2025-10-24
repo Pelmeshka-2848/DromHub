@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -47,6 +50,26 @@ public sealed class BrandChangesViewModel : ObservableObject
     /// Инкапсулирует команду очистки фильтров, чтобы синхронизировать доступность с состоянием загрузки.
     /// </summary>
     private readonly RelayCommand _clearFiltersCommand;
+
+    /// <summary>
+    /// Инкапсулирует команду выбора всех строк, обеспечивая централизованный контроль CanExecute.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// _selectAllCommand.Execute(null);
+    /// </code>
+    /// </example>
+    private readonly RelayCommand _selectAllCommand;
+
+    /// <summary>
+    /// Инкапсулирует команду удаления выбранных записей аудита, объединяя проверки и асинхронный вызов сервиса.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// await _deleteSelectedCommand.ExecuteAsync(null);
+    /// </code>
+    /// </example>
+    private readonly AsyncRelayCommand _deleteSelectedCommand;
 
     /// <summary>
     /// Хранит идентификатор бренда, историю которого просматривает пользователь.
@@ -104,6 +127,16 @@ public sealed class BrandChangesViewModel : ObservableObject
     private string? _errorMessage;
 
     /// <summary>
+    /// Фиксирует наличие выбранных пользователем строк, чтобы упрощать логику доступности команд.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// if (_hasSelection) { /* активировать дополнительный UI */ }
+    /// </code>
+    /// </example>
+    private bool _hasSelection;
+
+    /// <summary>
     /// Представляет информационную строку пагинации для отображения диапазона записей.
     /// </summary>
     private string _pageInfo = "Нет данных.";
@@ -152,6 +185,8 @@ public sealed class BrandChangesViewModel : ObservableObject
         _nextPageCommand = new AsyncRelayCommand(NextPageInternalAsync, CanGoNext);
         _prevPageCommand = new AsyncRelayCommand(PrevPageInternalAsync, CanGoPrevious);
         _clearFiltersCommand = new RelayCommand(ClearFilters, () => !IsBusy);
+        _selectAllCommand = new RelayCommand(SelectAll, CanSelectAll);
+        _deleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync, CanDeleteSelected);
     }
 
     /// <summary>
@@ -218,6 +253,36 @@ public sealed class BrandChangesViewModel : ObservableObject
     /// Потокобезопасность: обращаться из UI-потока, поскольку реализация изменяет состояние модели.
     /// </remarks>
     public IRelayCommand ClearFiltersCommand => _clearFiltersCommand;
+
+    /// <summary>
+    /// <para>Предоставляет команду выделения всех записей текущей страницы для последующих пакетных операций.</para>
+    /// <para>Удобна при массовом удалении технических записей, чтобы избежать ручного клика по каждой строке.</para>
+    /// </summary>
+    /// <value>Экземпляр <see cref="IRelayCommand"/>, отмечающий строки без перезагрузки данных.</value>
+    /// <remarks>
+    /// Команда недоступна, когда идет загрузка или на странице нет записей.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// viewModel.SelectAllCommand.Execute(null);
+    /// </code>
+    /// </example>
+    public IRelayCommand SelectAllCommand => _selectAllCommand;
+
+    /// <summary>
+    /// <para>Предоставляет команду удаления всех выбранных записей аудита из базы данных.</para>
+    /// <para>Выполняет проверку наличия выбора и блокирует UI на время операции для консистентности.</para>
+    /// </summary>
+    /// <value>Экземпляр <see cref="IAsyncRelayCommand"/>, использующий <see cref="BrandAuditService.DeleteAsync(Guid, IEnumerable{Guid}, CancellationToken)"/>.</value>
+    /// <remarks>
+    /// Команда недоступна при отсутствии выбора или активной фоновой операции.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// await viewModel.DeleteSelectedCommand.ExecuteAsync(null);
+    /// </code>
+    /// </example>
+    public IAsyncRelayCommand DeleteSelectedCommand => _deleteSelectedCommand;
 
     /// <summary>
     /// Возвращает или задает идентификатор бренда, журнал изменений которого отображается.
@@ -416,6 +481,8 @@ public sealed class BrandChangesViewModel : ObservableObject
             {
                 _loadCommand.NotifyCanExecuteChanged();
                 _clearFiltersCommand.NotifyCanExecuteChanged();
+                _selectAllCommand.NotifyCanExecuteChanged();
+                _deleteSelectedCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -431,6 +498,30 @@ public sealed class BrandChangesViewModel : ObservableObject
     {
         get => _errorMessage;
         private set => SetProperty(ref _errorMessage, value);
+    }
+
+    /// <summary>
+    /// Показывает, выбраны ли какие-либо записи на текущей странице.
+    /// </summary>
+    /// <value><see langword="true"/>, если хотя бы одна строка помечена; иначе — <see langword="false"/>.</value>
+    /// <remarks>
+    /// Изменение свойства влияет на доступность команды удаления и может использоваться в XAML для визуальной индикации.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// if (viewModel.HasSelection) { /* отобразить кнопку */ }
+    /// </code>
+    /// </example>
+    public bool HasSelection
+    {
+        get => _hasSelection;
+        private set
+        {
+            if (SetProperty(ref _hasSelection, value))
+            {
+                _deleteSelectedCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     /// <summary>
@@ -469,10 +560,13 @@ public sealed class BrandChangesViewModel : ObservableObject
         _pendingReload = false;
         IsBusy = false;
         BrandId = Guid.Empty;
+        DetachAllRowHandlers();
         Rows.Clear();
         TotalCount = 0;
         ErrorMessage = emptyStateMessage;
         PageInfo = string.IsNullOrWhiteSpace(emptyStateMessage) ? "Нет записей." : emptyStateMessage;
+        HasSelection = false;
+        _selectAllCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -518,9 +612,12 @@ public sealed class BrandChangesViewModel : ObservableObject
     {
         if (BrandId == Guid.Empty)
         {
+            DetachAllRowHandlers();
             Rows.Clear();
             TotalCount = 0;
             PageInfo = "Бренд не выбран.";
+            HasSelection = false;
+            _selectAllCommand.NotifyCanExecuteChanged();
             return;
         }
 
@@ -537,13 +634,17 @@ public sealed class BrandChangesViewModel : ObservableObject
             var filter = BuildFilter();
             var (rows, total) = await _service.GetAsync(filter);
 
+            DetachAllRowHandlers();
             Rows.Clear();
             foreach (var row in rows)
             {
                 Rows.Add(row);
+                AttachRowHandlers(row);
             }
 
             TotalCount = total;
+            UpdateSelectionState();
+            _selectAllCommand.NotifyCanExecuteChanged();
         }
         catch (OperationCanceledException)
         {
@@ -596,6 +697,203 @@ public sealed class BrandChangesViewModel : ObservableObject
         }
 
         ScheduleReload(resetPage: true);
+    }
+
+    /// <summary>
+    /// <para>Отмечает все строки текущей страницы как выбранные, подготавливая их к пакетным действиям (например, удалению).</para>
+    /// <para>Предназначен для сценариев, где требуется быстро выделить значительное число технических записей.</para>
+    /// </summary>
+    /// <remarks>
+    /// Метод не инициирует перезагрузку данных и работает только с текущей страницей, сохраняя выбранные элементы при последующем удалении.
+    /// Потокобезопасность: вызывать из UI-потока, поскольку происходит изменение свойств элементов коллекции.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// viewModel.SelectAllCommand.Execute(null);
+    /// </code>
+    /// </example>
+    private void SelectAll()
+    {
+        if (!CanSelectAll())
+        {
+            return;
+        }
+
+        foreach (var row in Rows)
+        {
+            row.IsSelected = true;
+        }
+
+        UpdateSelectionState();
+    }
+
+    /// <summary>
+    /// <para>Проверяет, доступна ли команда «Выбрать всё» с учётом текущего состояния модели.</para>
+    /// <para>Запрещает выбор, когда страница пуста, все записи уже отмечены или идёт фоновой запрос.</para>
+    /// </summary>
+    /// <returns><see langword="true"/>, если выбор всех записей допустим; иначе — <see langword="false"/>.</returns>
+    /// <remarks>Сложность: O(n) из-за проверки наличия неотмеченных элементов.</remarks>
+    /// <example>
+    /// <code>
+    /// var canSelect = viewModel.SelectAllCommand.CanExecute(null);
+    /// </code>
+    /// </example>
+    private bool CanSelectAll() => !IsBusy && Rows.Count > 0 && Rows.Any(row => !row.IsSelected);
+
+    /// <summary>
+    /// <para>Удаляет выбранные записи аудита из хранилища и инициирует повторную загрузку данных страницы.</para>
+    /// <para>Инкапсулирует всю логику проверки выбора, вызова сервиса и постобработки результата.</para>
+    /// </summary>
+    /// <returns>Асинхронная задача, завершающаяся после обновления данных или фиксации ошибки.</returns>
+    /// <remarks>
+    /// Предусловия: <see cref="HasSelection"/> должно быть <see langword="true"/>.
+    /// Побочные эффекты: вызывает <see cref="BrandAuditService.DeleteAsync(Guid, IEnumerable{Guid}, CancellationToken)"/>, что приводит к удалению строк из БД.
+    /// Потокобезопасность: работать в UI-потоке; метод изменяет состояние модели и коллекций.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// await viewModel.DeleteSelectedCommand.ExecuteAsync(null);
+    /// </code>
+    /// </example>
+    private async Task DeleteSelectedAsync()
+    {
+        if (!CanDeleteSelected())
+        {
+            return;
+        }
+
+        var ids = Rows
+            .Where(row => row.IsSelected)
+            .Select(row => row.Id)
+            .ToArray();
+
+        if (ids.Length == 0)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = null;
+        var removed = 0;
+
+        try
+        {
+            removed = await _service.DeleteAsync(BrandId, ids);
+
+            if (removed == 0)
+            {
+                foreach (var row in Rows)
+                {
+                    row.IsSelected = false;
+                }
+
+                UpdateSelectionState();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            ErrorMessage = "Удаление отменено.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        if (removed > 0)
+        {
+            HasSelection = false;
+            await _loadCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// <para>Определяет, можно ли выполнить удаление выбранных записей.</para>
+    /// <para>Учитывает наличие выбора и отсутствие активных фоновых операций.</para>
+    /// </summary>
+    /// <returns><see langword="true"/>, если команда удаления должна быть активна.</returns>
+    /// <example>
+    /// <code>
+    /// var canDelete = viewModel.DeleteSelectedCommand.CanExecute(null);
+    /// </code>
+    /// </example>
+    private bool CanDeleteSelected() => HasSelection && !IsBusy;
+
+    /// <summary>
+    /// <para>Присоединяет обработчик событий изменения свойств для переданной строки аудита.</para>
+    /// <para>Необходим для отслеживания выбора элементов и своевременного обновления команд.</para>
+    /// </summary>
+    /// <param name="row">Строка аудита; метод игнорирует <see langword="null"/>.</param>
+    /// <remarks>Многократный вызов безопасен: обработчик повторно не добавляется благодаря предварительному отписыванию.</remarks>
+    /// <example>
+    /// <code>
+    /// AttachRowHandlers(row);
+    /// </code>
+    /// </example>
+    private void AttachRowHandlers(BrandAuditRow row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        row.PropertyChanged -= OnRowPropertyChanged;
+        row.PropertyChanged += OnRowPropertyChanged;
+    }
+
+    /// <summary>
+    /// <para>Отсоединяет обработчики свойств от всех текущих строк, предотвращая утечки памяти при очистке коллекции.</para>
+    /// <para>Используется перед полной заменой списка записей или при сбросе состояния.</para>
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// DetachAllRowHandlers();
+    /// </code>
+    /// </example>
+    private void DetachAllRowHandlers()
+    {
+        foreach (var row in Rows)
+        {
+            row.PropertyChanged -= OnRowPropertyChanged;
+        }
+    }
+
+    /// <summary>
+    /// <para>Обновляет агрегированное состояние выбора при изменении свойств строк аудита.</para>
+    /// <para>Триггерится обработчиком <see cref="INotifyPropertyChanged.PropertyChanged"/> каждой строки.</para>
+    /// </summary>
+    /// <param name="sender">Строка аудита, изменившая свойство.</param>
+    /// <param name="e">Аргументы события, содержащие имя изменённого свойства.</param>
+    /// <example>
+    /// <code>
+    /// OnRowPropertyChanged(row, new PropertyChangedEventArgs(nameof(BrandAuditRow.IsSelected)));
+    /// </code>
+    /// </example>
+    private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BrandAuditRow.IsSelected))
+        {
+            UpdateSelectionState();
+        }
+    }
+
+    /// <summary>
+    /// <para>Пересчитывает агрегированное состояние выбора и обновляет связанные команды.</para>
+    /// <para>Используется после массовых операций или индивидуальных изменений чекбоксов.</para>
+    /// </summary>
+    /// <remarks>Сложность: O(n), где n — число строк на текущей странице.</remarks>
+    /// <example>
+    /// <code>
+    /// UpdateSelectionState();
+    /// </code>
+    /// </example>
+    private void UpdateSelectionState()
+    {
+        HasSelection = Rows.Any(row => row.IsSelected);
+        _selectAllCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>

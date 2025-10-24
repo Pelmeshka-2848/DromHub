@@ -16,42 +16,51 @@
             <TextBox Text="{Binding Search, Mode=TwoWay}" PlaceholderText="Поиск..." Width="240"/>
             <Button Content="Очистить" Command="{Binding ClearFiltersCommand}"/>
             <Button Content="Обновить" Command="{Binding RefreshCommand}"/>
+            <Button Content="Выбрать всё" Command="{Binding SelectAllCommand}"/>
+            <Button Content="Удалить" Command="{Binding DeleteSelectedCommand}" IsEnabled="{Binding HasSelection}"/>
         </StackPanel>
 
         <!-- Список -->
         <ListView Grid.Row="1"
-                  ItemsSource="{Binding Rows}">
+                  ItemsSource="{Binding Rows}"
+                  SelectionMode="None">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <StackPanel Spacing="4" Padding="8">
-                        <TextBlock FontWeight="SemiBold" Text="{Binding ActionDisplay}"/>
-                        <TextBlock>
-                            <Run Text="{Binding TsDisplay}"/>
-                            <Run Text=" — "/>
-                            <Run Text="{Binding UserDisplay}"/>
-                            <Run Text=" | "/>
-                            <Run Text="{Binding TableDisplay}"/>
-                        </TextBlock>
+                    <Grid ColumnDefinitions="Auto,*" Padding="8" ColumnSpacing="12">
+                        <CheckBox Grid.Column="0"
+                                  VerticalAlignment="Top"
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"/>
 
-                        <TextBlock Text="Изменённые поля:" FontStyle="Italic"/>
-                        <TextBlock Text="{Binding ChangedColumnsJoined}" TextWrapping="Wrap"/>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBlock FontWeight="SemiBold" Text="{Binding ActionDisplay}"/>
+                            <TextBlock>
+                                <Run Text="{Binding TsDisplay}"/>
+                                <Run Text=" — "/>
+                                <Run Text="{Binding UserDisplay}"/>
+                                <Run Text=" | "/>
+                                <Run Text="{Binding TableDisplay}"/>
+                            </TextBlock>
 
-                        <ItemsControl ItemsSource="{Binding ValueChanges}" Margin="0,4,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock TextWrapping="Wrap">
-                                        <Run Text="{Binding ColumnName}"/>
-                                        <Run Text=": "/>
-                                        <Run Text="{Binding OldValueDisplay}"/>
-                                        <Run Text=" → "/>
-                                        <Run Text="{Binding NewValueDisplay}"/>
-                                    </TextBlock>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            <TextBlock Text="Изменённые поля:" FontStyle="Italic"/>
+                            <TextBlock Text="{Binding ChangedColumnsJoined}" TextWrapping="Wrap"/>
 
-                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,8,0,0"/>
-                    </StackPanel>
+                            <ItemsControl ItemsSource="{Binding ValueChanges}" Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap">
+                                            <Run Text="{Binding ColumnName}"/>
+                                            <Run Text=": "/>
+                                            <Run Text="{Binding OldValueDisplay}"/>
+                                            <Run Text=" → "/>
+                                            <Run Text="{Binding NewValueDisplay}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
