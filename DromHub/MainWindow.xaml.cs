@@ -91,6 +91,7 @@ namespace DromHub
                     "MainPage" => typeof(MainPage),
                     "PartPage" => typeof(PartSearchPage),
                     "PartSearchPage" => typeof(PartSearchPage),
+                    "PartChangesPage" => typeof(PartChangesPage),
                     "BrandsOverviewPage" => typeof(BrandsHomePage),
                     "BrandsListPage" => typeof(BrandsIndexPage),
                     "BrandMergePage" => typeof(BrandMergeWizardPage),
@@ -115,6 +116,49 @@ namespace DromHub
             {
                 System.Diagnostics.Debug.WriteLine($"Navigation error for tag '{tag}': {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// <para>Переключает главное окно на страницу истории изменений выбранной запчасти, прокидывая идентификатор в навигацию.</para>
+        /// <para>Используйте из диалогов и других экранов, чтобы быстро открыть аудит без ручного выбора пунктов меню.</para>
+        /// <para>Раскрывает раздел «Запчасть» в меню и активирует подпункт «Изменения».</para>
+        /// </summary>
+        /// <param name="partId">Идентификатор запчасти, история которой требуется; должен быть ненулевым GUID.</param>
+        /// <exception cref="ArgumentException">Брошено, когда <paramref name="partId"/> равен <see cref="Guid.Empty"/>, потому что навигация без контекста бессмысленна.</exception>
+        /// <remarks>
+        /// Предусловия: вызывающий код работает в UI-потоке и приложение уже инициализировало <see cref="App.MainWindow"/>.<para/>
+        /// Постусловия: основная рамка навигации загружает <see cref="Views.PartChangesPage"/> с переданным идентификатором детали.<para/>
+        /// Побочные эффекты: изменяет выбранный пункт меню и контент фрейма.<para/>
+        /// Потокобезопасность: метод не потокобезопасен; обращайтесь только из UI-потока WinUI.<para/>
+        /// См. также: <see cref="NavigateByTag(string, object)"/>.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Открыть аудит для запчасти из произвольного диалога:
+        /// if (App.MainWindow is MainWindow main)
+        /// {
+        ///     main.NavigateToPartChanges(partId);
+        /// }
+        /// </code>
+        /// </example>
+        public void NavigateToPartChanges(Guid partId)
+        {
+            if (partId == Guid.Empty)
+            {
+                throw new ArgumentException("Идентификатор запчасти должен быть задан.", nameof(partId));
+            }
+
+            if (PartPageItem is not null)
+            {
+                PartPageItem.IsExpanded = true;
+            }
+
+            if (PartChangesPageItem is not null)
+            {
+                nvSample.SelectedItem = PartChangesPageItem;
+            }
+
+            NavigateByTag("PartChangesPage", partId);
         }
 
         private readonly struct PendingNavigationRequest

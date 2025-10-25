@@ -45,6 +45,11 @@
                         Content="Поиск"
                         SelectsOnInvoked="True"
                         Tag="PartSearchPage" />
+                    <NavigationViewItem
+                        x:Name="PartChangesPageItem"
+                        Content="Изменения"
+                        SelectsOnInvoked="True"
+                        Tag="PartChangesPage" />
                 </NavigationViewItem.MenuItems>
             </NavigationViewItem>
 

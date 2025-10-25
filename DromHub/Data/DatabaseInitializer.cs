@@ -21,6 +21,8 @@ namespace DromHub.Data
             {
                 await context.Database.EnsureCreatedAsync();
 
+                await EnsurePartAuditInfrastructureAsync(context);
+
                 await ClearDatabase(context, forceReset);
 
                 // Убрал внешнюю транзакцию, так как она уже есть в SeedBrands
@@ -289,7 +291,7 @@ namespace DromHub.Data
                 return;
             }
 
-            var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities" };
+            var tables = new[] { "local_stocks", "parts", "brand_aliases", "brands", "suppliers", "supplier_localities", "part_audit_log" };
             var allSucceeded = true;
 
             foreach (var table in tables)
@@ -314,6 +316,125 @@ namespace DromHub.Data
             {
                 Debug.WriteLine("Очистка базы данных завершена с ошибками. См. сообщения выше.");
             }
+        }
+
+        /// <summary>
+        /// <para>Формирует инфраструктуру аудита запчастей, если она отсутствует в базе данных.</para>
+        /// <para>Создает таблицу <c>part_audit_log</c>, индекс, функцию и триггер, обеспечивающие запись истории изменений.</para>
+        /// <para>Вызывается при инициализации приложения, чтобы существующие инсталляции получили необходимые объекты без ручных миграций.</para>
+        /// </summary>
+        /// <param name="context">Активный контекст Entity Framework Core, используемый для выполнения SQL-команд.</param>
+        /// <returns>Асинхронная задача, сигнализирующая о завершении проверки и (при необходимости) создания объектов.</returns>
+        /// <exception cref="ArgumentNullException">Генерируется, когда <paramref name="context"/> не предоставлен.</exception>
+        /// <exception cref="DbUpdateException">Выбрасывается, если инфраструктура EF Core не может выполнить DDL-команды.</exception>
+        /// <exception cref="Npgsql.PostgresException">Возникает, когда сервер PostgreSQL отклоняет создание таблицы или триггера из-за ограничений безопасности либо конфликтов имен.</exception>
+        /// <remarks>
+        /// Предусловия: соединение с PostgreSQL активно; текущий пользователь обладает правами на создание таблиц и триггеров.<para/>
+        /// Постусловия: таблица и триггер аудита существуют и готовы к записи; повторный вызов безопасен благодаря <c>IF NOT EXISTS</c> и <c>CREATE OR REPLACE</c>.<para/>
+        /// Побочные эффекты: выполняет DDL-операции в схеме <c>public</c> базы данных; может инициировать перекомпиляцию зависимых планов.<para/>
+        /// Потокобезопасность: метод не потокобезопасен; вызывайте его один раз при старте приложения.</remarks>
+        private static async Task EnsurePartAuditInfrastructureAsync(ApplicationDbContext context)
+        {
+            if (context is null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            const string sql = @"
+CREATE TABLE IF NOT EXISTS public.part_audit_log
+(
+    event_id uuid PRIMARY KEY,
+    part_id uuid NULL,
+    action char(1) NOT NULL,
+    changed_columns text[] NULL,
+    old_data jsonb NULL,
+    new_data jsonb NULL,
+    actor text NULL,
+    app_context text NULL,
+    txid bigint NOT NULL,
+    event_time timestamptz NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    old_text text NULL,
+    new_text text NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_part_audit_part_time
+    ON public.part_audit_log (part_id, event_time DESC);
+
+CREATE OR REPLACE FUNCTION public.fn_part_audit_capture()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old jsonb;
+    v_new jsonb;
+    v_changed text[];
+    v_event_id uuid := md5(random()::text || clock_timestamp()::text)::uuid;
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        v_new := to_jsonb(NEW);
+    ELSIF TG_OP = 'DELETE' THEN
+        v_old := to_jsonb(OLD);
+    ELSE
+        v_old := to_jsonb(OLD);
+        v_new := to_jsonb(NEW);
+    END IF;
+
+    IF TG_OP = 'UPDATE' THEN
+        SELECT array_agg(diff.key ORDER BY diff.key)
+        INTO v_changed
+        FROM (
+            SELECT DISTINCT key
+            FROM jsonb_each(v_new) AS diff(key, value)
+            WHERE v_old -> key IS DISTINCT FROM v_new -> key
+              AND key <> 'updated_at'
+        ) AS diff;
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND (v_changed IS NULL OR array_length(v_changed, 1) = 0) THEN
+        RETURN NULL;
+    END IF;
+
+    INSERT INTO public.part_audit_log (
+        event_id,
+        part_id,
+        action,
+        changed_columns,
+        old_data,
+        new_data,
+        actor,
+        app_context,
+        txid,
+        event_time,
+        old_text,
+        new_text)
+    VALUES (
+        v_event_id,
+        COALESCE(NEW.id, OLD.id),
+        CASE TG_OP WHEN 'INSERT' THEN 'I' WHEN 'UPDATE' THEN 'U' ELSE 'D' END,
+        v_changed,
+        v_old,
+        v_new,
+        current_user,
+        current_setting('application_name', true),
+        txid_current(),
+        CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+        CASE WHEN v_old IS NULL THEN NULL ELSE jsonb_pretty(v_old) END,
+        CASE WHEN v_new IS NULL THEN NULL ELSE jsonb_pretty(v_new) END
+    );
+
+    RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_part_audit ON public.parts;
+CREATE TRIGGER trg_part_audit
+    AFTER INSERT OR UPDATE OR DELETE
+    ON public.parts
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_part_audit_capture();
+";
+
+            await context.Database.ExecuteSqlRawAsync(sql);
         }
     }
 }

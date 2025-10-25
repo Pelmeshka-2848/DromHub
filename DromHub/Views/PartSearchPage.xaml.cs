@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using System;
 using DromHub.Models;
 using DromHub.Data;
+using DromHub;
 using Microsoft.EntityFrameworkCore;
 
 namespace DromHub.Views
@@ -43,9 +44,25 @@ namespace DromHub.Views
             }
         }
         /// <summary>
-        /// Метод AddPart_Click выполняет основную операцию класса.
+        /// Запускает сценарий создания новой запчасти через диалог, сохраняя текущий контекст поиска и обновляя список после успешного сохранения.
+        /// Используйте для пользовательской кнопки «Создать запись», когда необходимо открыть форму ввода без перехода на отдельную страницу.
+        /// Метод обрабатывает ошибки сохранения, показывая диалог с причиной сбоя.
         /// </summary>
-
+        /// <param name="sender">Кнопка запуска добавления; допускается <see langword="null"/>.</param>
+        /// <param name="e">Аргументы события нажатия; не используются напрямую.</param>
+        /// <exception cref="InvalidOperationException">Передан сервис <see cref="PartViewModel"/>, не зарегистрированный в <see cref="App.ServiceProvider"/>.</exception>
+        /// <remarks>
+        /// Предусловия: контейнер внедрения зависимостей приложения сконфигурирован и содержит экземпляры <see cref="PartViewModel"/> и <see cref="IDbContextFactory{ApplicationDbContext}"/>.<para/>
+        /// Постусловия: при подтверждении диалога список запчастей обновляется через <see cref="PartViewModel.SearchPartsCommand"/>.<para/>
+        /// Побочные эффекты: открывает модальные диалоги WinUI и взаимодействует с базой данных через команды ViewModel.<para/>
+        /// Потокобезопасность: метод должен выполняться в UI-потоке WinUI.<para/>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Программно вызвать создание новой запчасти:
+        /// AddPart_Click(addButton, new RoutedEventArgs());
+        /// </code>
+        /// </example>
         private async void AddPart_Click(object sender, RoutedEventArgs e)
         {
             // Создаем новую VM для добавления запчасти
@@ -81,6 +98,48 @@ namespace DromHub.Views
                     await errorDialog.ShowAsync();
                 }
             }
+        }
+
+        /// <summary>
+        /// Открывает историю изменений выбранной запчасти, чтобы оператор мог быстро свериться с журналом аудита без ручной навигации по меню.
+        /// Применяйте обработчик на кнопке списка запчастей, когда требуется сохранить контекст текущего поиска и перейти к странице <see cref="PartChangesPage"/>.
+        /// Игнорирует вызов, если элемент списка не содержит валидного идентификатора или главное окно недоступно.
+        /// </summary>
+        /// <param name="sender">Кнопка "История" внутри элемента списка; допускает <see langword="null"/>, но в этом случае метод ничего не делает.</param>
+        /// <param name="e">Аргументы события клика; не используются.</param>
+        /// <remarks>
+        /// Предусловия: источник события должен хранить в <see cref="FrameworkElement.DataContext"/> экземпляр <see cref="Part"/> с ненулевым <see cref="Part.Id"/>.<para/>
+        /// Постусловия: при выполнении предусловий вызывается <see cref="MainWindow.NavigateToPartChanges(Guid)"/>, что изменяет выбранную страницу приложения.<para/>
+        /// Побочные эффекты: инициирует переход внутри главного окна и закрывает текущий контекст просмотра деталей.<para/>
+        /// Потокобезопасность: метод не потокобезопасен и должен вызываться из UI-потока WinUI.<para/>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Программно смоделировать переход к истории конкретной запчасти из ViewModel:
+        /// if (App.MainWindow is MainWindow mainWindow)
+        /// {
+        ///     mainWindow.NavigateToPartChanges(partId);
+        /// }
+        /// </code>
+        /// </example>
+        private void ViewHistory_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button)
+            {
+                return;
+            }
+
+            if (button.DataContext is not Part part || part.Id == Guid.Empty)
+            {
+                return;
+            }
+
+            if (App.MainWindow is not MainWindow mainWindow)
+            {
+                return;
+            }
+
+            mainWindow.NavigateToPartChanges(part.Id);
         }
         /// <summary>
         /// Метод ViewPart_Click выполняет основную операцию класса.
