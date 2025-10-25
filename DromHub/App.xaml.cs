@@ -111,6 +111,8 @@ namespace DromHub
             services.AddTransient<DromHub.Services.BrandAuditService>();   // <— ЭТОГО НЕ ХВАТАЛО
             services.AddTransient<DromHub.ViewModels.BrandChangesViewModel>();
             services.AddTransient<BrandAuditService>();
+            services.AddTransient<PartAuditService>();
+            services.AddTransient<PartChangesViewModel>();
             services.AddTransient<PartViewModel>();
             services.AddTransient<BrandOverviewViewModel>();
             services.AddTransient<BrandsIndexViewModel>();
