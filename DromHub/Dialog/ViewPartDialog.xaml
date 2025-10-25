@@ -81,6 +81,11 @@
                 Content="Add to Cart"
                 FontSize="14"
                 Style="{ThemeResource AccentButtonStyle}" />
+            <Button
+                Padding="20,10"
+                Click="ViewPartAudit_Click"
+                Content="История изменений"
+                FontSize="14" />
         </StackPanel>
 
         <!--  Нижняя часть - информация и кроссы  -->

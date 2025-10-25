@@ -1,3 +1,4 @@
+using DromHub;
 using DromHub.Data;
 using DromHub.Models;
 using DromHub.ViewModels;
@@ -201,6 +202,37 @@ namespace DromHub.Views
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading crosses: {ex.Message}");
                 Crosses.Clear();
+            }
+        }
+        /// <summary>
+        /// <para>Открывает страницу истории изменений текущей запчасти в главном окне, передавая контекст выбранного объекта.</para>
+        /// <para>Позволяет администраторам быстро перейти к аудиту без ручного поиска нужной записи.</para>
+        /// </summary>
+        /// <param name="sender">Кнопка, инициировавшая обработчик; значение не используется напрямую.</param>
+        /// <param name="e">Аргументы события нажатия; не содержат дополнительных данных.</param>
+        /// <remarks>
+        /// Предусловия: <see cref="Part"/> не равен <see langword="null"/> и его идентификатор отличен от <see cref="Guid.Empty"/>.<para/>
+        /// Постусловия: при успешном выполнении диалог закрыт методом <see cref="ContentDialog.Hide"/>, а главное окно отобразило <see cref="PartChangesPage"/> с аудитом детали.<para/>
+        /// Побочные эффекты: обращается к <see cref="App.MainWindow"/> и вызывает <see cref="MainWindow.NavigateToPartChanges(Guid)"/>; меняет текущую страницу приложения.<para/>
+        /// Потокобезопасность: метод не потокобезопасен и должен вызываться в UI-потоке WinUI.<para/>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Кнопка в XAML привязана к обработчику:
+        /// // <Button Click="ViewPartAudit_Click" Content="История изменений" />
+        /// </code>
+        /// </example>
+        private void ViewPartAudit_Click(object sender, RoutedEventArgs e)
+        {
+            if (Part is null || Part.Id == Guid.Empty)
+            {
+                return;
+            }
+
+            if (App.MainWindow is MainWindow mainWindow)
+            {
+                mainWindow.NavigateToPartChanges(Part.Id);
+                Hide();
             }
         }
         /// <summary>
