@@ -48,7 +48,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock TextWrapping="Wrap">
-                                            <Run Text="{Binding ColumnName}"/>
+                                            <Run Text="{Binding ColumnDisplayName}"/>
                                             <Run Text=": "/>
                                             <Run Text="{Binding OldValueDisplay}"/>
                                             <Run Text=" → "/>

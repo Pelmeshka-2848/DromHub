@@ -173,9 +173,11 @@ namespace DromHub.Services
         public string? NewJson { get; init; }
 
         /// <summary>
-        /// Список названий столбцов, которые фактически изменились.
+        /// Формирует локализованный список столбцов, которые фактически изменились.
+        /// Используется XAML-прослойкой для отображения русских подписей вместо технических имен базы данных.
+        /// Позволяет быстро идентифицировать изменённые атрибуты, сохраняя порядок и устраняя пустые значения.
         /// </summary>
-        /// <value>Набор имен; пуст, если данные не предоставлены триггером.</value>
+        /// <value>Набор локализованных имен; пуст, если данные не предоставлены триггером.</value>
         public IReadOnlyList<string> ChangedColumns { get; init; } = Array.Empty<string>();
 
         /// <summary>
@@ -252,10 +254,18 @@ namespace DromHub.Services
     public sealed class BrandAuditValueChange
     {
         /// <summary>
-        /// Название столбца, для которого отображается изменение.
+        /// Локализованное название столбца, для которого отображается изменение.
+        /// Применяется интерфейсом, чтобы выводить русские подписи вместо технических имен базы данных.
         /// </summary>
-        /// <value>Имя столбца в таблице брендов; никогда не пустая строка.</value>
-        public string ColumnName { get; init; } = string.Empty;
+        /// <value>Человеко-читаемое имя столбца; никогда не пустая строка.</value>
+        public string ColumnDisplayName { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Техническое название столбца без локализации.
+        /// Используется для диагностики и сопоставления с JSON, полученным из триггера.
+        /// </summary>
+        /// <value>Имя столбца базы данных; по умолчанию — пустая строка.</value>
+        public string OriginalColumnName { get; init; } = string.Empty;
 
         /// <summary>
         /// Подготовленное текстовое представление значения до изменения.
@@ -285,6 +295,50 @@ namespace DromHub.Services
         /// Сохраняет фабрику контекста данных для создания подключений по требованию.
         /// </summary>
         private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+
+        /// <summary>
+        /// <para>Содержит соответствие технических названий столбцов локализованным русским подписям.</para>
+        /// <para>Используется при отображении истории изменений, чтобы скрыть от пользователя внутренние идентификаторы базы данных.</para>
+        /// <para>Расширение словаря требует синхронизации с триггером аудита и схемой таблицы <c>brands</c>.</para>
+        /// </summary>
+        /// <remarks>
+        /// Потокобезопасность: коллекция используется только для чтения после инициализации.
+        /// Побочные эффекты: отсутствуют.
+        /// </remarks>
+        private static readonly IReadOnlyDictionary<string, string> ColumnDisplayMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = "Идентификатор",
+            ["name"] = "Название",
+            ["normalized_name"] = "Нормализованное название",
+            ["created_at"] = "Дата создания",
+            ["updated_at"] = "Дата обновления",
+            ["is_oem"] = "Производитель (OEM)",
+            ["website"] = "Веб-сайт",
+            ["description"] = "Описание",
+            ["user_notes"] = "Заметки",
+            ["year_founded"] = "Год основания",
+            ["country_id"] = "Страна",
+            ["country"] = "Страна",
+            ["short_name"] = "Краткое название",
+            ["full_name"] = "Полное название",
+            ["code"] = "Код",
+            ["slug"] = "ЧПУ",
+            ["external_id"] = "Внешний идентификатор",
+            ["aliases"] = "Алиасы",
+            ["aliases_count"] = "Количество алиасов",
+            ["non_primary_aliases_count"] = "Дополнительные алиасы",
+            ["parts_count"] = "Количество запчастей",
+            ["is_active"] = "Активность",
+            ["is_deleted"] = "Удалён",
+            ["markup_percent"] = "Наценка, %",
+            ["brand_id"] = "Бренд",
+            ["actor"] = "Пользователь БД",
+            ["app_context"] = "Контекст приложения",
+            ["txid"] = "ID транзакции",
+            ["event_time"] = "Время события",
+            ["old_text"] = "Текст до изменения",
+            ["new_text"] = "Текст после изменения"
+        };
 
         /// <summary>
         /// Инициализирует сервис аудита с фабрикой контекста данных.
@@ -386,7 +440,7 @@ namespace DromHub.Services
                     BrandId = a.BrandId,
                     OldJson = a.OldData,
                     NewJson = a.NewData,
-                    ChangedColumns = a.ChangedColumns ?? Array.Empty<string>(),
+                    ChangedColumns = FormatChangedColumns(a.ChangedColumns),
                     ValueChanges = BuildValueChanges(a)
                 });
             }
@@ -485,7 +539,8 @@ namespace DromHub.Services
 
                     result.Add(new BrandAuditValueChange
                     {
-                        ColumnName = column,
+                        ColumnDisplayName = FormatColumnDisplayName(column),
+                        OriginalColumnName = column,
                         OldValueDisplay = oldValue,
                         NewValueDisplay = newValue
                     });
@@ -497,7 +552,8 @@ namespace DromHub.Services
                 {
                     result.Add(new BrandAuditValueChange
                     {
-                        ColumnName = property.Name,
+                        ColumnDisplayName = FormatColumnDisplayName(property.Name),
+                        OriginalColumnName = property.Name,
                         OldValueDisplay = "—",
                         NewValueDisplay = FormatJsonValue(property.Value)
                     });
@@ -509,7 +565,8 @@ namespace DromHub.Services
                 {
                     result.Add(new BrandAuditValueChange
                     {
-                        ColumnName = property.Name,
+                        ColumnDisplayName = FormatColumnDisplayName(property.Name),
+                        OriginalColumnName = property.Name,
                         OldValueDisplay = FormatJsonValue(property.Value),
                         NewValueDisplay = "—"
                     });
@@ -540,7 +597,8 @@ namespace DromHub.Services
 
                     result.Add(new BrandAuditValueChange
                     {
-                        ColumnName = name,
+                        ColumnDisplayName = FormatColumnDisplayName(name),
+                        OriginalColumnName = name,
                         OldValueDisplay = oldValue,
                         NewValueDisplay = newValue
                     });
@@ -548,6 +606,171 @@ namespace DromHub.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Преобразует список технических названий столбцов в локализованный набор для отображения.
+        /// Используйте метод при построении UI-модели, чтобы обеспечить единообразный русский интерфейс.
+        /// Удаляет пустые и дублирующиеся записи, сохраняя порядок появления в аудите и нормализуя технические имена через <see cref="NormalizeColumnKey(string)"/>.
+        /// </summary>
+        /// <param name="columns">Массив названий столбцов из триггера; допускает <see langword="null"/>.</param>
+        /// <returns>Локализованный список названий или пустой массив, если входные данные отсутствуют.</returns>
+        /// <remarks>
+        /// Предусловия: отсутствуют.
+        /// Постусловия: возвращаемая коллекция не содержит <see langword="null"/> и повторов.
+        /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(n) относительно числа элементов.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var display = FormatChangedColumns(new[] { "name", "country_id" });
+        /// // display == ["Название", "Страна"]
+        /// </code>
+        /// </example>
+        private static IReadOnlyList<string> FormatChangedColumns(string[]? columns)
+        {
+            if (columns is null || columns.Length == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var normalized = new List<string>(columns.Length);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var column in columns)
+            {
+                if (string.IsNullOrWhiteSpace(column))
+                {
+                    continue;
+                }
+
+                var trimmed = column.Trim();
+                var key = NormalizeColumnKey(trimmed);
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+
+                if (!seen.Add(key))
+                {
+                    continue;
+                }
+
+                normalized.Add(FormatColumnDisplayName(trimmed));
+            }
+
+            return normalized;
+        }
+
+        /// <summary>
+        /// Преобразует техническое имя столбца базы данных в русскую подпись для интерфейса.
+        /// Сначала нормализует ключ через <see cref="NormalizeColumnKey(string)"/>, затем пытается использовать словарь локализаций и при необходимости выполняет эвристическое форматирование.
+        /// Помогает поддерживать понятную терминологию без изменения схемы БД.
+        /// </summary>
+        /// <param name="columnName">Техническое имя столбца; допускает пробелы и смешанный регистр.</param>
+        /// <returns>Русская подпись или исходное значение при невозможности форматирования.</returns>
+        /// <remarks>
+        /// Предусловия: <paramref name="columnName"/> не должен содержать управляющие символы.
+        /// Побочные эффекты: отсутствуют.
+        /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(n) относительно длины строки.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var title = FormatColumnDisplayName("country_id");
+        /// // title == "Страна"
+        /// </code>
+        /// </example>
+        private static string FormatColumnDisplayName(string columnName)
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+            {
+                return "—";
+            }
+
+            var key = NormalizeColumnKey(columnName);
+            if (key.Length == 0)
+            {
+                return "—";
+            }
+
+            if (ColumnDisplayMap.TryGetValue(key, out var localized))
+            {
+                return localized;
+            }
+
+            var terminal = key;
+            var dotIndex = key.LastIndexOf('.');
+            if (dotIndex >= 0 && dotIndex < key.Length - 1)
+            {
+                terminal = key.Substring(dotIndex + 1);
+                if (ColumnDisplayMap.TryGetValue(terminal, out localized))
+                {
+                    return localized;
+                }
+            }
+
+            var sanitized = terminal
+                .Replace('_', ' ')
+                .Replace('.', ' ')
+                .Trim();
+            if (sanitized.Length == 0)
+            {
+                return terminal;
+            }
+
+            var culture = CultureInfo.GetCultureInfo("ru-RU");
+            var humanized = culture.TextInfo.ToTitleCase(sanitized.ToLowerInvariant());
+            return humanized;
+        }
+
+        /// <summary>
+        /// Приводит техническое имя столбца к каноническому виду для поиска локализованной подписи.
+        /// Удаляет внешние кавычки, backtick-символы и нормализует JSON-указатели, чтобы словарь находил соответствия.
+        /// Используйте перед обращением к <see cref="ColumnDisplayMap"/>, если источник может содержать различное форматирование.
+        /// </summary>
+        /// <param name="columnName">Имя столбца, полученное из триггера аудита или JSON.</param>
+        /// <returns>Нормализованное имя, пригодное для поиска; пустая строка, если вход отсутствует.</returns>
+        /// <remarks>
+        /// Предусловия: <paramref name="columnName"/> может содержать пробелы и кавычки, но не управляющие символы.
+        /// Побочные эффекты: отсутствуют.
+        /// Потокобезопасность: статический метод без состояния.
+        /// Сложность: O(n) относительно длины строки.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var key = NormalizeColumnKey("\"country_id\"");
+        /// // key == "country_id"
+        /// </code>
+        /// </example>
+        private static string NormalizeColumnKey(string columnName)
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+            {
+                return string.Empty;
+            }
+
+            var trimmed = columnName.Trim();
+            if (trimmed.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            var sanitized = trimmed.Trim('\"', '\'', '`');
+
+            if (sanitized.Length == 0)
+            {
+                sanitized = trimmed;
+            }
+
+            if (sanitized.IndexOf("->", StringComparison.Ordinal) >= 0)
+            {
+                sanitized = sanitized
+                    .Replace("->>", ".")
+                    .Replace("->", ".");
+            }
+
+            return sanitized;
         }
 
         /// <summary>
@@ -657,7 +880,7 @@ namespace DromHub.Services
                 JTokenType.Integer => element.Value<long>().ToString(CultureInfo.InvariantCulture),
                 JTokenType.Float => element.Value<double>().ToString(CultureInfo.InvariantCulture),
                 JTokenType.Boolean => element.Value<bool>() ? "true" : "false",
-                JTokenType.Date => element.Value<DateTime>().ToString("dd-MM-yyyy HH:mm:ss", CultureInfo.InvariantCulture),
+                JTokenType.Date => element.Value<DateTime>().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                 _ => element.ToString(Formatting.None)
             };
         }
