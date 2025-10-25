@@ -917,7 +917,7 @@ namespace DromHub.ViewModels
                         var safeBase = SafeName(Path.GetFileNameWithoutExtension(file.Name));
                         if (string.IsNullOrWhiteSpace(safeBase))
                         {
-                            safeBase = $"Manual_{DateTime.Now:yyyyMMdd_HHmmss}";
+                            safeBase = $"Manual_{DateTime.Now:ddMMyyyy_HHmmss}";
                         }
 
                         if (extension == ".xlsx")
