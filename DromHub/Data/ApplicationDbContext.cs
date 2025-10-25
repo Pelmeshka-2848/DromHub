@@ -258,6 +258,56 @@ namespace DromHub.Data
             });
 
             modelBuilder.Entity<BrandAuditLog>(ConfigureBrandAudit);
+            modelBuilder.Entity<PartAuditLog>(ConfigurePartAudit);
+        }
+
+        /// <summary>
+        /// <para>Конфигурирует отображение сущности <see cref="PartAuditLog"/> на таблицу <c>part_audit_log</c> PostgreSQL.</para>
+        /// <para>Назначает первичный ключ и типы колонок, чтобы <see cref="DromHub.Services.PartAuditService"/> мог выполнять запросы без ошибок сопоставления.</para>
+        /// <para>Вызывается из <see cref="OnModelCreating(ModelBuilder)"/> при инициализации контекста Entity Framework Core.</para>
+        /// </summary>
+        /// <param name="e">Построитель конфигурации сущности; предоставляет доступ к настройкам столбцов и индексов.</param>
+        /// <exception cref="ArgumentNullException">Аргумент <paramref name="e"/> не должен быть <see langword="null"/>; EF Core гарантирует корректную передачу.</exception>
+        /// <remarks>
+        /// Предусловия: метод вызывается только инфраструктурой EF Core; вручную не используйте.<para/>
+        /// Постусловия: сущность имеет первичный ключ по <see cref="PartAuditLog.EventId"/> и индекс по (<see cref="PartAuditLog.PartId"/>, <see cref="PartAuditLog.EventTime"/>).<para/>
+        /// Побочные эффекты: изменение метаданных модели EF Core; операций ввода-вывода нет.<para/>
+        /// Потокобезопасность: вызывать только в однопоточном контексте построения модели.<para/>
+        /// См. также: <see cref="ConfigureBrandAudit(EntityTypeBuilder{BrandAuditLog})"/>.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// // Добавление конфигурации в DbContext:
+        /// modelBuilder.Entity&lt;PartAuditLog&gt;(ConfigurePartAudit);
+        /// </code>
+        /// </example>
+        private static void ConfigurePartAudit(EntityTypeBuilder<PartAuditLog> e)
+        {
+            if (e is null)
+            {
+                throw new ArgumentNullException(nameof(e));
+            }
+
+            e.ToTable("part_audit_log");
+            e.HasKey(x => x.EventId);
+
+            e.Property(x => x.EventId).HasColumnName("event_id");
+            e.Property(x => x.PartId).HasColumnName("part_id");
+            e.Property(x => x.Action).HasColumnName("action");
+            e.Property(x => x.ChangedColumns).HasColumnName("changed_columns").HasColumnType("text[]");
+
+            e.Property(x => x.OldData).HasColumnName("old_data").HasColumnType("jsonb");
+            e.Property(x => x.NewData).HasColumnName("new_data").HasColumnType("jsonb");
+
+            e.Property(x => x.Actor).HasColumnName("actor");
+            e.Property(x => x.AppContext).HasColumnName("app_context");
+            e.Property(x => x.TxId).HasColumnName("txid");
+            e.Property(x => x.EventTime).HasColumnName("event_time");
+
+            e.Property(x => x.OldText).HasColumnName("old_text").ValueGeneratedOnAddOrUpdate();
+            e.Property(x => x.NewText).HasColumnName("new_text").ValueGeneratedOnAddOrUpdate();
+
+            e.HasIndex(x => new { x.PartId, x.EventTime }).HasDatabaseName("ix_part_audit_part_time");
         }
 
         private static void ConfigureBrandAudit(EntityTypeBuilder<BrandAuditLog> e)
