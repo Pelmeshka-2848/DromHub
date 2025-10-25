@@ -14,57 +14,23 @@ using Newtonsoft.Json.Linq;
 namespace DromHub.Services
 {
     /// <summary>
-    /// Определяет срез аудита по типу операции, когда требуется сузить выдачу журналов изменений доменных сущностей.
-    /// Используется UI для фильтрации записей, обеспечивая соответствие символам триггера (<c>I</c>, <c>U</c>, <c>D</c>).
-    /// Значения синхронизированы со структурами триггерных таблиц аудита (брендов, запчастей и т. д.), поэтому изменение требует обновления соответствующих триггеров.
-    /// </summary>
-    /// <remarks>
-    /// Потокобезопасность: перечисление неизменно и потокобезопасно.
-    /// Побочные эффекты: отсутствуют.
-    /// См. также: <see cref="BrandAuditService"/>.
-    /// </remarks>
-    public enum AuditActionFilter
-    {
-        /// <summary>
-        /// Возвращает все события аудита без дополнительной фильтрации по типу действия.
-        /// Подходит для стартового отображения истории изменений.
-        /// </summary>
-        All,
-
-        /// <summary>
-        /// Ограничивает выборку событиями вставки (<c>I</c>), полезно при анализе появления новых записей.
-        /// </summary>
-        Insert,
-
-        /// <summary>
-        /// Включает только обновления (<c>U</c>), помогая выявить правки ключевых атрибутов сущности.
-        /// </summary>
-        Update,
-
-        /// <summary>
-        /// Отбирает события удаления (<c>D</c>), что актуально при расследовании потери данных.
-        /// </summary>
-        Delete
-    }
-
-    /// <summary>
-    /// Инкапсулирует параметры фильтрации, поиска и пагинации для выборки записей аудита брендов.
-    /// Позволяет UI гибко настраивать запросы к сервису, избегая прямой работы с SQL.
-    /// Используйте при формировании запросов из диалогов настройки историй изменений.
+    /// Инкапсулирует параметры фильтрации, поиска и пагинации для выборки записей аудита запчастей.
+    /// Позволяет UI гибко настраивать запросы к сервису, избегая прямой работы с SQL и формируя понятную историю изменений деталей.
+    /// Используйте при формировании запросов из административных экранов, где требуется исследовать правки отдельных позиций каталога.
     /// </summary>
     /// <remarks>
     /// Потокобезопасность: класс мутабелен и не потокобезопасен; используйте в пределах одного UI-потока.
     /// Побочные эффекты: отсутствуют.
     /// Требования к nullability: допускает <see langword="null"/> для необязательных параметров.
     /// </remarks>
-    public sealed class BrandAuditFilter
+    public sealed class PartAuditFilter
     {
         /// <summary>
-        /// Определяет идентификатор бренда, по которому нужно отфильтровать историю.
+        /// Определяет идентификатор детали, по которому нужно отфильтровать историю.
         /// Значение <see cref="Guid.Empty"/> отключает фильтр.
         /// </summary>
-        /// <value>GUID бренда; по умолчанию — <see cref="Guid.Empty"/>.</value>
-        public Guid BrandId { get; set; }
+        /// <value>GUID детали; по умолчанию — <see cref="Guid.Empty"/>.</value>
+        public Guid PartId { get; set; }
 
         /// <summary>
         /// Задает нижнюю границу временного диапазона выборки.
@@ -114,15 +80,15 @@ namespace DromHub.Services
     }
 
     /// <summary>
-    /// Представляет строку аудита бренда, подготовленную для потребления XAML-интерфейсом.
+    /// Представляет строку аудита запчасти, подготовленную для потребления XAML-интерфейсом.
     /// Инкапсулирует исходные данные и производные текстовые представления, уменьшая нагрузку на слой представления.
-    /// Обеспечивает единообразное отображение истории изменений и поддерживает выбор элементов для пакетных операций.
+    /// Обеспечивает единообразное отображение истории изменений деталей и поддерживает выбор элементов для пакетных операций.
     /// </summary>
     /// <remarks>
     /// Потокобезопасность: объект иммутабелен после инициализации; допускает совместное чтение.
     /// Побочные эффекты: отсутствуют.
     /// </remarks>
-    public sealed class BrandAuditRow : ObservableObject
+    public sealed class PartAuditRow : ObservableObject
     {
         /// <summary>
         /// Идентификатор события аудита, совпадает с <c>event_id</c> в таблице.
@@ -155,10 +121,10 @@ namespace DromHub.Services
         public string Table { get; init; } = string.Empty;
 
         /// <summary>
-        /// Идентификатор бренда, который затронуто изменением.
+        /// Идентификатор детали, которую затронуло изменение.
         /// </summary>
-        /// <value>GUID бренда или <see langword="null"/>.</value>
-        public Guid? BrandId { get; init; }
+        /// <value>GUID детали или <see langword="null"/>.</value>
+        public Guid? PartId { get; init; }
 
         /// <summary>
         /// JSON-снимок состояния сущности до изменения.
@@ -213,8 +179,8 @@ namespace DromHub.Services
         /// <summary>
         /// Содержит детализированный список изменений значений по каждому столбцу.
         /// </summary>
-        /// <value>Наблюдаемая последовательность элементов <see cref="BrandAuditValueChange"/>; по умолчанию — пустая.</value>
-        public IReadOnlyList<BrandAuditValueChange> ValueChanges { get; init; } = Array.Empty<BrandAuditValueChange>();
+        /// <value>Наблюдаемая последовательность элементов <see cref="PartAuditValueChange"/>; по умолчанию — пустая.</value>
+        public IReadOnlyList<PartAuditValueChange> ValueChanges { get; init; } = Array.Empty<PartAuditValueChange>();
 
         /// <summary>
         /// <para>Определяет, выбран ли элемент пользователем для пакетных операций (например, удаления записей аудита).</para>
@@ -251,7 +217,7 @@ namespace DromHub.Services
     /// Потокобезопасность: экземпляр иммутабелен после инициализации.
     /// Побочные эффекты: отсутствуют.
     /// </remarks>
-    public sealed class BrandAuditValueChange
+    public sealed class PartAuditValueChange
     {
         /// <summary>
         /// Локализованное название столбца, для которого отображается изменение.
@@ -281,15 +247,15 @@ namespace DromHub.Services
     }
 
     /// <summary>
-    /// Реализует чтение лога аудита брендов с учетом фильтров и пагинации.
+    /// Реализует чтение лога аудита запчастей с учетом фильтров и пагинации.
     /// Снимает необходимость в прямых SQL-запросах, предоставляя готовую модель данных для UI.
-    /// Учитывает специфику триггера <c>trg_brand_audit</c> и структуру таблицы <c>brand_audit_log</c>.
+    /// Учитывает специфику триггера <c>trg_part_audit</c> и структуру таблицы <c>part_audit_log</c>.
     /// </summary>
     /// <remarks>
     /// Потокобезопасность: экземпляр потокобезопасен при условии потокобезопасной реализации <see cref="IDbContextFactory{TContext}"/>.
     /// Побочные эффекты: выполняет операции чтения из БД PostgreSQL.
     /// </remarks>
-    public sealed class BrandAuditService
+    public sealed class PartAuditService
     {
         /// <summary>
         /// Сохраняет фабрику контекста данных для создания подключений по требованию.
@@ -299,7 +265,7 @@ namespace DromHub.Services
         /// <summary>
         /// <para>Содержит соответствие технических названий столбцов локализованным русским подписям.</para>
         /// <para>Используется при отображении истории изменений, чтобы скрыть от пользователя внутренние идентификаторы базы данных.</para>
-        /// <para>Расширение словаря требует синхронизации с триггером аудита и схемой таблицы <c>brands</c>.</para>
+        /// <para>Расширение словаря требует синхронизации с триггером аудита и схемой таблицы <c>parts</c>.</para>
         /// </summary>
         /// <remarks>
         /// Потокобезопасность: коллекция используется только для чтения после инициализации.
@@ -308,30 +274,13 @@ namespace DromHub.Services
         private static readonly IReadOnlyDictionary<string, string> ColumnDisplayMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["id"] = "Идентификатор",
+            ["part_id"] = "Идентификатор детали",
+            ["brand_id"] = "Бренд",
+            ["catalog_number"] = "Каталожный номер",
+            ["article"] = "Артикул",
             ["name"] = "Название",
-            ["normalized_name"] = "Нормализованное название",
             ["created_at"] = "Дата создания",
             ["updated_at"] = "Дата обновления",
-            ["is_oem"] = "Производитель (OEM)",
-            ["website"] = "Веб-сайт",
-            ["description"] = "Описание",
-            ["user_notes"] = "Заметки",
-            ["year_founded"] = "Год основания",
-            ["country_id"] = "Страна",
-            ["country"] = "Страна",
-            ["short_name"] = "Краткое название",
-            ["full_name"] = "Полное название",
-            ["code"] = "Код",
-            ["slug"] = "ЧПУ",
-            ["external_id"] = "Внешний идентификатор",
-            ["aliases"] = "Алиасы",
-            ["aliases_count"] = "Количество алиасов",
-            ["non_primary_aliases_count"] = "Дополнительные алиасы",
-            ["parts_count"] = "Количество запчастей",
-            ["is_active"] = "Активность",
-            ["is_deleted"] = "Удалён",
-            ["markup_percent"] = "Наценка, %",
-            ["brand_id"] = "Бренд",
             ["actor"] = "Пользователь БД",
             ["app_context"] = "Контекст приложения",
             ["txid"] = "ID транзакции",
@@ -344,13 +293,13 @@ namespace DromHub.Services
         /// Инициализирует сервис аудита с фабрикой контекста данных.
         /// </summary>
         /// <param name="dbFactory">Фабрика, создающая экземпляры <see cref="ApplicationDbContext"/> по требованию.</param>
-        public BrandAuditService(IDbContextFactory<ApplicationDbContext> dbFactory)
+        public PartAuditService(IDbContextFactory<ApplicationDbContext> dbFactory)
         {
             _dbFactory = dbFactory;
         }
 
         /// <summary>
-        /// Загружает записи аудита бренда, применяя фильтры, поиск и пагинацию.
+        /// Загружает записи аудита детали, применяя фильтры, поиск и пагинацию.
         /// Сопоставляет символьные коды действий триггера с пользовательскими фильтрами.
         /// </summary>
         /// <param name="filter">Параметры фильтрации и пагинации; допускают пустые значения.</param>
@@ -367,22 +316,22 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var filter = new BrandAuditFilter { BrandId = brandId, OnlyChangedFields = true };
+        /// var filter = new PartAuditFilter { PartId = partId, OnlyChangedFields = true };
         /// var (rows, total) = await auditService.GetAsync(filter, cancellationToken);
         /// </code>
         /// </example>
-        public async Task<(IReadOnlyList<BrandAuditRow> Rows, int Total)> GetAsync(
-            BrandAuditFilter filter,
+        public async Task<(IReadOnlyList<PartAuditRow> Rows, int Total)> GetAsync(
+            PartAuditFilter filter,
             CancellationToken ct = default)
         {
             await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
             // Таблица аудита: brand_audit_log (создана SQL-триггером)
-            var q = db.BrandAuditLogs.AsNoTracking().AsQueryable();
+            var q = db.PartAuditLogs.AsNoTracking().AsQueryable();
 
             // ---- FILTERS ----
-            if (filter.BrandId != Guid.Empty)
-                q = q.Where(x => x.BrandId == filter.BrandId);
+            if (filter.PartId != Guid.Empty)
+                q = q.Where(x => x.PartId == filter.PartId);
 
             if (filter.From.HasValue)
                 q = q.Where(x => x.EventTime >= filter.From.Value);
@@ -427,8 +376,8 @@ namespace DromHub.Services
             var data = await q.ToListAsync(ct);
 
             // ---- PREPARE ENRICHMENT ----
-            var contexts = new List<(BrandAuditLog Entity, JObject? OldDoc, JObject? NewDoc)>(data.Count);
-            var countryIds = new HashSet<Guid>();
+            var contexts = new List<(PartAuditLog Entity, JObject? OldDoc, JObject? NewDoc)>(data.Count);
+            var brandIds = new HashSet<Guid>();
 
             foreach (var entity in data)
             {
@@ -436,40 +385,40 @@ namespace DromHub.Services
                 var newDoc = ParseJson(entity.NewData);
 
                 contexts.Add((entity, oldDoc, newDoc));
-                CollectCountryIdentifiers(oldDoc, countryIds);
-                CollectCountryIdentifiers(newDoc, countryIds);
+                CollectBrandIdentifiers(oldDoc, brandIds);
+                CollectBrandIdentifiers(newDoc, brandIds);
             }
 
-            IReadOnlyDictionary<Guid, string> countryLookup;
-            if (countryIds.Count > 0)
+            IReadOnlyDictionary<Guid, string> brandLookup;
+            if (brandIds.Count > 0)
             {
-                countryLookup = await db.Countries
-                    .Where(c => countryIds.Contains(c.Id))
-                    .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+                brandLookup = await db.Brands
+                    .Where(b => brandIds.Contains(b.Id))
+                    .ToDictionaryAsync(b => b.Id, b => b.Name, ct);
             }
             else
             {
-                countryLookup = new Dictionary<Guid, string>();
+                brandLookup = new Dictionary<Guid, string>();
             }
 
             // ---- MAP -> UI модель ----
-            var rows = new List<BrandAuditRow>(contexts.Count);
+            var rows = new List<PartAuditRow>(contexts.Count);
             foreach (var context in contexts)
             {
                 var entity = context.Entity;
 
-                rows.Add(new BrandAuditRow
+                rows.Add(new PartAuditRow
                 {
                     Id = entity.EventId,
                     Ts = entity.EventTime.UtcDateTime,
                     Action = MapActionDisplay(entity.Action),
                     User = entity.Actor ?? string.Empty,
-                    Table = "brands",
-                    BrandId = entity.BrandId,
+                    Table = "parts",
+                    PartId = entity.PartId,
                     OldJson = entity.OldData,
                     NewJson = entity.NewData,
                     ChangedColumns = FormatChangedColumns(entity.ChangedColumns),
-                    ValueChanges = BuildValueChanges(entity, context.OldDoc, context.NewDoc, countryLookup)
+                    ValueChanges = BuildValueChanges(entity, context.OldDoc, context.NewDoc, brandLookup)
                 });
             }
 
@@ -477,14 +426,14 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// <para>Удаляет выбранные записи аудита бренда, чтобы администратор мог скрыть технический шум или исправить ошибки триггера.</para>
+        /// <para>Удаляет выбранные записи аудита детали, чтобы администратор мог скрыть технический шум или исправить ошибки триггера.</para>
         /// <para>Применяйте после ручного анализа, когда сохранение истории нежелательно либо нарушает требования комплаенса.</para>
         /// <para>Поддерживает массовое удаление; оптимизировано под пакетные операции без загрузки сущностей в память.</para>
         /// </summary>
-        /// <param name="brandId">Идентификатор бренда, для которого подтверждено удаление; допускает <see cref="Guid.Empty"/> для снятия ограничения.</param>
+        /// <param name="partId">Идентификатор детали, для которой подтверждено удаление; допускает <see cref="Guid.Empty"/> для снятия ограничения.</param>
         /// <param name="eventIds">Коллекция идентификаторов событий аудита; игнорируются значения <see cref="Guid.Empty"/> и дубликаты.</param>
         /// <param name="ct">Токен отмены; при отмене выбрасывается <see cref="OperationCanceledException"/> до применения изменений.</param>
-        /// <returns>Количество удалённых записей; может быть меньше числа запросов из-за фильтрации по бренду.</returns>
+        /// <returns>Количество удалённых записей; может быть меньше числа запросов из-за фильтрации по детали.</returns>
         /// <exception cref="ArgumentNullException">Когда <paramref name="eventIds"/> не предоставлены.</exception>
         /// <exception cref="OperationCanceledException">При отмене операции инфраструктурой или пользователем.</exception>
         /// <remarks>
@@ -495,14 +444,14 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var removed = await auditService.DeleteAsync(brandId, selectedIds, ct);
+        /// var removed = await auditService.DeleteAsync(partId, selectedIds, ct);
         /// if (removed == 0)
         /// {
-        ///     // Записи уже удалены или принадлежали другому бренду.
+        ///     // Записи уже удалены или принадлежали другой детали.
         /// }
         /// </code>
         /// </example>
-        public async Task<int> DeleteAsync(Guid brandId, IEnumerable<Guid> eventIds, CancellationToken ct = default)
+        public async Task<int> DeleteAsync(Guid partId, IEnumerable<Guid> eventIds, CancellationToken ct = default)
         {
             if (eventIds is null)
             {
@@ -521,11 +470,11 @@ namespace DromHub.Services
 
             await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
-            var query = db.BrandAuditLogs.Where(x => normalized.Contains(x.EventId));
+            var query = db.PartAuditLogs.Where(x => normalized.Contains(x.EventId));
 
-            if (brandId != Guid.Empty)
+            if (partId != Guid.Empty)
             {
-                query = query.Where(x => x.BrandId == brandId);
+                query = query.Where(x => x.PartId == partId);
             }
 
             var removed = await query.ExecuteDeleteAsync(ct);
@@ -533,29 +482,29 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// <para>Формирует структурированный список изменений значений на основе строки аудита бренда.</para>
-        /// <para>Используется экраном истории брендов, чтобы показать, какие поля изменились и какое значение было до/после.</para>
-        /// <para>Автоматически подставляет локализованные представления связанных сущностей, например названия стран вместо идентификаторов.</para>
+        /// <para>Формирует структурированный список изменений значений на основе строки аудита запчасти.</para>
+        /// <para>Используется экраном истории деталей, чтобы показать, какие поля изменились и какие значения были до/после.</para>
+        /// <para>Автоматически подставляет локализованные представления связанных сущностей, например названия брендов вместо идентификаторов.</para>
         /// </summary>
-        /// <param name="entity">Сырьевая запись аудита из таблицы <c>brand_audit_log</c>.</param>
+        /// <param name="entity">Сырьевая запись аудита из таблицы <c>part_audit_log</c>.</param>
         /// <param name="oldDoc">JSON-снимок до изменения; может отсутствовать для вставок.</param>
         /// <param name="newDoc">JSON-снимок после изменения; может отсутствовать для удалений.</param>
-        /// <param name="countryNames">Кеш справочника стран, сформированный на этапе загрузки.</param>
+        /// <param name="brandNames">Кеш справочника брендов, сформированный на этапе загрузки.</param>
         /// <returns>Упорядоченный список дельт для отображения в пользовательском интерфейсе.</returns>
         /// <remarks>
-        /// <para>Предусловия: JSON-снимки должны соответствовать схеме бренда; список столбцов может быть пустым.</para>
+        /// <para>Предусловия: JSON-снимки должны соответствовать схеме детали; список столбцов может быть пустым.</para>
         /// <para>Постусловия: возвращаемая коллекция иммутабельна и не содержит повторяющихся столбцов.</para>
         /// <para>Побочные эффекты: отсутствуют.</para>
         /// <para>Потокобезопасность: метод не хранит состояние и безопасен для параллельных вызовов.</para>
         /// <para>Сложность: O(n) относительно числа полей в JSON.</para>
         /// </remarks>
-        private static IReadOnlyList<BrandAuditValueChange> BuildValueChanges(
-            BrandAuditLog entity,
+        private static IReadOnlyList<PartAuditValueChange> BuildValueChanges(
+            PartAuditLog entity,
             JObject? oldDoc,
             JObject? newDoc,
-            IReadOnlyDictionary<Guid, string> countryNames)
+            IReadOnlyDictionary<Guid, string> brandNames)
         {
-            var result = new List<BrandAuditValueChange>();
+            var result = new List<PartAuditValueChange>();
 
             var changed = entity.ChangedColumns?
                 .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -566,15 +515,15 @@ namespace DromHub.Services
             {
                 foreach (var column in changed)
                 {
-                    var oldValue = ExtractValue(oldDoc, column, countryNames);
-                    var newValue = ExtractValue(newDoc, column, countryNames);
+                    var oldValue = ExtractValue(oldDoc, column, brandNames);
+                    var newValue = ExtractValue(newDoc, column, brandNames);
 
                     if (oldValue == newValue)
                     {
                         continue;
                     }
 
-                    result.Add(new BrandAuditValueChange
+                    result.Add(new PartAuditValueChange
                     {
                         ColumnDisplayName = FormatColumnDisplayName(column),
                         OriginalColumnName = column,
@@ -587,12 +536,12 @@ namespace DromHub.Services
             {
                 foreach (var property in newDoc.Properties())
                 {
-                    result.Add(new BrandAuditValueChange
+                    result.Add(new PartAuditValueChange
                     {
                         ColumnDisplayName = FormatColumnDisplayName(property.Name),
                         OriginalColumnName = property.Name,
                         OldValueDisplay = "—",
-                        NewValueDisplay = FormatJsonValue(property.Value, property.Name, countryNames)
+                        NewValueDisplay = FormatJsonValue(property.Value, property.Name, brandNames)
                     });
                 }
             }
@@ -600,11 +549,11 @@ namespace DromHub.Services
             {
                 foreach (var property in oldDoc.Properties())
                 {
-                    result.Add(new BrandAuditValueChange
+                    result.Add(new PartAuditValueChange
                     {
                         ColumnDisplayName = FormatColumnDisplayName(property.Name),
                         OriginalColumnName = property.Name,
-                        OldValueDisplay = FormatJsonValue(property.Value, property.Name, countryNames),
+                        OldValueDisplay = FormatJsonValue(property.Value, property.Name, brandNames),
                         NewValueDisplay = "—"
                     });
                 }
@@ -624,15 +573,15 @@ namespace DromHub.Services
 
                 foreach (var name in names)
                 {
-                    var oldValue = ExtractValue(oldDoc, name, countryNames);
-                    var newValue = ExtractValue(newDoc, name, countryNames);
+                    var oldValue = ExtractValue(oldDoc, name, brandNames);
+                    var newValue = ExtractValue(newDoc, name, brandNames);
 
                     if (oldValue == newValue)
                     {
                         continue;
                     }
 
-                    result.Add(new BrandAuditValueChange
+                    result.Add(new PartAuditValueChange
                     {
                         ColumnDisplayName = FormatColumnDisplayName(name),
                         OriginalColumnName = name,
@@ -660,8 +609,8 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var display = FormatChangedColumns(new[] { "name", "country_id" });
-        /// // display == ["Название", "Страна"]
+        /// var display = FormatChangedColumns(new[] { "name", "brand_id" });
+        /// // display == ["Название", "Бренд"]
         /// </code>
         /// </example>
         private static IReadOnlyList<string> FormatChangedColumns(string[]? columns)
@@ -700,26 +649,26 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// <para>Извлекает идентификаторы стран из JSON-снимка для последующей подстановки человеко-читаемых названий.</para>
+        /// <para>Извлекает идентификаторы брендов из JSON-снимка для последующей подстановки человеко-читаемых названий.</para>
         /// <para>Выполняет подготовку данных перед загрузкой справочника, чтобы минимизировать количество запросов к базе.</para>
         /// <para>Игнорирует пустые и некорректные значения, сохраняя устойчивость к повреждённому аудиту.</para>
         /// </summary>
         /// <param name="doc">JSON-объект из таблицы аудита; допускает <see langword="null"/>.</param>
-        /// <param name="buffer">Множество для накопления уникальных идентификаторов стран.</param>
+        /// <param name="buffer">Множество для накопления уникальных идентификаторов брендов.</param>
         /// <remarks>
         /// <para>Предусловия: <paramref name="buffer"/> должен принимать новые элементы.</para>
         /// <para>Побочные эффекты: метод добавляет элементы в переданное множество.</para>
         /// <para>Потокобезопасность: не потокобезопасен при совместном использовании одного <paramref name="buffer"/> между потоками.</para>
         /// <para>Сложность: O(1) — анализируется ровно одно поле JSON.</para>
         /// </remarks>
-        private static void CollectCountryIdentifiers(JObject? doc, ISet<Guid> buffer)
+        private static void CollectBrandIdentifiers(JObject? doc, ISet<Guid> buffer)
         {
             if (doc is null || buffer is null)
             {
                 return;
             }
 
-            if (!doc.TryGetValue("country_id", StringComparison.OrdinalIgnoreCase, out var token) || token is null)
+            if (!doc.TryGetValue("brand_id", StringComparison.OrdinalIgnoreCase, out var token) || token is null)
             {
                 return;
             }
@@ -745,8 +694,8 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var title = FormatColumnDisplayName("country_id");
-        /// // title == "Страна"
+        /// var title = FormatColumnDisplayName("brand_id");
+        /// // title == "Бренд"
         /// </code>
         /// </example>
         private static string FormatColumnDisplayName(string columnName)
@@ -807,8 +756,8 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var key = NormalizeColumnKey("\"country_id\"");
-        /// // key == "country_id"
+        /// var key = NormalizeColumnKey("\"brand_id\"");
+        /// // key == "brand_id"
         /// </code>
         /// </example>
         private static string NormalizeColumnKey(string columnName)
@@ -883,11 +832,11 @@ namespace DromHub.Services
         /// <summary>
         /// <para>Извлекает значение указанного свойства из JSON-снимка аудита и преобразует его к человеко-читаемому виду.</para>
         /// <para>Служит связующим звеном между списком <c>changed_columns</c> и фактическими данными, гарантируя согласованное форматирование.</para>
-        /// <para>Использует кеш справочников, чтобы мгновенно переводить связанные идентификаторы (например, стран) в локализованные подписи.</para>
+        /// <para>Использует кеш справочников, чтобы мгновенно переводить связанные идентификаторы (например, брендов) в локализованные подписи.</para>
         /// </summary>
         /// <param name="doc">JSON-объект со снимком сущности; допускает <see langword="null"/>, если триггер не предоставил данные.</param>
         /// <param name="propertyName">Имя свойства, совпадающее с колонкой базы данных; сравнение выполняется без учёта регистра.</param>
-        /// <param name="countryNames">Кеш локализованных названий стран; допускает пустой словарь для сценариев без географии.</param>
+        /// <param name="brandNames">Кеш локализованных названий брендов; допускает пустой словарь, если данные не содержат ссылок на бренды.</param>
         /// <returns>Отформатированная строка либо «—», если значение отсутствует в снимке.</returns>
         /// <remarks>
         /// <para>Предусловия: <paramref name="propertyName"/> должен указывать на плоское поле JSON.</para>
@@ -897,18 +846,18 @@ namespace DromHub.Services
         /// </remarks>
         /// <example>
         /// <code>
-        /// var payload = JObject.Parse("{\"country_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}");
+        /// var payload = JObject.Parse("{\"brand_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}");
         /// var lookup = new Dictionary<Guid, string>
         /// {
-        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "Россия"
+        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "ACME"
         /// };
-        /// var value = ExtractValue(payload, "country_id", lookup); // "Россия"
+        /// var value = ExtractValue(payload, "brand_id", lookup); // "ACME"
         /// </code>
         /// </example>
         private static string ExtractValue(
             JObject? doc,
             string propertyName,
-            IReadOnlyDictionary<Guid, string> countryNames)
+            IReadOnlyDictionary<Guid, string> brandNames)
         {
             if (doc is null)
             {
@@ -920,17 +869,17 @@ namespace DromHub.Services
                 return "—";
             }
 
-            return FormatJsonValue(element, propertyName, countryNames);
+            return FormatJsonValue(element, propertyName, brandNames);
         }
 
         /// <summary>
         /// <para>Преобразует произвольное JSON-значение в компактную строку для таблицы аудита.</para>
         /// <para>Сохраняет числовые и булевы значения в инвариантном формате, чтобы исключить региональные расхождения.</para>
-        /// <para>При наличии контекста столбца подменяет связанные идентификаторы (например, <c>country_id</c>) на локализованные подписи.</para>
+        /// <para>При наличии контекста столбца подменяет связанные идентификаторы (например, <c>brand_id</c>) на локализованные подписи.</para>
         /// </summary>
         /// <param name="element">JSON-значение, сформированное триггером; допускает <see langword="null"/>.</param>
         /// <param name="columnName">Имя колонки, для которой форматируется значение; используется для выбора преобразователя.</param>
-        /// <param name="countryNames">Кеш справочника стран для отображения названий вместо идентификаторов; допускает <see langword="null"/>.</param>
+        /// <param name="brandNames">Кеш справочника брендов для отображения названий вместо идентификаторов; допускает <see langword="null"/>.</param>
         /// <returns>Строка для UI либо «—», если значение отсутствует или неопределено.</returns>
         /// <remarks>
         /// <para>Предусловия: дополнительный контекст передаётся опционально; без него метод работает в прежнем режиме.</para>
@@ -942,27 +891,27 @@ namespace DromHub.Services
         /// <code>
         /// var lookup = new Dictionary<Guid, string>
         /// {
-        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "Россия"
+        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "ACME"
         /// };
-        /// var token = JToken.Parse("{\"country_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}")["country_id"];
-        /// var rendered = FormatJsonValue(token, "country_id", lookup); // "Россия"
+        /// var token = JToken.Parse("{\"brand_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}")["brand_id"];
+        /// var rendered = FormatJsonValue(token, "brand_id", lookup); // "ACME"
         /// </code>
         /// </example>
         private static string FormatJsonValue(
             JToken? element,
             string? columnName = null,
-            IReadOnlyDictionary<Guid, string>? countryNames = null)
+            IReadOnlyDictionary<Guid, string>? brandNames = null)
         {
             if (!string.IsNullOrWhiteSpace(columnName)
                 && element is not null
                 && element.Type != JTokenType.Undefined
-                && countryNames is { Count: > 0 })
+                && brandNames is { Count: > 0 })
             {
                 var normalized = NormalizeColumnKey(columnName);
-                if (normalized.Length > 0 && string.Equals(normalized, "country_id", StringComparison.OrdinalIgnoreCase))
+                if (normalized.Length > 0 && string.Equals(normalized, "brand_id", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (TryParseGuidFromToken(element, out var countryId)
-                        && countryNames.TryGetValue(countryId, out var localized))
+                    if (TryParseGuidFromToken(element, out var brandId)
+                        && brandNames.TryGetValue(brandId, out var localized))
                     {
                         return localized;
                     }

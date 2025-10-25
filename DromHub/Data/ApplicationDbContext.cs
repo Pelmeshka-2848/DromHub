@@ -88,6 +88,15 @@ namespace DromHub.Data
         /// <remarks>Коллекция доступна только для операций чтения; модификация обходится через SQL-триггер.</remarks>
         public DbSet<BrandAuditLog> BrandAuditLogs => Set<BrandAuditLog>();
 
+        /// <summary>
+        /// <para>Предоставляет доступ к таблице <c>part_audit_log</c>, поддерживаемой триггером аудита запчастей.</para>
+        /// <para>Позволяет сервису <see cref="DromHub.Services.PartAuditService"/> выполнять выборки истории изменений деталей.</para>
+        /// <para>Коллекция предназначена исключительно для операций чтения.</para>
+        /// </summary>
+        /// <value>Набор сущностей <see cref="PartAuditLog"/>; всегда возвращает экземпляр контекста.</value>
+        /// <remarks>Мутации выполняются только через SQL-триггеры; напрямую изменять коллекцию нельзя.</remarks>
+        public DbSet<PartAuditLog> PartAuditLogs => Set<PartAuditLog>();
+
 
         /// <summary>
         /// Метод OnModelCreating выполняет основную операцию класса.
