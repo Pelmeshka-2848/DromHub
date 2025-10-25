@@ -91,6 +91,7 @@ namespace DromHub
                     "MainPage" => typeof(MainPage),
                     "PartPage" => typeof(PartSearchPage),
                     "PartSearchPage" => typeof(PartSearchPage),
+                    "PartChangesPage" => typeof(PartChangesPage),
                     "BrandsOverviewPage" => typeof(BrandsHomePage),
                     "BrandsListPage" => typeof(BrandsIndexPage),
                     "BrandMergePage" => typeof(BrandMergeWizardPage),
