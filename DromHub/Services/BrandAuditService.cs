@@ -426,22 +426,50 @@ namespace DromHub.Services
 
             var data = await q.ToListAsync(ct);
 
-            // ---- MAP -> UI модель ----
-            var rows = new List<BrandAuditRow>(data.Count);
-            foreach (var a in data)
+            // ---- PREPARE ENRICHMENT ----
+            var contexts = new List<(BrandAuditLog Entity, JObject? OldDoc, JObject? NewDoc)>(data.Count);
+            var countryIds = new HashSet<Guid>();
+
+            foreach (var entity in data)
             {
+                var oldDoc = ParseJson(entity.OldData);
+                var newDoc = ParseJson(entity.NewData);
+
+                contexts.Add((entity, oldDoc, newDoc));
+                CollectCountryIdentifiers(oldDoc, countryIds);
+                CollectCountryIdentifiers(newDoc, countryIds);
+            }
+
+            IReadOnlyDictionary<Guid, string> countryLookup;
+            if (countryIds.Count > 0)
+            {
+                countryLookup = await db.Countries
+                    .Where(c => countryIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
+            }
+            else
+            {
+                countryLookup = new Dictionary<Guid, string>();
+            }
+
+            // ---- MAP -> UI модель ----
+            var rows = new List<BrandAuditRow>(contexts.Count);
+            foreach (var context in contexts)
+            {
+                var entity = context.Entity;
+
                 rows.Add(new BrandAuditRow
                 {
-                    Id = a.EventId,
-                    Ts = a.EventTime.UtcDateTime,
-                    Action = MapActionDisplay(a.Action),
-                    User = a.Actor ?? string.Empty,
+                    Id = entity.EventId,
+                    Ts = entity.EventTime.UtcDateTime,
+                    Action = MapActionDisplay(entity.Action),
+                    User = entity.Actor ?? string.Empty,
                     Table = "brands",
-                    BrandId = a.BrandId,
-                    OldJson = a.OldData,
-                    NewJson = a.NewData,
-                    ChangedColumns = FormatChangedColumns(a.ChangedColumns),
-                    ValueChanges = BuildValueChanges(a)
+                    BrandId = entity.BrandId,
+                    OldJson = entity.OldData,
+                    NewJson = entity.NewData,
+                    ChangedColumns = FormatChangedColumns(entity.ChangedColumns),
+                    ValueChanges = BuildValueChanges(entity, context.OldDoc, context.NewDoc, countryLookup)
                 });
             }
 
@@ -505,20 +533,29 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// Формирует читаемый список изменений значений на основе данных аудита.
+        /// <para>Формирует структурированный список изменений значений на основе строки аудита бренда.</para>
+        /// <para>Используется экраном истории брендов, чтобы показать, какие поля изменились и какое значение было до/после.</para>
+        /// <para>Автоматически подставляет локализованные представления связанных сущностей, например названия стран вместо идентификаторов.</para>
         /// </summary>
-        /// <param name="entity">Запись аудита из базы данных.</param>
-        /// <returns>Список изменений для отображения в UI.</returns>
+        /// <param name="entity">Сырьевая запись аудита из таблицы <c>brand_audit_log</c>.</param>
+        /// <param name="oldDoc">JSON-снимок до изменения; может отсутствовать для вставок.</param>
+        /// <param name="newDoc">JSON-снимок после изменения; может отсутствовать для удалений.</param>
+        /// <param name="countryNames">Кеш справочника стран, сформированный на этапе загрузки.</param>
+        /// <returns>Упорядоченный список дельт для отображения в пользовательском интерфейсе.</returns>
         /// <remarks>
-        /// Алгоритм сопоставляет JSON-снимки и список столбцов, отфильтровывая неизменённые значения.
-        /// Сложность: O(n) относительно количества затронутых столбцов.
-        /// Потокобезопасность: статический метод без состояния.
+        /// <para>Предусловия: JSON-снимки должны соответствовать схеме бренда; список столбцов может быть пустым.</para>
+        /// <para>Постусловия: возвращаемая коллекция иммутабельна и не содержит повторяющихся столбцов.</para>
+        /// <para>Побочные эффекты: отсутствуют.</para>
+        /// <para>Потокобезопасность: метод не хранит состояние и безопасен для параллельных вызовов.</para>
+        /// <para>Сложность: O(n) относительно числа полей в JSON.</para>
         /// </remarks>
-        private static IReadOnlyList<BrandAuditValueChange> BuildValueChanges(BrandAuditLog entity)
+        private static IReadOnlyList<BrandAuditValueChange> BuildValueChanges(
+            BrandAuditLog entity,
+            JObject? oldDoc,
+            JObject? newDoc,
+            IReadOnlyDictionary<Guid, string> countryNames)
         {
             var result = new List<BrandAuditValueChange>();
-            var oldDoc = ParseJson(entity.OldData);
-            var newDoc = ParseJson(entity.NewData);
 
             var changed = entity.ChangedColumns?
                 .Where(c => !string.IsNullOrWhiteSpace(c))
@@ -529,8 +566,8 @@ namespace DromHub.Services
             {
                 foreach (var column in changed)
                 {
-                    var oldValue = ExtractValue(oldDoc, column);
-                    var newValue = ExtractValue(newDoc, column);
+                    var oldValue = ExtractValue(oldDoc, column, countryNames);
+                    var newValue = ExtractValue(newDoc, column, countryNames);
 
                     if (oldValue == newValue)
                     {
@@ -555,7 +592,7 @@ namespace DromHub.Services
                         ColumnDisplayName = FormatColumnDisplayName(property.Name),
                         OriginalColumnName = property.Name,
                         OldValueDisplay = "—",
-                        NewValueDisplay = FormatJsonValue(property.Value)
+                        NewValueDisplay = FormatJsonValue(property.Value, property.Name, countryNames)
                     });
                 }
             }
@@ -567,7 +604,7 @@ namespace DromHub.Services
                     {
                         ColumnDisplayName = FormatColumnDisplayName(property.Name),
                         OriginalColumnName = property.Name,
-                        OldValueDisplay = FormatJsonValue(property.Value),
+                        OldValueDisplay = FormatJsonValue(property.Value, property.Name, countryNames),
                         NewValueDisplay = "—"
                     });
                 }
@@ -587,8 +624,8 @@ namespace DromHub.Services
 
                 foreach (var name in names)
                 {
-                    var oldValue = ExtractValue(oldDoc, name);
-                    var newValue = ExtractValue(newDoc, name);
+                    var oldValue = ExtractValue(oldDoc, name, countryNames);
+                    var newValue = ExtractValue(newDoc, name, countryNames);
 
                     if (oldValue == newValue)
                     {
@@ -660,6 +697,37 @@ namespace DromHub.Services
             }
 
             return normalized;
+        }
+
+        /// <summary>
+        /// <para>Извлекает идентификаторы стран из JSON-снимка для последующей подстановки человеко-читаемых названий.</para>
+        /// <para>Выполняет подготовку данных перед загрузкой справочника, чтобы минимизировать количество запросов к базе.</para>
+        /// <para>Игнорирует пустые и некорректные значения, сохраняя устойчивость к повреждённому аудиту.</para>
+        /// </summary>
+        /// <param name="doc">JSON-объект из таблицы аудита; допускает <see langword="null"/>.</param>
+        /// <param name="buffer">Множество для накопления уникальных идентификаторов стран.</param>
+        /// <remarks>
+        /// <para>Предусловия: <paramref name="buffer"/> должен принимать новые элементы.</para>
+        /// <para>Побочные эффекты: метод добавляет элементы в переданное множество.</para>
+        /// <para>Потокобезопасность: не потокобезопасен при совместном использовании одного <paramref name="buffer"/> между потоками.</para>
+        /// <para>Сложность: O(1) — анализируется ровно одно поле JSON.</para>
+        /// </remarks>
+        private static void CollectCountryIdentifiers(JObject? doc, ISet<Guid> buffer)
+        {
+            if (doc is null || buffer is null)
+            {
+                return;
+            }
+
+            if (!doc.TryGetValue("country_id", StringComparison.OrdinalIgnoreCase, out var token) || token is null)
+            {
+                return;
+            }
+
+            if (TryParseGuidFromToken(token, out var value))
+            {
+                buffer.Add(value);
+            }
         }
 
         /// <summary>
@@ -813,26 +881,34 @@ namespace DromHub.Services
         }
 
         /// <summary>
-        /// Извлекает значение свойства из JSON-снимка и приводит его к формату, пригодному для таблицы изменений.
-        /// Используйте, когда нужно сопоставить конкретный столбец из списка <c>changed_columns</c> с фактическим значением в документе.
-        /// Возвращает «—» для отсутствующих полей, подчёркивая, что триггер не передал данные.
+        /// <para>Извлекает значение указанного свойства из JSON-снимка аудита и преобразует его к человеко-читаемому виду.</para>
+        /// <para>Служит связующим звеном между списком <c>changed_columns</c> и фактическими данными, гарантируя согласованное форматирование.</para>
+        /// <para>Использует кеш справочников, чтобы мгновенно переводить связанные идентификаторы (например, стран) в локализованные подписи.</para>
         /// </summary>
-        /// <param name="doc">JSON-объект или <see langword="null"/>, предоставленный триггером аудита.</param>
-        /// <param name="propertyName">Имя свойства в формате столбца базы данных; сравнивается без учёта регистра.</param>
-        /// <returns>Отформатированное строковое значение или «—», если свойство не найдено.</returns>
+        /// <param name="doc">JSON-объект со снимком сущности; допускает <see langword="null"/>, если триггер не предоставил данные.</param>
+        /// <param name="propertyName">Имя свойства, совпадающее с колонкой базы данных; сравнение выполняется без учёта регистра.</param>
+        /// <param name="countryNames">Кеш локализованных названий стран; допускает пустой словарь для сценариев без географии.</param>
+        /// <returns>Отформатированная строка либо «—», если значение отсутствует в снимке.</returns>
         /// <remarks>
-        /// Предусловия: <paramref name="propertyName"/> не <see cref="string.Empty"/>.
-        /// Побочные эффекты: отсутствуют.
-        /// Потокобезопасность: статический метод без состояния.
-        /// Сложность: O(1) для плоских объектов.
+        /// <para>Предусловия: <paramref name="propertyName"/> должен указывать на плоское поле JSON.</para>
+        /// <para>Побочные эффекты: отсутствуют.</para>
+        /// <para>Потокобезопасность: метод не хранит состояние и безопасен при параллельных вызовах.</para>
+        /// <para>Сложность: O(1) для плоских объектов благодаря прямому обращению к значению.</para>
         /// </remarks>
         /// <example>
         /// <code>
-        /// var payload = JObject.Parse("{\"name\":\"Acme\"}");
-        /// var value = ExtractValue(payload, "name"); // "Acme"
+        /// var payload = JObject.Parse("{\"country_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}");
+        /// var lookup = new Dictionary<Guid, string>
+        /// {
+        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "Россия"
+        /// };
+        /// var value = ExtractValue(payload, "country_id", lookup); // "Россия"
         /// </code>
         /// </example>
-        private static string ExtractValue(JObject? doc, string propertyName)
+        private static string ExtractValue(
+            JObject? doc,
+            string propertyName,
+            IReadOnlyDictionary<Guid, string> countryNames)
         {
             if (doc is null)
             {
@@ -844,30 +920,55 @@ namespace DromHub.Services
                 return "—";
             }
 
-            return FormatJsonValue(element);
+            return FormatJsonValue(element, propertyName, countryNames);
         }
 
         /// <summary>
-        /// Конвертирует произвольное JSON-значение в компактную строку, пригодную для отображения в таблице аудита.
-        /// Поддерживает базовые типы <see cref="JValue"/> и сворачивает сложные структуры в однострочный JSON, чтобы не перегружать UI.
-        /// Гарантирует детерминированное форматирование чисел и дат, исключая региональные артефакты.
+        /// <para>Преобразует произвольное JSON-значение в компактную строку для таблицы аудита.</para>
+        /// <para>Сохраняет числовые и булевы значения в инвариантном формате, чтобы исключить региональные расхождения.</para>
+        /// <para>При наличии контекста столбца подменяет связанные идентификаторы (например, <c>country_id</c>) на локализованные подписи.</para>
         /// </summary>
-        /// <param name="element">JSON-значение для отображения; допускает <see langword="null"/>.</param>
-        /// <returns>Форматированная строка, готовая к показу в UI.</returns>
+        /// <param name="element">JSON-значение, сформированное триггером; допускает <see langword="null"/>.</param>
+        /// <param name="columnName">Имя колонки, для которой форматируется значение; используется для выбора преобразователя.</param>
+        /// <param name="countryNames">Кеш справочника стран для отображения названий вместо идентификаторов; допускает <see langword="null"/>.</param>
+        /// <returns>Строка для UI либо «—», если значение отсутствует или неопределено.</returns>
         /// <remarks>
-        /// Предусловия: отсутствуют.
-        /// Побочные эффекты: отсутствуют.
-        /// Потокобезопасность: статический метод без состояния.
-        /// Сложность: O(1) для примитивов, O(n) для сериализации вложенных структур.
+        /// <para>Предусловия: дополнительный контекст передаётся опционально; без него метод работает в прежнем режиме.</para>
+        /// <para>Побочные эффекты: отсутствуют.</para>
+        /// <para>Потокобезопасность: статический метод без состояния и побочных эффектов.</para>
+        /// <para>Сложность: O(1) для примитивов и O(n) при сериализации вложенных структур.</para>
         /// </remarks>
         /// <example>
         /// <code>
-        /// var rendered = FormatJsonValue(JToken.Parse("{\"isActive\":true}")["isActive"]);
-        /// // rendered == "true"
+        /// var lookup = new Dictionary<Guid, string>
+        /// {
+        ///     [Guid.Parse("71f5f971-9e09-4a27-8452-77ab5940e6d0")] = "Россия"
+        /// };
+        /// var token = JToken.Parse("{\"country_id\":\"71f5f971-9e09-4a27-8452-77ab5940e6d0\"}")["country_id"];
+        /// var rendered = FormatJsonValue(token, "country_id", lookup); // "Россия"
         /// </code>
         /// </example>
-        private static string FormatJsonValue(JToken? element)
+        private static string FormatJsonValue(
+            JToken? element,
+            string? columnName = null,
+            IReadOnlyDictionary<Guid, string>? countryNames = null)
         {
+            if (!string.IsNullOrWhiteSpace(columnName)
+                && element is not null
+                && element.Type != JTokenType.Undefined
+                && countryNames is { Count: > 0 })
+            {
+                var normalized = NormalizeColumnKey(columnName);
+                if (normalized.Length > 0 && string.Equals(normalized, "country_id", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryParseGuidFromToken(element, out var countryId)
+                        && countryNames.TryGetValue(countryId, out var localized))
+                    {
+                        return localized;
+                    }
+                }
+            }
+
             if (element is null || element.Type == JTokenType.Undefined)
             {
                 return "—";
@@ -883,6 +984,59 @@ namespace DromHub.Services
                 JTokenType.Date => element.Value<DateTime>().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                 _ => element.ToString(Formatting.None)
             };
+        }
+
+        /// <summary>
+        /// <para>Пытается выделить GUID из JSON-значения, полученного от триггера аудита.</para>
+        /// <para>Поддерживает строки, байтовые массивы и нативный тип <see cref="JTokenType.Guid"/>, чтобы обеспечить совместимость с различными драйверами.</para>
+        /// <para>Используется при подготовке справочников, когда необходимо превратить идентификаторы в человеко-читаемые подписи.</para>
+        /// </summary>
+        /// <param name="element">JSON-значение, потенциально содержащее UUID; не должно быть <see langword="null"/>.</param>
+        /// <param name="value">Выходной GUID при успешном разборе; иначе <see cref="Guid.Empty"/>.</param>
+        /// <returns><see langword="true"/>, если значение распознано как корректный GUID.</returns>
+        /// <remarks>
+        /// <para>Предусловия: вызывающий обеспечивает ненулевой <paramref name="element"/>.</para>
+        /// <para>Побочные эффекты: отсутствуют.</para>
+        /// <para>Потокобезопасность: статический метод без доступа к общему состоянию.</para>
+        /// <para>Сложность: O(n) только при необходимости сериализации сложных значений.</para>
+        /// </remarks>
+        private static bool TryParseGuidFromToken(JToken element, out Guid value)
+        {
+            switch (element.Type)
+            {
+                case JTokenType.Null:
+                case JTokenType.Undefined:
+                    value = Guid.Empty;
+                    return false;
+                case JTokenType.Guid:
+                    value = element.Value<Guid>();
+                    return true;
+                case JTokenType.String:
+                    var text = element.Value<string>();
+                    if (!string.IsNullOrWhiteSpace(text) && Guid.TryParse(text, out value))
+                    {
+                        return true;
+                    }
+                    break;
+                case JTokenType.Bytes:
+                    var bytes = element.Value<byte[]>();
+                    if (bytes is { Length: 16 })
+                    {
+                        value = new Guid(bytes);
+                        return true;
+                    }
+                    break;
+                default:
+                    var serialized = element.ToString(Formatting.None);
+                    if (!string.IsNullOrWhiteSpace(serialized) && Guid.TryParse(serialized, out value))
+                    {
+                        return true;
+                    }
+                    break;
+            }
+
+            value = Guid.Empty;
+            return false;
         }
 
         /// <summary>
